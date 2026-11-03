@@ -236,7 +236,9 @@ parameters:
     status: V
     owner: twin
     valid_from: 2026-11-03
-    notes: Rake of 58 BOXN is about 622 m plus loco (640-660 m). Other wagon types in issue #15.
+    notes: >-
+      Rake of 58 BOXN is about 622 m plus loco (640-660 m). Overrides the BOXN family in
+      consist.freight.wagon_family; other wagon types map through consist.freight.wagon_type_family.
   - key: loco.WAP7
     value: {mass_t: 123, power_hp_max: 6350, te_start_kN: 322.4, te_cont_kN: 228, te_cont_speed_kmh: 71, vmax_kmh: 130}
     unit: null
@@ -259,6 +261,127 @@ parameters:
     owner: twin
     valid_from: 2026-11-03
     notes: Starting TE of 706 kN is unverified; other values verified.
+  - key: loco.length_m
+    value: {WAP7: 20.562, WAG9: 20.562, WAG12B: 35.0}
+    unit: m
+    source: R05 §3.2 (Wikipedia infobox)
+    status: DUMMY
+    owner: twin
+    provenance: https://en.wikipedia.org/wiki/Indian_locomotive_class_WAP-7
+    valid_from: 2026-11-03
+    notes: >-
+      Length over buffers from the Wikipedia infoboxes of WAP-7, WAG-9 and WAG-12 (WAG-12B is a
+      two-section loco). consist.loco_length_m is the fallback for classes not listed here.
+  - key: loco.te_curve
+    value: {speed_step_kmh: 5, power_at_rail_fraction: 0.9}
+    unit: null
+    source: spec §6.4 (TE curve fitted from power and TE limits); R05 §3.2
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+    notes: >-
+      TE(v) = min(te_start_kN, P_rail / v), sampled every speed_step_kmh from 0 to vmax. P_rail is
+      te_cont_kN x te_cont_speed_kmh when the class has a continuous rating, else
+      power_at_rail_fraction x rated power.
+
+  # Freight rakes: one template per wagon family. consist.freight.rake (V) overrides the family
+  # values it lists (BOXN rake size and wagon length); the rest are placeholders (C-14).
+  - key: consist.freight.wagon_family
+    value:
+      BOXN: {tare_t: 22.47, payload_t: 58.81, vmax_loaded_kmh: 75, vmax_empty_kmh: 80}
+      BOXNHL: {wagons: 58, wagon_length_m: 10.716, tare_t: 20.6, payload_t: 60.7, vmax_loaded_kmh: 75, vmax_empty_kmh: 100}
+      BOXNHL25T: {wagons: 58, wagon_length_m: 10.716, tare_t: 21.0, payload_t: 79.0, vmax_loaded_kmh: 75, vmax_empty_kmh: 100}
+      BOBRN: {wagons: 58, wagon_length_m: 10.71, tare_t: 25.6, payload_t: 55.7, vmax_loaded_kmh: 65, vmax_empty_kmh: 80}
+      BOST: {wagons: 42, wagon_length_m: 13.7, tare_t: 24.0, payload_t: 57.3, vmax_loaded_kmh: 75, vmax_empty_kmh: 80}
+      BCN: {wagons: 42, wagon_length_m: 15.429, tare_t: 26.44, payload_t: 60.84, vmax_loaded_kmh: 75, vmax_empty_kmh: 100}
+      BRN: {wagons: 43, wagon_length_m: 14.645, tare_t: 23.4, payload_t: 57.9, vmax_loaded_kmh: 75, vmax_empty_kmh: 80}
+      BLC: {wagons: 45, wagon_length_m: 12.53, tare_t: 19.1, payload_t: 40.0, vmax_loaded_kmh: 100, vmax_empty_kmh: 100}
+      BTPN: {wagons: 50, wagon_length_m: 12.47, tare_t: 27.0, payload_t: 54.3, vmax_loaded_kmh: 75, vmax_empty_kmh: 75}
+      BTAP: {wagons: 49, wagon_length_m: 12.7, tare_t: 27.0, payload_t: 54.0, vmax_loaded_kmh: 75, vmax_empty_kmh: 75}
+      BTPG: {wagons: 34, wagon_length_m: 18.0, tare_t: 42.0, payload_t: 36.0, vmax_loaded_kmh: 75, vmax_empty_kmh: 75}
+      CAR_CARRIER: {wagons: 25, wagon_length_m: 23.5, tare_t: 36.0, payload_t: 12.0, vmax_loaded_kmh: 100, vmax_empty_kmh: 100}
+      BRAKE_VAN: {wagons: 1, wagon_length_m: 9.0, tare_t: 20.0, payload_t: 0.0, vmax_loaded_kmh: 80, vmax_empty_kmh: 80}
+    unit: null
+    source: R05 §3.1-3.2; R06 §4.11; spec A-02
+    status: DUMMY
+    owner: twin
+    provenance: https://rskr.irimee.in/sites/default/files/Types%20of%20Wagons%20%2C%20nomenclature%20and%20their%20design%20features.pdf
+    valid_from: 2026-11-03
+    notes: >-
+      wagon_length_m is over couplers. BCN and BRN lengths and the BCN and BOXN tare and payload
+      are from IRIMEE wagon notes, as reported by web search. A BOXNHL rake is 60 wagons including
+      2 spares (East Coast Railway CC-67, 2025). Other rake sizes, masses and speeds are
+      placeholders. BLC payload is an average container load, not the wagon capacity.
+  - key: consist.freight.wagon_type_family
+    value:
+      BOXN: [BOXN, BOXNEL, BOXNR, BOXNS]
+      BOXNHL: [BOXNHL]
+      BOXNHL25T: [BOXNHL25T, BOYEL]
+      BOBRN: [BOBRN, BOBYNHS]
+      BOST: [BOST, BOSM]
+      BCN: [BCN, BCNHL, BCNAHSM1]
+      BRN: [BRN, BRN22.9, BRNAC, BFNS, BFNS22.9, BFNSM, BFNSM1, BFNV, SHRN]
+      BLC: [BLC, BLL, BLSS, BKI, BFKN]
+      BTPN: [BTPN, BTCS]
+      BTAP: [BTAP]
+      BTPG: [BTPG]
+      CAR_CARRIER: [BCACBM, NMG, NMGHS, DBKM]
+      BRAKE_VAN: [BV]
+    unit: null
+    source: FREIGHT.Load Type; FREIGHT.Commodity; spec §6.4
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+    notes: >-
+      Every wagon code in the Aug 2025 freight log (47 codes) maps to one family. Codes were
+      grouped by wagon design and commodity carried (e.g. SHRN and BFNV carry iron and steel, so
+      they are flats; BKI, BLSS and BFKN carry containers). Unmapped codes fail the tests.
+  - key: consist.freight.loco_class
+    value: {default: WAG9, heavy: WAG12B, heavy_above_trailing_t: 4500}
+    unit: null
+    source: spec REC-25; spec §6.4
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+    notes: Single loco. A loaded rake heavier than heavy_above_trailing_t gets the heavy class.
+  - key: consist.passenger.loco_class
+    value: WAP7
+    unit: null
+    source: spec §6.4; R05 §3.2
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: consist.passenger.coach
+    value: {code: LHB, tare_t: 42.0, gross_t: 50.0, vmax_kmh: 160}
+    unit: null
+    source: R05 §3.2
+    status: DUMMY
+    owner: twin
+    provenance: placeholder
+    valid_from: 2026-11-03
+    notes: Average LHB coach. Length is consist.lhb_coach_length_m.
+  - key: resistance.davis
+    value:
+      loco: {a: 15.0, b: 0.1, c: 0.003}
+      passenger: {a: 9.0, b: 0.04, c: 0.0011}
+      freight_loaded: {a: 8.0, b: 0.02, c: 0.0012}
+      freight_empty: {a: 10.0, b: 0.03, c: 0.0035}
+    unit: N/t, v in km/h
+    source: spec §6.4; R05 §3.2 (literature placeholder)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+    notes: >-
+      Specific resistance r(v) = a + b v + c v^2 in N per tonne. Placeholder magnitudes, to be
+      calibrated against freight p10 block times and WTT spans (issue #16).
+  - key: brake.decel_mps2
+    value: {passenger: 0.5, freight_loaded: 0.25, freight_empty: 0.3, light_engine: 0.5}
+    unit: m/s2
+    source: spec §6.4; R05 §3.2 (literature placeholder)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+    notes: Service braking deceleration per consist type; to be calibrated in issue #16.
 
   # ------------------------------------------------------------------ timetable
   - key: wtt.time_tolerance_s
