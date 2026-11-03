@@ -10,3 +10,5 @@
 | Seed / generator version | n/a (deterministic derivation, report 06) |
 | Integrity | `MANIFEST.sha256`, verified in CI |
 | Raw inputs | `data/raw/ktv-psa/KTV-PSA-Infra/STTNLINE-Table 1.csv`, `Connections-Table 1.csv`, `Platform-Table 1.csv`; OpenStreetMap (ODbL) for the high bound |
+| Licence | Derived from the KTV–PSA dataset (see its card) and a one-off extract of a few OpenStreetMap yard ways. That extract is fewer than 100 features, so it is not "substantial" under the OSMF Substantial guideline (DR-0001 §5.3). |
+| Attribution | Contains information from OpenStreetMap: © OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0 (https://opendatacommons.org/licenses/odbl/1-0/); see https://www.openstreetmap.org/copyright |

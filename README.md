@@ -74,6 +74,7 @@ Other folders: `tools/` (licence gate, dataset manifest), `tests/`, `data/` (see
 |---|---|---|
 | `data/raw/ktv-psa/` | The 14 KTV–PSA CSV files exactly as supplied, plus `PROVENANCE.md` and `MANIFEST.sha256` | **Read-only input.** Never edited; all cleaning happens in the ETL (spec C-13). Stored byte-for-byte (`.gitattributes`: `data/** -text`) |
 | `data/derived/ktv-psa/` | `psa_station_lines_derived.csv`: Palasa line identities and **estimated** CSR from research report 06 | Estimates; see its provenance card |
+| `data/external/osm-dem/` | Provenance card for the OpenStreetMap and Copernicus DEM gap-fill inputs (issue #14) | Attribution text must be copied wherever these data are distributed or shown |
 | `data/interim/` | ETL intermediate output | Git-ignored, rebuilt from `data/raw` |
 
 Verify integrity at any time:
@@ -139,3 +140,5 @@ day offset + time of day, and writes `stage1_report.json`. It never writes insid
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under
 `data/` is used as supplied by the project owner; see its provenance cards.
+Third-party notices (OpenStreetMap, Copernicus DEM) are in [NOTICE](NOTICE); licence decisions
+for third-party components are recorded in [docs/decisions/](docs/decisions/README.md).
