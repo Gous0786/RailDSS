@@ -1,0 +1,592 @@
+# RailDSS parameter register (spec C-05, FR-DATA-01, FR-DATA-08, Appendix B; issue #3).
+#
+# Every rule value and threshold used by RailDSS lives here, with a cited source. Code reads
+# values only through raildss_params; literal rule values in code are linted (tools/lint_literals.py).
+#
+# Fields per entry:
+#   key         dotted lower-case name (unique)
+#   value       the value (number, string, list or mapping)  -- or --
+#   value_ref   TABLE.COLUMN when the value is per record in the dataset (e.g. CSR per line)
+#   unit        unit string, or null
+#   source      report section (e.g. "R06 §2") and/or TABLE.COLUMN
+#   status      V | DATA | EST | U | SA | DUMMY
+#                 V      verified in a source report
+#                 DATA   computed from the KTV-PSA dataset
+#                 EST    estimated from data -> requires bounds {low, high}
+#                 U      unverified
+#                 SA     spec-author default
+#                 DUMMY  open-internet secondary source or placeholder (C-14) -> requires provenance
+#   owner       team responsible
+#   bounds      {low, high} (required for EST)
+#   provenance  URL or "placeholder" (required for DUMMY)
+#   valid_from  ISO date
+#   notes       optional free text
+
+register_version: "2026.11.1"
+spec_version: "1.3"
+
+parameters:
+  # ------------------------------------------------------------------ network and section
+  - key: network.version
+    value: KTV-PSA-2025-08
+    unit: null
+    source: R06 §6.7
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: section.length_km
+    value: {total: 176.83, ktv_vzm: 34.73, vzm_psa: 142.10}
+    unit: km
+    source: RouteSttnInfo.CUM_DISTANCE; RouteSttnInfo.DISTANCE
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: section.stations
+    value: {total: 22, block_stations: 18, halts: [BTVA, HCM, DGB, RMZ], junctions: [KTV, VZM, NWP]}
+    unit: count
+    source: STATION.MACHALTFLAG; RouteSttnInfo.HALT_FLAG; R06 §2
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+
+  # ------------------------------------------------------------------ block working
+  - key: block.system
+    value: {ktv_vzm: {system: AT, lines: 3}, vzm_psa: {system: AB, lines: 2}}
+    unit: null
+    source: BLOCKSCTN.MAVSGNLTYPE; BLOCKSCTN.MANNUMBLINES
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: block.length_km
+    value: {route_min: 4.43, route_max: 12.33, coa_max: 13.27}
+    unit: km
+    source: RouteSttnInfo.DISTANCE; RouteSttnInfo.COADISTANCE
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: block.vmax_kmh
+    value: 130
+    unit: km/h
+    source: BLOCKSCTN.MANMAXSPEED
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: block.adequate_distance_m.macls
+    value: 180
+    unit: m
+    source: R05 §1.7 (GR 8.01 via IRFCA); STATION.MAVSGNLARRNGMENT
+    status: V
+    owner: rules
+    valid_from: 2026-11-03
+  - key: block.adequate_distance_m.two_aspect
+    value: 400
+    unit: m
+    source: R05 §1.7 (GR 8.01 via IRFCA)
+    status: V
+    owner: rules
+    valid_from: 2026-11-03
+    notes: Not used on KTV-PSA (all MACL).
+  - key: block.line_clear_op_time_s
+    value: 120
+    unit: s
+    source: spec Appendix B
+    status: SA
+    owner: rules
+    valid_from: 2026-11-03
+  - key: abs.subblock_spacing_km.ktv_vzm
+    value: 1.0
+    unit: km
+    source: spec OD-32; R06 §5
+    status: DUMMY
+    owner: twin
+    provenance: https://indianrailways.gov.in/railwayboard/uploads/directorate/signal/2024/09_10_24.pdf
+    valid_from: 2026-11-03
+    notes: >-
+      Normal ABS signal spacing (~1 km) per a Railway Board guideline letter of 9 Oct 2024 as
+      reported in web search results; the PDF returned 404 on 3 Nov 2026. Sensitivity 1.25 / 1.5 km.
+
+  # ------------------------------------------------------------------ station lines and platforms
+  - key: station_line.csr
+    value_ref: STTNLINE.MANCSR
+    unit: m
+    source: STTNLINE.MANCSR (spec REC-23)
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: Per line; there is no global standard CSR.
+  - key: station_line.csr.stats
+    value:
+      loops: {median: 733.5, p10: 673.5, min: 300, n: 40}
+      mains: {median: 752.5, p10: 714.4, min: 678, n: 42}
+      sidings: {median: 687, n: 3}
+      all_lines: {median: 743, iqr: [708, 769], n: 85}
+      r06_headline_loop_median: 731
+    unit: m
+    source: STTNLINE.MANCSR (PSA excluded, CSR > 0); R06 §2
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: Reference statistics only; services use per-line CSR.
+  - key: station_line.csr.psa
+    value: {loop: 733, main: 752}
+    unit: m
+    source: R06 App. C; data/derived/ktv-psa/psa_station_lines_derived.csv
+    status: EST
+    owner: data
+    bounds:
+      low: {loop: 673, main: 678}
+      high: {loop: 1150, main: 1150}
+    valid_from: 2026-11-03
+    notes: All 10 PSA lines are estimates (spec OD-31); run sensitivity at the low bound (SCN-24).
+  - key: station_line.short_lines
+    value: {CPP_line_1: 390, PDU_siding: 300}
+    unit: m
+    source: STTNLINE.MANCSR
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: station_line.speed_kmh
+    value: {loop: 15, main: [100, 110]}
+    unit: km/h
+    source: STTNLINE.MANLINESPEED
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: station_line.trains_allowed
+    value: 1
+    unit: count
+    source: STTNLINE.MANNUMBTRAINALLWD
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: platform.length
+    value_ref: Platform.MANLENGTH
+    unit: m
+    source: Platform.MANLENGTH
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: Per platform; maximum 620 m.
+  - key: psr.list
+    value_ref: PSR.MANPASSPEED
+    unit: km/h
+    source: PSR (KTV-PSA).MANFROMKM; PSR (PSA-KTV).MANFROMKM; R06 App. A.6
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: 8 PSRs (5 KTV->PSA, 3 PSA->KTV), mapped to net elements by the ETL (issue #9).
+
+  # ------------------------------------------------------------------ rolling stock
+  - key: consist.passenger.coaches
+    value_ref: TRAIN.NO_OF_COACHES
+    unit: count
+    source: TRAIN.NO_OF_COACHES; R06 §4.12
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: Range 8-24, median 20.
+  - key: consist.lhb_coach_length_m
+    value: 24
+    unit: m
+    source: R05 §3.2
+    status: V
+    owner: twin
+    valid_from: 2026-11-03
+  - key: consist.loco_length_m
+    value: 20
+    unit: m
+    source: spec Appendix B
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: consist.freight.rake
+    value: {BOXN: {wagons: 58, wagon_length_m: 10.731}}
+    unit: null
+    source: R05 §3.1-3.2 (RC-60); R06 §4.11
+    status: V
+    owner: twin
+    valid_from: 2026-11-03
+    notes: Rake of 58 BOXN is about 622 m plus loco (640-660 m). Other wagon types in issue #15.
+  - key: loco.WAP7
+    value: {mass_t: 123, power_hp_max: 6350, te_start_kN: 322.4, te_cont_kN: 228, te_cont_speed_kmh: 71, vmax_kmh: 130}
+    unit: null
+    source: R05 §3.2 (Wikipedia infobox)
+    status: V
+    owner: twin
+    valid_from: 2026-11-03
+  - key: loco.WAG9
+    value: {mass_t: 123, power_hp: 6120, te_start_kN: 475, vmax_kmh: 100}
+    unit: null
+    source: R05 §3.2 (Wikipedia infobox)
+    status: V
+    owner: twin
+    valid_from: 2026-11-03
+  - key: loco.WAG12B
+    value: {mass_t: 180, power_hp: 12000, vmax_kmh: 120, te_start_kN: 706}
+    unit: null
+    source: R05 §3.2
+    status: U
+    owner: twin
+    valid_from: 2026-11-03
+    notes: Starting TE of 706 kN is unverified; other values verified.
+
+  # ------------------------------------------------------------------ timetable
+  - key: wtt.time_tolerance_s
+    value: 60
+    unit: s
+    source: R06 §4.5 (minute rounding)
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: wtt.weekday_index
+    value: monday_is_0
+    unit: null
+    source: R06 App. B
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: wtt.stop_rule
+    value: departure_gt_arrival
+    unit: null
+    source: R06 §4.7
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: 722 stops; median dwell 120 s. HALT_FLAG marks halt stations, not stops.
+  - key: passenger.trains_per_day
+    value: {ktv_vzm_per_direction: [35, 41], vzm_psa_per_direction: [26, 30]}
+    unit: per day
+    source: R06 §2 (20 Aug 2025)
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+
+  # ------------------------------------------------------------------ freight
+  - key: freight.unimpeded_block_time
+    value_ref: WAT_GOODS_TRAIN.Arrival Time
+    unit: min
+    source: R06 §6.6 (per-block p10 of the freight log)
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+    notes: Example NML-GVI 12.3 km p10 = 12 min. Computed by the ETL (issue #11).
+  - key: freight.arrival_rate_per_h.ktv
+    value: [4, 6]
+    unit: per h
+    source: R06 §6.6
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: freight.trains_per_day
+    value: {ktv_vzm: {dn: [39, 40], up: [33, 34]}, vzm_psa: {dn: 19, up: 15}}
+    unit: per day
+    source: R06 §2
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: freight.through_transit_h.hist
+    value: {median: 10.4, p10: 6.5, p90: 17.4}
+    unit: h
+    source: R06 §2
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: freight.dwell_min.hist
+    value:
+      VZM: {median: 3, mean: 32.1, p90: 95, share_over_30: 0.297, n: 2626}
+      KTV: {median: 0, mean: 35.1, p90: 58.4, share_over_30: 0.146}
+      NWP: {median: 0, mean: 24.1, p90: 73, share_over_30: 0.273}
+    unit: min
+    source: WAT_GOODS_TRAIN.Sttn; WAT_GOODS_TRAIN.Depart Time
+    status: DATA
+    owner: data
+    valid_from: 2026-11-03
+  - key: freight.stabled_threshold_min
+    value: 360
+    unit: min
+    source: spec Appendix B; R06 §4.11
+    status: SA
+    owner: data
+    valid_from: 2026-11-03
+  - key: freight.tt_share
+    value: 0.0
+    unit: fraction
+    source: spec REC-25, OD-23
+    status: SA
+    owner: data
+    valid_from: 2026-11-03
+    notes: The freight log has no time-tabled flag.
+
+  # ------------------------------------------------------------------ observation and ingestion
+  - key: rtis.position_interval_s
+    value: 30
+    unit: s
+    source: R05 §3.4 (PIB)
+    status: V
+    owner: twin
+    valid_from: 2026-11-03
+  - key: obs.station_event_resolution_s
+    value: 60
+    unit: s
+    source: WAT_GOODS_TRAIN.Arrival Time (100 % minute timestamps)
+    status: DATA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: obs.missing_departure_rate
+    value: 0.0024
+    unit: fraction
+    source: WAT_GOODS_TRAIN.Depart Time (mid-path, section rows)
+    status: DATA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: obs.duplicate_rate
+    value: 0.00005
+    unit: fraction
+    source: R06 §4.11; WAT_GOODS_TRAIN.LoadId
+    status: DATA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: obs.out_of_order_rate
+    value: 0.0
+    unit: fraction
+    source: R06 §3
+    status: DATA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: obs.station_event_latency_min
+    value: {min: 0, max: 3, p50: 1}
+    unit: min
+    source: R05 §8.3
+    status: SA
+    owner: twin
+    valid_from: 2026-11-03
+  - key: ingest.late_threshold_min
+    value: 5
+    unit: min
+    source: R05 §8.4
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: state.stale_threshold_min
+    value: 2
+    unit: min
+    source: R02 §5.1; R05 §8.4
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+
+  # ------------------------------------------------------------------ conflict detection and optimiser
+  - key: cd.horizon_min
+    value: 120
+    unit: min
+    source: spec REC-12
+    status: SA
+    owner: dss
+    bounds: {low: 60, high: 180}
+    valid_from: 2026-11-03
+  - key: cd.rerun_max_interval_s
+    value: 30
+    unit: s
+    source: R04 §3.3
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: cd.p_conflict_threshold
+    value: 0.3
+    unit: probability
+    source: R04 §3.2
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: opt.replan_max_interval_min
+    value: 5
+    unit: min
+    source: spec REC-12
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: opt.freeze_window_min
+    value: 10
+    unit: min
+    source: R04 §4.3
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: opt.time_limit_s
+    value: {routine: 15, disruption: 60, refine: 120}
+    unit: s
+    source: R04 §4.5; spec REC-03
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: opt.workers
+    value: 8
+    unit: count
+    source: R04 §4.5
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: opt.line_change_penalty
+    value: {mid_line: 2, wrong_direction: 5}
+    unit: weighted min
+    source: spec FR-OPT-19
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+
+  # ------------------------------------------------------------------ precedence policy (spec REC-09, OD-04)
+  - key: policy.weights
+    value: {premium: 10, mail_express: 5, passenger: 3, freight_timetabled: 2, freight_other: 1}
+    unit: null
+    source: R04 §4.4 (spec REC-09)
+    status: SA
+    owner: rules
+    valid_from: 2026-11-03
+    notes: Placeholder pending OD-04 (official IR precedence order unverified).
+  - key: policy.class_map
+    value:
+      RAJ: premium
+      SHT: premium
+      DRNT: premium
+      VNDB: premium
+      SUF: mail_express
+      MEX: mail_express
+      GBR: mail_express
+      JSH: mail_express
+      AMTB: mail_express
+      PEXP: mail_express
+      TOD: mail_express
+      HSP: mail_express
+      TRST: mail_express
+      TRSF: mail_express
+      PAS: passenger
+      MEMU: passenger
+      DMU: passenger
+      EMU: passenger
+      MMTS: passenger
+      FREIGHT: freight_other
+    unit: null
+    source: TRAIN.TRAIN_TYPE; R06 App. A.5 (ICMS train types)
+    status: SA
+    owner: rules
+    valid_from: 2026-11-03
+    notes: Mapping of ICMS train types to classes is a spec-author default (OD-04).
+  - key: policy.hard_rules
+    value: [relief_trains_first]
+    unit: null
+    source: R01 §2.2
+    status: U
+    owner: rules
+    valid_from: 2026-11-03
+
+  # ------------------------------------------------------------------ verification
+  - key: ver.buffer_warn_min
+    value: 2
+    unit: min
+    source: R02 §4.5
+    status: SA
+    owner: rules
+    valid_from: 2026-11-03
+  - key: ver.g3.mc_replays
+    value: 50
+    unit: count
+    source: R04 §7.2
+    status: SA
+    owner: dss
+    bounds: {low: 20, high: 100}
+    valid_from: 2026-11-03
+  - key: ver.g3.deadlock_eps
+    value: 0.01
+    unit: probability
+    source: spec Appendix B
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: crew.duty_limit_h
+    value: {running: 9, sign_on_to_sign_off: 11, crew_change_station: PSA}
+    unit: h
+    source: spec Appendix B; STATION.MACCREWCHNG
+    status: DUMMY
+    owner: rules
+    provenance: https://www.zeebiz.com/india/news-indian-railways-union-demands-shorter-duty-hours-more-rest-for-loco-pilots-60273/amp
+    valid_from: 2026-11-03
+    notes: News reports of current IR practice; HOER primary text not retrieved (C-14).
+
+  # ------------------------------------------------------------------ KPIs, alerts, UI, HITL
+  - key: kpi.punctuality_tolerance_min
+    value: 15
+    unit: min
+    source: R02 A1
+    status: V
+    owner: dss
+    valid_from: 2026-11-03
+  - key: kpi.recovery.normal_def
+    value: {max_delay_min: 15, or_throughput_share: 0.95, sustained_min: 30}
+    unit: null
+    source: R02 E2
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: kpi.scott.efficiency
+    value: 0.7
+    unit: fraction
+    source: R02 B2
+    status: U
+    owner: dss
+    valid_from: 2026-11-03
+  - key: kpi.scott.maint_block_min
+    value: 120
+    unit: min
+    source: R02 B2
+    status: V
+    owner: dss
+    valid_from: 2026-11-03
+  - key: kpi.uic406.limit_pct
+    value: {peak: 75, daily: 60}
+    unit: '%'
+    source: R02 B3 (UIC 406 via AAU paper)
+    status: V
+    owner: dss
+    valid_from: 2026-11-03
+  - key: alert.steady_state_budget_per_h
+    value: 6
+    unit: per h
+    source: R02 H1 (EEMUA 191)
+    status: V
+    owner: dss
+    valid_from: 2026-11-03
+  - key: alert.flood
+    value: {alerts: 10, window_min: 10}
+    unit: null
+    source: R02 H2
+    status: V
+    owner: dss
+    valid_from: 2026-11-03
+  - key: ui.delay_badge_thresholds_min
+    value: {yellow: 5, amber: 15, red: 60, red_premium: 15}
+    unit: min
+    source: R02 §7.6
+    status: SA
+    owner: ui
+    valid_from: 2026-11-03
+  - key: ui.palette.coa
+    value: {mail_express: Red, passenger: Blue, vande_bharat: Violet, garib_rath: DeepPink}
+    unit: null
+    source: TRAIN.FORECOLOR; R06 App. A.5
+    status: DATA
+    owner: ui
+    valid_from: 2026-11-03
+  - key: hitl.sm_ack_latency_s
+    value: {min: 30, max: 90}
+    unit: s
+    source: spec Appendix B
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03
+  - key: hitl.divergence_eta_tolerance_min
+    value: 5
+    unit: min
+    source: spec Appendix B
+    status: SA
+    owner: dss
+    valid_from: 2026-11-03

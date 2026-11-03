@@ -1,0 +1,108 @@
+{
+  "additionalProperties": false,
+  "description": "Automatic-signal sub-block on a block line (KTV-VZM; spec FR-TWIN-04).",
+  "properties": {
+    "block_section_id": {
+      "title": "Block Section Id",
+      "type": "string"
+    },
+    "entry_signal_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entry Signal Id"
+    },
+    "from_offset_m": {
+      "minimum": 0,
+      "title": "From Offset M",
+      "type": "number"
+    },
+    "line_id": {
+      "title": "Line Id",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "source": {
+      "default": "synthetic",
+      "enum": [
+        "data",
+        "synthetic",
+        "dummy"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "to_offset_m": {
+      "exclusiveMinimum": 0,
+      "title": "To Offset M",
+      "type": "number"
+    }
+  },
+  "required": [
+    "network_version",
+    "block_section_id",
+    "line_id",
+    "seq",
+    "from_offset_m",
+    "to_offset_m"
+  ],
+  "title": "SubBlock",
+  "type": "object"
+}

@@ -1,0 +1,147 @@
+{
+  "$defs": {
+    "ConsistVehicle": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "vehicle_type": {
+          "title": "Vehicle Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "vehicle_type",
+        "count"
+      ],
+      "title": "ConsistVehicle",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "brake_pct": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Brake Pct"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "length_m": {
+      "exclusiveMinimum": 0,
+      "title": "Length M",
+      "type": "number"
+    },
+    "loco_codes": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Loco Codes",
+      "type": "array"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "template": {
+      "default": false,
+      "title": "Template",
+      "type": "boolean"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "trailing_t": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trailing T"
+    },
+    "vehicles": {
+      "items": {
+        "$ref": "#/$defs/ConsistVehicle"
+      },
+      "title": "Vehicles",
+      "type": "array"
+    },
+    "vmax_kmh": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vmax Kmh"
+    }
+  },
+  "required": [
+    "network_version",
+    "id",
+    "loco_codes",
+    "length_m"
+  ],
+  "title": "Consist",
+  "type": "object"
+}

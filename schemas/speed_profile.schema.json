@@ -1,0 +1,271 @@
+{
+  "$defs": {
+    "Location": {
+      "additionalProperties": false,
+      "description": "A location in three references at once (spec \u00a76.1).\n\nAt least one of ``km`` or (``ne_id`` + ``offset_m``) is required. ``lat``/``lon`` come\ntogether or not at all.",
+      "properties": {
+        "km": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Km"
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lat"
+        },
+        "lon": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lon"
+        },
+        "ne_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ne Id"
+        },
+        "offset_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offset M"
+        }
+      },
+      "title": "Location",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Permanent / temporary / sectional speed restriction over a range.",
+  "properties": {
+    "block_section_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Block Section Id"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "enum": [
+            "UP",
+            "DN"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Direction"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "PSR",
+        "TSR",
+        "sectional"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "length_m": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Length M"
+    },
+    "line_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Line Id"
+    },
+    "location_from": {
+      "$ref": "#/$defs/Location"
+    },
+    "location_to": {
+      "$ref": "#/$defs/Location"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "source": {
+      "default": "data",
+      "enum": [
+        "data",
+        "synthetic",
+        "dummy"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "stop_dead": {
+      "default": false,
+      "title": "Stop Dead",
+      "type": "boolean"
+    },
+    "time_loss_goods_s": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Time Loss Goods S"
+    },
+    "time_loss_passenger_s": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Time Loss Passenger S"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "vmax_goods_kmh": {
+      "exclusiveMinimum": 0,
+      "title": "Vmax Goods Kmh",
+      "type": "number"
+    },
+    "vmax_passenger_kmh": {
+      "exclusiveMinimum": 0,
+      "title": "Vmax Passenger Kmh",
+      "type": "number"
+    }
+  },
+  "required": [
+    "network_version",
+    "id",
+    "kind",
+    "location_from",
+    "location_to",
+    "vmax_passenger_kmh",
+    "vmax_goods_kmh"
+  ],
+  "title": "SpeedProfile",
+  "type": "object"
+}

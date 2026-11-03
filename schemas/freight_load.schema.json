@@ -1,0 +1,184 @@
+{
+  "additionalProperties": false,
+  "description": "One load from the freight log (WAT goods train movements).",
+  "properties": {
+    "commodity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Commodity"
+    },
+    "consist_template": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Consist Template"
+    },
+    "destination": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Destination"
+    },
+    "direction": {
+      "enum": [
+        "DN",
+        "UP"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "entry_point": {
+      "title": "Entry Point",
+      "type": "string"
+    },
+    "entry_time": {
+      "format": "date-time",
+      "title": "Entry Time",
+      "type": "string"
+    },
+    "exit_point": {
+      "title": "Exit Point",
+      "type": "string"
+    },
+    "exit_time": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exit Time"
+    },
+    "load_id": {
+      "title": "Load Id",
+      "type": "string"
+    },
+    "loaded": {
+      "title": "Loaded",
+      "type": "boolean"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "origin": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Origin"
+    },
+    "path": {
+      "description": "block sections in order",
+      "items": {
+        "type": "string"
+      },
+      "title": "Path",
+      "type": "array"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "rake_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rake Id"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "stabled": {
+      "default": false,
+      "title": "Stabled",
+      "type": "boolean"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "wagon_type": {
+      "title": "Wagon Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "network_version",
+    "load_id",
+    "wagon_type",
+    "loaded",
+    "entry_point",
+    "exit_point",
+    "direction",
+    "entry_time"
+  ],
+  "title": "FreightLoad",
+  "type": "object"
+}

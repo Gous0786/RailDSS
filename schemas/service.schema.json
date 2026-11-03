@@ -1,0 +1,164 @@
+{
+  "additionalProperties": false,
+  "description": "Passenger train version (TRAIN table).",
+  "properties": {
+    "coaches": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Coaches"
+    },
+    "days": {
+      "description": "Monday-first",
+      "maxItems": 7,
+      "minItems": 7,
+      "prefixItems": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "title": "Days",
+      "type": "array"
+    },
+    "forecolor": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Forecolor"
+    },
+    "icms_train_type": {
+      "title": "Icms Train Type",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "priority_class": {
+      "title": "Priority Class",
+      "type": "string"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "reverse_train_no": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reverse Train No"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "train_id": {
+      "description": "TRAINID of the train version",
+      "title": "Train Id",
+      "type": "string"
+    },
+    "train_no": {
+      "title": "Train No",
+      "type": "string"
+    },
+    "valid_from": {
+      "format": "date",
+      "title": "Valid From",
+      "type": "string"
+    },
+    "valid_to": {
+      "format": "date",
+      "title": "Valid To",
+      "type": "string"
+    }
+  },
+  "required": [
+    "network_version",
+    "train_id",
+    "train_no",
+    "name",
+    "icms_train_type",
+    "priority_class",
+    "days",
+    "valid_from",
+    "valid_to"
+  ],
+  "title": "Service",
+  "type": "object"
+}

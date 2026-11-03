@@ -1,0 +1,121 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "day_instance_id": {
+      "title": "Day Instance Id",
+      "type": "string"
+    },
+    "degradation_profile": {
+      "default": "D1",
+      "enum": [
+        "D0",
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "title": "Degradation Profile",
+      "type": "string"
+    },
+    "density": {
+      "default": 1.0,
+      "exclusiveMinimum": 0,
+      "title": "Density",
+      "type": "number"
+    },
+    "disruptions": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Disruptions",
+      "type": "array"
+    },
+    "family": {
+      "title": "Family",
+      "type": "string"
+    },
+    "gt_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gt Hash"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "requires": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Requires",
+      "type": "array"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    }
+  },
+  "required": [
+    "network_version",
+    "id",
+    "family",
+    "seed",
+    "day_instance_id"
+  ],
+  "title": "ScenarioDefinition",
+  "type": "object"
+}

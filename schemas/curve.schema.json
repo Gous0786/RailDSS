@@ -1,0 +1,111 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "block_section_id": {
+      "title": "Block Section Id",
+      "type": "string"
+    },
+    "degree": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Degree"
+    },
+    "from_km": {
+      "title": "From Km",
+      "type": "number"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "radius_m": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Radius M"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "source": {
+      "default": "synthetic",
+      "enum": [
+        "data",
+        "synthetic",
+        "dummy"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "to_km": {
+      "title": "To Km",
+      "type": "number"
+    }
+  },
+  "required": [
+    "network_version",
+    "id",
+    "block_section_id",
+    "from_km",
+    "to_km"
+  ],
+  "title": "Curve",
+  "type": "object"
+}

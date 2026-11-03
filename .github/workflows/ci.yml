@@ -33,6 +33,12 @@ jobs:
         run: uv run mypy
       - name: Import boundaries (NFR-MNT-02)
         run: uv run lint-imports
+      - name: Parameter register lint (issue #3)
+        run: uv run python -m raildss_params lint
+      - name: No literal rule values in code (issue #3)
+        run: uv run python tools/lint_literals.py
+      - name: Schema artefacts up to date (issue #4)
+        run: uv run python -m raildss_schema check
       - name: Tests (incl. dataset manifest, issue #2)
         run: uv run pytest
 
@@ -59,6 +65,37 @@ jobs:
           path: |
             sbom.cdx.json
             licences.json
+
+  db:
+    name: Database migrations and round-trip (issue #4)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg17.11-ts2.31.0
+        env:
+          POSTGRES_PASSWORD: ci-not-a-secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      RAILDSS_TEST_DB_URL: postgresql://postgres:ci-not-a-secret@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3  # setup-uv publishes no floating major tag after v7
+      - name: Install dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+      - name: Database tests (apply, round-trip, revert, re-apply)
+        run: uv run pytest -m db -v
+      - name: Migration CLI up and down
+        run: |
+          uv run python -m raildss_schema migrate up --url "$RAILDSS_TEST_DB_URL"
+          uv run python -m raildss_schema migrate down --url "$RAILDSS_TEST_DB_URL"
 
   compose:
     name: Compose file validates

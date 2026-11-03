@@ -1,0 +1,88 @@
+{
+  "additionalProperties": false,
+  "description": "Station line receives from / sends to a block-section line (COA Connections; REC-07).",
+  "properties": {
+    "block_line_id": {
+      "title": "Block Line Id",
+      "type": "string"
+    },
+    "block_section_id": {
+      "title": "Block Section Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "receive",
+        "send"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "op_code": {
+      "title": "Op Code",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "station_line_no": {
+      "minimum": 1,
+      "title": "Station Line No",
+      "type": "integer"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    }
+  },
+  "required": [
+    "network_version",
+    "op_code",
+    "station_line_no",
+    "block_section_id",
+    "block_line_id",
+    "mode"
+  ],
+  "title": "ConnectionEdge",
+  "type": "object"
+}
