@@ -1,0 +1,11 @@
+station,line_no,line_name,category,direction_in_sttnline,direction_from_connections,receives_from,sends_to,line_speed_kmh,platform,platform_length_m,csr_estimate_m,csr_low_m,csr_high_m,basis,confidence
+PSA,1,CL10,L,BOTH,BOTH,PUN-PSA;SUDV-PSA,PSA-PUN;PSA-SUDV,15,,,733,673,1150,section loop CSR median; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,2,CL9,M,BOTH,BOTH,PUN-PSA;SUDV-PSA,PSA-PUN;PSA-SUDV,100,,,752,678,1150,section main CSR median; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,3,CL8,L,BOTH,BOTH,PUN-PSA;SUDV-PSA,PSA-PUN;PSA-SUDV,15,,,733,673,1150,section loop CSR median; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,4,DL00P7,L,BOTH,DN,PUN-PSA,PSA-SUDV,15,,,733,673,1150,section loop CSR median; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,5,DLOOP6,M,DN,DN,PUN-PSA,PSA-SUDV,100,,,752,678,1150,section main CSR median; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,6,DNML5,L,DN,DN,PUN-PSA,PSA-SUDV,15,PF-3,607.0,733,673,1150,section loop CSR median; >= platform PF-3 607 m + min section margin 57 m; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,7,UPML4,L,DN,UP,SUDV-PSA,PSA-PUN,15,PF-2,614.0,733,673,1150,section loop CSR median; >= platform PF-2 614 m + min section margin 57 m; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,8,CL3,L,BOTH,BOTH,PUN-PSA;SUDV-PSA,PSA-PUN;PSA-SUDV,15,PF-1,620.0,733,677,1150,section loop CSR median; >= platform PF-1 620 m + min section margin 57 m; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,9,CL2,L,BOTH,BOTH,PUN-PSA;SUDV-PSA,PSA-PUN;PSA-SUDV,15,PF-1A,616.0,733,673,1150,section loop CSR median; >= platform PF-1A 616 m + min section margin 57 m; high = OSM yard way length ~1250 m minus ~100 m,low-medium
+PSA,10,UL1,L,BOTH,UP,SUDV-PSA,PSA-PUN,15,,,733,673,1150,section loop CSR median; high = OSM yard way length ~1250 m minus ~100 m,low-medium

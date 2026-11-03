@@ -31,3 +31,9 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+      - id: dataset-manifest
+        name: dataset manifest (issue #2)
+        entry: uv run python tools/manifest.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
