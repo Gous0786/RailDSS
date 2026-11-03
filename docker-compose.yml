@@ -1,0 +1,51 @@
+# Local infrastructure for RailDSS (spec §3.9). Development only.
+#   cp .env.example .env   # then set POSTGRES_PASSWORD
+#   docker compose up -d db kafka
+services:
+  db:
+    # PostgreSQL 17 + TimescaleDB + PostGIS (the -ha image bundles PostGIS). Spec §11.
+    image: timescale/timescaledb-ha:pg17.11-ts2.31.0
+    environment:
+      POSTGRES_USER: raildss
+      POSTGRES_DB: raildss
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/home/postgres/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raildss -d raildss"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kafka:
+    # Apache Kafka 4.x in KRaft mode, single node (spec REC-05). No Redpanda (BSL).
+    image: apache/kafka:4.4.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # Retention: scenario duration + 30 days (spec FR-AUD-04).
+      KAFKA_LOG_RETENTION_HOURS: 720
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+volumes:
+  db-data:
+  kafka-data:

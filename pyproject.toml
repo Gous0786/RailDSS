@@ -1,0 +1,95 @@
+[project]
+name = "raildss"
+version = "0.1.0"
+description = "RailDSS: advisory decision support for Indian Railways section control, with a section-level digital twin (KTV-PSA demo)."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "import-linter>=2.5",
+    "pre-commit>=4.3",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/raildss_common",
+    "src/raildss_schema",
+    "src/raildss_params",
+    "src/raildss_etl",
+    "src/raildss_twin",
+    "src/raildss_optimiser",
+    "src/raildss_verifier",
+]
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src", "tests", "tools"]
+extend-exclude = ["data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = [
+    "raildss_common",
+    "raildss_schema",
+    "raildss_params",
+    "raildss_etl",
+    "raildss_twin",
+    "raildss_optimiser",
+    "raildss_verifier",
+]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+
+# Spec #1: strict typing for the canonical schema package.
+[[tool.mypy.overrides]]
+module = ["raildss_schema.*"]
+strict = true
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+# ---------------------------------------------------------------- import-linter
+# NFR-MNT-02: the verifier is an independent codebase. It must not import the
+# optimiser, the twin or the ETL (diverse redundancy: optimiser != checker != simulator).
+[tool.importlinter]
+root_packages = [
+    "raildss_common",
+    "raildss_schema",
+    "raildss_params",
+    "raildss_etl",
+    "raildss_twin",
+    "raildss_optimiser",
+    "raildss_verifier",
+]
+
+[[tool.importlinter.contracts]]
+name = "Verifier is independent of optimiser, twin and ETL (NFR-MNT-02)"
+type = "forbidden"
+source_modules = ["raildss_verifier"]
+forbidden_modules = ["raildss_optimiser", "raildss_twin", "raildss_etl"]
+
+[[tool.importlinter.contracts]]
+name = "Shared foundations do not depend on applications"
+type = "forbidden"
+source_modules = ["raildss_common", "raildss_schema", "raildss_params"]
+forbidden_modules = ["raildss_etl", "raildss_twin", "raildss_optimiser", "raildss_verifier"]

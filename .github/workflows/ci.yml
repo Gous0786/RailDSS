@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, import boundaries, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - name: Install Python 3.12 and dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Ruff format
+        run: uv run ruff format --check .
+      - name: Mypy
+        run: uv run mypy
+      - name: Import boundaries (NFR-MNT-02)
+        run: uv run lint-imports
+      - name: Tests (incl. dataset manifest, issue #2)
+        run: uv run pytest
+
+  licences:
+    name: Licence gate and SBOM (NFR-LIC-02)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - name: Install runtime dependencies only
+        run: |
+          uv python install 3.12
+          uv sync --frozen --no-dev
+          uv pip install pip-licenses cyclonedx-bom
+      - name: Licence gate
+        run: |
+          uv run --no-sync pip-licenses --format=json --with-system > licences.json
+          uv run --no-sync python tools/check_licences.py licences.json
+      - name: SBOM (CycloneDX)
+        run: uv run --no-sync cyclonedx-py environment --output-file sbom.cdx.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom-and-licences
+          path: |
+            sbom.cdx.json
+            licences.json
+
+  compose:
+    name: Compose file validates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: docker compose config
+        env:
+          POSTGRES_PASSWORD: ci-not-a-secret
+        run: docker compose config --quiet
