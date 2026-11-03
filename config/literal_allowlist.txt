@@ -1,0 +1,6 @@
+# Numeric literals allowed in src/raildss_* (tools/lint_literals.py; issue #3).
+# Format:  path: value  # reason
+# Rule values (distances, speeds, thresholds, weights) never belong here: put them in
+# config/parameters.yaml instead. Every entry is reviewed in the PR that adds it.
+src/raildss_params/register.py: 12  # length of the short content hash in the version stamp, not a rule value
+src/raildss_params/register.py: 2  # directory depth from the package to the repository root (default register path), not a rule value

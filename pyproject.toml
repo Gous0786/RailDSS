@@ -6,7 +6,10 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.11",
+    "pyyaml>=6.0",
+]
 
 [dependency-groups]
 dev = [
@@ -15,6 +18,7 @@ dev = [
     "pytest>=8.4",
     "import-linter>=2.5",
     "pre-commit>=4.3",
+    "types-pyyaml>=6.0.12.20261030",
 ]
 
 [build-system]

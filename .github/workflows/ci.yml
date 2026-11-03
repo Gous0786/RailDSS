@@ -33,6 +33,10 @@ jobs:
         run: uv run mypy
       - name: Import boundaries (NFR-MNT-02)
         run: uv run lint-imports
+      - name: Parameter register lint (issue #3)
+        run: uv run python -m raildss_params lint
+      - name: No literal rule values in code (issue #3)
+        run: uv run python tools/lint_literals.py
       - name: Tests (incl. dataset manifest, issue #2)
         run: uv run pytest
 

@@ -37,3 +37,15 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: parameter-register
+        name: parameter register lint (issue #3)
+        entry: uv run python -m raildss_params lint
+        language: system
+        pass_filenames: false
+        files: ^config/parameters\.yaml$
+      - id: literal-lint
+        name: no literal rule values (issue #3)
+        entry: uv run python tools/lint_literals.py
+        language: system
+        pass_filenames: false
+        types: [python]
