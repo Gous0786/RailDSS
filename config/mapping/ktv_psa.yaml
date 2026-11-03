@@ -19,6 +19,15 @@ date_formats:
   dmy_mon: "%d-%b-%y"             # 21-May-25 (PSR, TRAIN, SCHEDULE)
   freight_dmy_hm: "%d/%m/%Y %H:%M"  # 01/08/2025 22:25 (freight log)
 schedule_seconds_columns: [ARRIVAL, DEPARTURE, NEXTARVL]   # seconds since 00:00 of the train's day 1
+null_tokens: ["", "NA"]          # treated as missing when decoding values (issue #7)
+value_maps:                       # code -> canonical value, used by ETL stage 2+ (issue #7)
+  yes_no: {"Y": true, "N": false}
+  station_class: {"B": block_station_B, "D": halt}          # R06 App. A.2
+  signalling: {"MACL": MACLS}
+  block_system: {"AB": ABS_absolute, "AT": AUTO}            # R06 App. A.3
+  coa_level: {"1": coa, "0": route_split_at_halt}           # MANCOABLCKSCTN (REC-26)
+  recv_send: {"R": receive, "S": send}                      # Connections MACRECVSENDFLAG
+  line_direction: {"DN": DN, "UP": UP, "MID": BOTH, "KK": BOTH, "1": BOTH}  # BLOCKSCTNLINE.MAVDRTN is blank; derive from line id
 ignore_column_patterns:
   - pattern: '^Unnamed: \d+$'
     note: empty columns added by the spreadsheet export ("-Table 1" files, R06 §2)

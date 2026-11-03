@@ -14,7 +14,7 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 import yaml
@@ -83,6 +83,8 @@ class MappingSpec(_Model):
     date_formats: dict[str, str]
     schedule_seconds_columns: list[str]
     ignore_column_patterns: list[IgnorePattern]
+    null_tokens: list[str] = Field(default_factory=list)
+    value_maps: dict[str, dict[str, Any]] = Field(default_factory=dict)
     tables: dict[str, TableSpec]
 
     def is_pattern_ignored(self, column: str) -> bool:
@@ -169,6 +171,17 @@ def render_markdown(mapping: MappingSpec) -> str:
         "",
         "Columns matching these patterns are ignored: "
         + "; ".join(f"`{p.pattern}` ({p.note})" for p in mapping.ignore_column_patterns),
+        "",
+        f"Null tokens: {', '.join(repr(x) for x in mapping.null_tokens)}.",
+        "",
+        "## Value maps",
+        "",
+        "| Map | Code -> value |",
+        "|---|---|",
+        *[
+            f"| `{name}` | " + ", ".join(f"`{k}` -> `{v}`" for k, v in vm.items()) + " |"
+            for name, vm in mapping.value_maps.items()
+        ],
         "",
     ]
     for name, t in mapping.tables.items():

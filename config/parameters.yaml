@@ -49,6 +49,15 @@ parameters:
     owner: data
     valid_from: 2026-11-03
 
+  - key: dq.route_reverse_tolerance_km
+    value: 0.05
+    unit: km
+    source: spec DQ-15
+    status: SA
+    owner: data
+    valid_from: 2026-11-03
+    notes: Forward vs reverse route length tolerance; the data differ by 0.02 km (R06 §3).
+
   # ------------------------------------------------------------------ block working
   - key: block.system
     value: {ktv_vzm: {system: AT, lines: 3}, vzm_psa: {system: AB, lines: 2}}
