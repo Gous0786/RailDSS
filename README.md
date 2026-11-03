@@ -84,3 +84,8 @@ uv run python tools/manifest.py --check
 
 If the raw extract is ever replaced deliberately, regenerate its manifest with
 `tools/manifest.py --write data/raw/ktv-psa --force` in a reviewed PR.
+
+## Licence
+
+RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under
+`data/` is used as supplied by the project owner; see its provenance cards.
