@@ -119,6 +119,22 @@ uv run python -m raildss_schema migrate up --url postgresql://raildss:<pw>@local
 RAILDSS_TEST_DB_URL=postgresql://... uv run pytest -m db   # DB round-trip tests
 ```
 
+## KTV-PSA ETL (issues #5, #6)
+
+`config/mapping/ktv_psa.yaml` maps every column of the 14 source files to a canonical field, to `raw`
+(kept, unused) or to `ignore` (dropped, with a reason). The ETL reads file paths, cleaning policy, date
+formats and expected row counts from it. A Markdown view for review: `docs/etl/mapping-ktv-psa.md`.
+
+```bash
+uv run python -m raildss_etl mapping-check         # mapping vs dataset headers and schema
+uv run python -m raildss_etl mapping-doc --write   # regenerate the Markdown view
+uv run python -m raildss_etl stage1                # load & clean -> data/interim/ktv-psa/*.parquet
+```
+
+Stage 1 drops spreadsheet-export columns, blank and repeated-header rows and exact duplicates, parses
+the three date formats (year 99 -> 2099), localises freight timestamps to IST, splits WTT seconds into
+day offset + time of day, and writes `stage1_report.json`. It never writes inside `data/raw/`.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under
