@@ -104,6 +104,9 @@ parameters:
     notes: >-
       Normal ABS signal spacing (~1 km) per a Railway Board guideline letter of 9 Oct 2024 as
       reported in web search results; the PDF returned 404 on 3 Nov 2026. Sensitivity 1.25 / 1.5 km.
+      Re-checked 3 Nov 2026 (issue #24): the only Oct 2024 Railway Board letter found
+      (2000/Elect(G)/113/4/Safety, 8 Oct 2024) is electrical, not signalling; secondary sources
+      give 1-1.5 km between automatic signals.
 
   # ------------------------------------------------------------------ station lines and platforms
   - key: station_line.csr
@@ -590,3 +593,125 @@ parameters:
     status: SA
     owner: dss
     valid_from: 2026-11-03
+
+  # ------------------------------------------------------------------ dummy-data catalogue (issue #24)
+  # Every entry below is catalogued in docs/data/dummy-data-catalogue.md (spec C-14, §6.3-6.4).
+  - key: delay.passenger.entry_profile
+    value:
+      profile: ecor_adjusted
+      p_on_time: {premium: 0.65, mail_express: 0.55, passenger: 0.45}
+      on_time_window_min: {low: -2, high: 5}
+      tail_lognormal: {mu_ln_min: 3.0, sigma: 1.0}
+      target_on_time_15min_share: {low: 0.65, high: 0.75}
+    unit: min
+    source: spec §6.4 (passenger running row); R05 §7.3
+    status: DUMMY
+    owner: twin
+    provenance: https://www.devdiscourse.com/article/business/3718465-overall-punctuality-of-mail-express-trains-was-80-in-2025-26-vaishnaw
+    valid_from: 2026-11-03
+    notes: >-
+      Section-entry delay mixture: on-time mass (uniform over the window) plus a log-normal tail
+      (median e^3 = 20 min). Implied share within 15 min: premium 0.79, mail/express 0.72,
+      passenger 0.66. Target band 'ECoR-adjusted' below the national 77.12 % (FY 2024-25,
+      Lok Sabha reply); ECoR reported weaker (64.4 % vs 73.91 % in one week of May 2023,
+      Wikipedia, secondary). No licence-clean open running dataset exists (C-03).
+  - key: delay.noise
+    value: {dwell_lognormal_sigma: 0.3, run_time_sd_pct: {passenger: 3, freight: 5}}
+    unit: null
+    source: R05 §7.3
+    status: DUMMY
+    owner: twin
+    provenance: placeholder
+    valid_from: 2026-11-03
+    notes: Multiplicative dwell and per-block run-time noise; calibrate in M0-16 / M1.
+  - key: tsr.generator
+    value:
+      new_per_day: 0.5
+      active_mean: 3
+      length_m: {low: 200, high: 3000}
+      speed_kmh: [20, 30, 45, 60, 75]
+      validity_days: {low: 1, high: 180}
+    unit: null
+    source: spec §6.4 (TSR row); R05 §3.1
+    status: DUMMY
+    owner: twin
+    provenance: https://irfca.org/docs/caution-orders.html
+    valid_from: 2026-11-03
+    notes: >-
+      Caution-order practice per IRFCA (location, km, speed, notice stations) and GR 4.09 /
+      15.09 text on irfca.org. Validity cap of 6 months per a secondary study source (SOD 4.05,
+      unverified). Rates and speed tiers are placeholders; generator is implemented in M1.
+  - key: disruption.generator
+    value:
+      signal_failure: {rate_per_day: 0.6, duration_min: {low: 15, high: 90}}
+      point_failure: {rate_per_day: 0.3, duration_min: {low: 20, high: 120}}
+      ohe_trip: {rate_per_day: 0.15, duration_min: {low: 10, high: 240}}
+      loco_failure: {rate_per_day: 0.2, duration_min: {low: 45, high: 180}}
+      hot_axle: {rate_per_day: 0.2, duration_min: {low: 30, high: 90}}
+      acp_cattle_lc: {rate_per_day: 3.0, duration_min: {low: 5, high: 20}}
+      rail_fracture: {rate_per_day: 0.05, duration_min: {low: 60, high: 180}}
+      crew_shortage: {rate_per_day: 0.1, duration_min: {low: 30, high: 120}}
+    unit: null
+    source: R05 §7.4
+    status: DUMMY
+    owner: twin
+    provenance: placeholder
+    valid_from: 2026-11-03
+    notes: >-
+      Mid-points of the R05 §7.4 placeholder ranges, per section-day. Long freight detentions in
+      the log are the only sanity check available; SME calibration is not possible (C-14).
+  - key: crew.sign_on_lead_min
+    value: 30
+    unit: min
+    source: spec §6.4 (crew row)
+    status: DUMMY
+    owner: rules
+    provenance: placeholder
+    valid_from: 2026-11-03
+    notes: Dummy sign-on time before departure from the crew-change station; no open roster source.
+  - key: obs.degradation_profile
+    value:
+      d2: {rtis_coverage: 0.5, position_dropout: 0.05, latency_min: {low: 0, high: 5}, missing_departure: 0.02, duplicates: 0.02, out_of_order: 0.01, outage: {every_h: 4, duration_min: 10}}
+      d3: {base: d1, outage_min: {low: 15, high: 30}}
+    unit: null
+    source: spec §6.4 (degradation profiles)
+    status: DUMMY
+    owner: twin
+    provenance: placeholder
+    valid_from: 2026-11-03
+    notes: D0 is clean; D1 uses the DATA keys obs.* calibrated on the freight log.
+  - key: swr.template
+    value: {simultaneous_reception: false, run_through_on_loop: false, isolation_assumed: false}
+    unit: null
+    source: spec §6.3 (rules row)
+    status: DUMMY
+    owner: rules
+    provenance: placeholder
+    valid_from: 2026-11-03
+    notes: >-
+      Conservative station working rule defaults. ECoR published a Srikakulam Road (CHE) SWR at
+      https://eastcoastrail.indianrailways.gov.in/uploads/files/1616135639700-CHE.pdf (indexed;
+      HTTP 404 on 2026-11-03). If a copy is recovered, replace these values for CHE.
+  - key: signal.macl.placement_m
+    value: {distant_to_home: 1000, home_to_facing_points_double_line: 180, home_to_facing_points_single_line: 300}
+    unit: m
+    source: spec §6.4 (signals row); issue #13 consumes
+    status: DUMMY
+    owner: twin
+    provenance: https://www.railwaysignallingconcepts.in/railway-signals-location-home-signal-distant-signal-routing-signal-starter-signal-advanced-starter/
+    valid_from: 2026-11-03
+    notes: >-
+      Distant at normal braking distance, not less than 1 km from the stop signal; IRFCA FAQ
+      (https://irfca.org/faq/faq-signal.html) gives ~1 km. Home not less than 180 m (double line)
+      / 300 m (single line) in rear of the first facing points. IRSEM para 7.1 primary text not found.
+  - key: gradient.dem_source
+    value: {dataset: Copernicus DEM GLO-30, resolution_m: 30, fallback: SRTM 1 arc-second}
+    unit: null
+    source: spec §6.4 (gradients row); issue #14 consumes; licence decision issue #23
+    status: DUMMY
+    owner: twin
+    provenance: https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf
+    valid_from: 2026-11-03
+    notes: >-
+      No public L-section or gradient chart found for Vizianagaram-Palasa. GLO-30 is free with
+      attribution ("produced using Copernicus WorldDEM-30 (c) DLR e.V. ... Airbus").
