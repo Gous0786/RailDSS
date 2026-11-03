@@ -85,6 +85,8 @@ class MappingSpec(_Model):
     ignore_column_patterns: list[IgnorePattern]
     null_tokens: list[str] = Field(default_factory=list)
     value_maps: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    fixes: dict[str, list[str]] = Field(default_factory=dict)
+    derived_files: dict[str, str] = Field(default_factory=dict)
     tables: dict[str, TableSpec]
 
     def is_pattern_ignored(self, column: str) -> bool:
