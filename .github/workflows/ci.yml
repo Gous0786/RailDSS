@@ -39,6 +39,8 @@ jobs:
         run: uv run python tools/lint_literals.py
       - name: Schema artefacts up to date (issue #4)
         run: uv run python -m raildss_schema check
+      - name: Mapping spec vs dataset and schema (issue #5)
+        run: uv run python -m raildss_etl mapping-check
       - name: Tests (incl. dataset manifest, issue #2)
         run: uv run pytest
 

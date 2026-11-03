@@ -7,7 +7,9 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "pandas>=2.3",
     "pg8000>=1.31",
+    "pyarrow>=21",
     "pydantic>=2.11",
     "pyyaml>=6.0",
 ]
@@ -20,6 +22,7 @@ dev = [
     "import-linter>=2.5",
     "pre-commit>=4.3",
     "types-pyyaml>=6.0.12.20261030",
+    "pandas-stubs>=3.1.0.261029",
 ]
 
 [build-system]
