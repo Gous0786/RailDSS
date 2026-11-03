@@ -20,7 +20,11 @@ Null tokens: '', 'NA'.
 | `block_system` | `AB` -> `ABS_absolute`, `AT` -> `AUTO` |
 | `coa_level` | `1` -> `coa`, `0` -> `route_split_at_halt` |
 | `recv_send` | `R` -> `receive`, `S` -> `send` |
-| `line_direction` | `DN` -> `DN`, `UP` -> `UP`, `MID` -> `BOTH`, `KK` -> `BOTH`, `1` -> `BOTH` |
+| `line_direction` | `DN` -> `DN`, `UP` -> `UP`, `BOTH` -> `BOTH`, `MID` -> `BOTH`, `KK` -> `BOTH`, `1` -> `BOTH` |
+| `station_line_kind` | `M` -> `main`, `L` -> `loop`, `S` -> `siding`, `Y` -> `yard` |
+| `traction_electric` | `E` -> `True`, `D` -> `False` |
+| `platform_type` | `HIGH` -> `high`, `LOW` -> `low`, `RAIL` -> `rail` |
+| `platform_side` | `U` -> `UP`, `D` -> `DN` |
 | `loaded_empty` | `L` -> `True`, `E` -> `False` |
 
 ## ROUTE_DN

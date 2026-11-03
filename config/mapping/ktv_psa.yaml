@@ -27,8 +27,16 @@ value_maps:                       # code -> canonical value, used by ETL stage 2
   block_system: {"AB": ABS_absolute, "AT": AUTO}            # R06 App. A.3
   coa_level: {"1": coa, "0": route_split_at_halt}           # MANCOABLCKSCTN (REC-26)
   recv_send: {"R": receive, "S": send}                      # Connections MACRECVSENDFLAG
-  line_direction: {"DN": DN, "UP": UP, "MID": BOTH, "KK": BOTH, "1": BOTH}  # BLOCKSCTNLINE.MAVDRTN is blank; derive from line id
+  line_direction: {"DN": DN, "UP": UP, "BOTH": BOTH, "MID": BOTH, "KK": BOTH, "1": BOTH}  # BLOCKSCTNLINE.MAVDRTN is blank; derive from line id
+  station_line_kind: {"M": main, "L": loop, "S": siding, "Y": yard}   # STTNLINE.MACLINECATEGORY
+  traction_electric: {"E": true, "D": false}                         # STTNLINE.MACTRTNTYPE
+  platform_type: {"HIGH": high, "LOW": low, "RAIL": rail}
+  platform_side: {"U": UP, "D": DN}
   loaded_empty: {"L": true, "E": false}                              # freight LE
+fixes:                            # data corrections applied by the ETL (issue #8)
+  swapped_line_number_name: [PSA] # MAVLINENUMB holds the name and MAVLINENAME the number (R06 §4.2)
+derived_files:                    # derived inputs outside data/raw (with provenance cards)
+  psa_station_lines: data/derived/ktv-psa/psa_station_lines_derived.csv   # R06 App. C
 wtt:                              # WTT list encodings (issue #10)
   list_separator: ","             # DAY_OF_SERVICES, BLOCK_BUSY_DAYS, PLATFORM: 7 values, Monday-first
   runs: "1"                       # day-mask value meaning "runs"
