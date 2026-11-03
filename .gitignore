@@ -1,0 +1,25 @@
+# Keys and credentials: never commit.
+.env
+*.pem
+*.key
+*.p12
+secrets/
+
+# Python and tooling build output (not data: the dataset under data/raw is committed on purpose).
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+dist/
+build/
+*.egg-info/
+
+# Generated ETL intermediates (rebuilt from data/raw; spec issue #6).
+data/interim/
+
+# CI artefacts when run locally
+licences.json
+sbom.cdx.json

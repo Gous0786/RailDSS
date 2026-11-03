@@ -1,0 +1,6 @@
+# Source files: normalise to LF in the repository.
+* text=auto eol=lf
+
+# Datasets are stored byte-for-byte (no line-ending conversion), so the SHA-256
+# manifest stays valid on every OS (spec C-13, issue #2).
+data/** -text
