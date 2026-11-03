@@ -85,6 +85,40 @@ uv run python tools/manifest.py --check
 If the raw extract is ever replaced deliberately, regenerate its manifest with
 `tools/manifest.py --write data/raw/ktv-psa --force` in a reviewed PR.
 
+## Parameter register (issue #3)
+
+Every rule value and threshold lives in `config/parameters.yaml`, with a source and a status
+(V / DATA / EST / U / SA / DUMMY). Code reads values only through `raildss_params`:
+
+```python
+from raildss_params import get, value
+
+value("abs.subblock_spacing_km.ktv_vzm")  # 1.0 (DUMMY, see docs/params/dummy-values.md)
+get("station_line.csr.psa").bounds  # low / high for an estimated value
+```
+
+```bash
+uv run python -m raildss_params lint                    # register lint
+uv run python -m raildss_params dummy-report --write    # regenerate docs/params/dummy-values.md
+uv run python tools/lint_literals.py                    # no literal rule values in src/
+```
+
+Structural constants that are not rule values (e.g. an EPSG code) go in
+`config/literal_allowlist.txt` with a reason, and are reviewed in the PR.
+
+## Canonical schema (issue #4)
+
+`raildss_schema.entities` defines the M0 entities as Pydantic models. Every entity carries the
+version stamps and a `raw` field for unmapped source columns. Datetimes are stored in UTC.
+The SQL migrations (`migrations/`) and JSON Schemas (`schemas/`) are **generated** from the models:
+
+```bash
+uv run python -m raildss_schema generate      # after changing a model
+uv run python -m raildss_schema check         # CI: fails if generated files are stale
+uv run python -m raildss_schema migrate up --url postgresql://raildss:<pw>@localhost:5432/raildss
+RAILDSS_TEST_DB_URL=postgresql://... uv run pytest -m db   # DB round-trip tests
+```
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under

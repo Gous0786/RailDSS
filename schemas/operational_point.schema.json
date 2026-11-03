@@ -1,0 +1,232 @@
+{
+  "additionalProperties": false,
+  "description": "Station / halt / junction (STATION, RouteSttnInfo). PostGIS ``geom`` is generated.",
+  "properties": {
+    "block_instrument": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Block Instrument"
+    },
+    "code": {
+      "minLength": 1,
+      "title": "Code",
+      "type": "string"
+    },
+    "crew_change": {
+      "default": false,
+      "title": "Crew Change",
+      "type": "boolean"
+    },
+    "crossing_facility": {
+      "default": false,
+      "title": "Crossing Facility",
+      "type": "boolean"
+    },
+    "interlocking_std": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Interlocking Std"
+    },
+    "is_boundary": {
+      "default": false,
+      "title": "Is Boundary",
+      "type": "boolean"
+    },
+    "is_cabin": {
+      "default": false,
+      "title": "Is Cabin",
+      "type": "boolean"
+    },
+    "is_halt": {
+      "default": false,
+      "title": "Is Halt",
+      "type": "boolean"
+    },
+    "is_junction": {
+      "default": false,
+      "title": "Is Junction",
+      "type": "boolean"
+    },
+    "kavach": {
+      "default": false,
+      "title": "Kavach",
+      "type": "boolean"
+    },
+    "km": {
+      "description": "section chainage from KTV",
+      "title": "Km",
+      "type": "number"
+    },
+    "km_ref_hwh": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Km Ref Hwh"
+    },
+    "lat": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lat"
+    },
+    "lon": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lon"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "signalling": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Signalling"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "traction_change": {
+      "default": false,
+      "title": "Traction Change",
+      "type": "boolean"
+    },
+    "type": {
+      "enum": [
+        "block_station_A",
+        "block_station_B",
+        "block_station_C",
+        "halt",
+        "ibh",
+        "cabin"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "valid_from": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Valid From"
+    },
+    "valid_to": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Valid To"
+    }
+  },
+  "required": [
+    "network_version",
+    "code",
+    "name",
+    "seq",
+    "km",
+    "type"
+  ],
+  "title": "OperationalPoint",
+  "type": "object"
+}

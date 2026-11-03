@@ -7,6 +7,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "pg8000>=1.31",
     "pydantic>=2.11",
     "pyyaml>=6.0",
 ]
@@ -64,6 +65,10 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 check_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = ["pg8000", "pg8000.*"]
+ignore_missing_imports = true
+
 # Spec #1: strict typing for the canonical schema package.
 [[tool.mypy.overrides]]
 module = ["raildss_schema.*"]
@@ -73,6 +78,7 @@ strict = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = ["db: needs PostgreSQL + PostGIS (RAILDSS_TEST_DB_URL); run in the CI db job"]
 
 # ---------------------------------------------------------------- import-linter
 # NFR-MNT-02: the verifier is an independent codebase. It must not import the

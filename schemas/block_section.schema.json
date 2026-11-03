@@ -1,0 +1,156 @@
+{
+  "additionalProperties": false,
+  "description": "Directed block section ``A-B`` at COA level or route level split at a halt (REC-26).",
+  "properties": {
+    "adequate_distance_m": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adequate Distance M"
+    },
+    "controller_section": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Controller Section"
+    },
+    "direction": {
+      "enum": [
+        "DN",
+        "UP"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "from_op": {
+      "title": "From Op",
+      "type": "string"
+    },
+    "id": {
+      "minLength": 3,
+      "title": "Id",
+      "type": "string"
+    },
+    "length_m": {
+      "exclusiveMinimum": 0,
+      "title": "Length M",
+      "type": "number"
+    },
+    "level": {
+      "enum": [
+        "coa",
+        "route_split_at_halt"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "line_clear_op_time_s": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Line Clear Op Time S"
+    },
+    "n_lines": {
+      "minimum": 1,
+      "title": "N Lines",
+      "type": "integer"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "system": {
+      "enum": [
+        "ABS_absolute",
+        "AUTO",
+        "IBS"
+      ],
+      "title": "System",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "to_op": {
+      "title": "To Op",
+      "type": "string"
+    },
+    "vmax_kmh": {
+      "exclusiveMinimum": 0,
+      "title": "Vmax Kmh",
+      "type": "number"
+    }
+  },
+  "required": [
+    "network_version",
+    "id",
+    "from_op",
+    "to_op",
+    "level",
+    "direction",
+    "n_lines",
+    "system",
+    "length_m",
+    "vmax_kmh"
+  ],
+  "title": "BlockSection",
+  "type": "object"
+}

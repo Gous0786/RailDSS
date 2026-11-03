@@ -1,0 +1,160 @@
+{
+  "additionalProperties": false,
+  "description": "Daily instance of a passenger service or a freight load (``train_no@date`` / ``FRT-<LoadId>``).",
+  "properties": {
+    "consist_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Consist Id"
+    },
+    "entry_delay_s": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entry Delay S"
+    },
+    "entry_point": {
+      "title": "Entry Point",
+      "type": "string"
+    },
+    "entry_time": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entry Time"
+    },
+    "exit_point": {
+      "title": "Exit Point",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "passenger",
+        "freight"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "load_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Load Id"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "run_date": {
+      "format": "date",
+      "title": "Run Date",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "status": {
+      "default": "planned",
+      "enum": [
+        "planned",
+        "running",
+        "completed",
+        "cancelled"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "train_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Train Id"
+    }
+  },
+  "required": [
+    "network_version",
+    "run_id",
+    "kind",
+    "run_date",
+    "entry_point",
+    "exit_point"
+  ],
+  "title": "TrainRun",
+  "type": "object"
+}

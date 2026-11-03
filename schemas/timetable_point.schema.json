@@ -1,0 +1,213 @@
+{
+  "additionalProperties": false,
+  "description": "Train x station row of the WTT (SCHEDULE). Times in seconds since 00:00 of day 1.",
+  "properties": {
+    "acc_s": {
+      "default": 0,
+      "title": "Acc S",
+      "type": "integer"
+    },
+    "arr_s": {
+      "minimum": 0,
+      "title": "Arr S",
+      "type": "integer"
+    },
+    "block_section_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Block Section Id"
+    },
+    "booked_crossing_train": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Booked Crossing Train"
+    },
+    "coa_block_section_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Coa Block Section Id"
+    },
+    "crew_change": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Crew Change"
+    },
+    "day_offset": {
+      "minimum": 0,
+      "title": "Day Offset",
+      "type": "integer"
+    },
+    "dec_s": {
+      "default": 0,
+      "title": "Dec S",
+      "type": "integer"
+    },
+    "dep_s": {
+      "minimum": 0,
+      "title": "Dep S",
+      "type": "integer"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "enum": [
+            "UP",
+            "DN"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Direction"
+    },
+    "eng_allowance_s": {
+      "default": 0,
+      "title": "Eng Allowance S",
+      "type": "integer"
+    },
+    "is_stop": {
+      "title": "Is Stop",
+      "type": "boolean"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "op_code": {
+      "title": "Op Code",
+      "type": "string"
+    },
+    "planned_line": {
+      "description": "per weekday, Monday-first",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Planned Line",
+      "type": "array"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "reversal": {
+      "default": false,
+      "title": "Reversal",
+      "type": "boolean"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "traction_change": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Traction Change"
+    },
+    "traffic_allowance_s": {
+      "default": 0,
+      "title": "Traffic Allowance S",
+      "type": "integer"
+    },
+    "train_id": {
+      "title": "Train Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "network_version",
+    "train_id",
+    "seq",
+    "op_code",
+    "arr_s",
+    "dep_s",
+    "day_offset",
+    "is_stop"
+  ],
+  "title": "TimetablePoint",
+  "type": "object"
+}

@@ -49,3 +49,9 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+      - id: schema-artefacts
+        name: schema artefacts up to date (issue #4)
+        entry: uv run python -m raildss_schema check
+        language: system
+        pass_filenames: false
+        files: ^(src/raildss_schema/|migrations/|schemas/)

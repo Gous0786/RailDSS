@@ -1,0 +1,213 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "capacity_trains": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Capacity Trains",
+      "type": "integer"
+    },
+    "csr_high_m": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Csr High M"
+    },
+    "csr_low_m": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Csr Low M"
+    },
+    "csr_m": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Csr M"
+    },
+    "csr_status": {
+      "default": "data",
+      "enum": [
+        "data",
+        "estimated"
+      ],
+      "title": "Csr Status",
+      "type": "string"
+    },
+    "directions": {
+      "enum": [
+        "DN",
+        "UP",
+        "BOTH"
+      ],
+      "title": "Directions",
+      "type": "string"
+    },
+    "electrified": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Electrified"
+    },
+    "goods_ok": {
+      "default": true,
+      "title": "Goods Ok",
+      "type": "boolean"
+    },
+    "kind": {
+      "enum": [
+        "main",
+        "loop",
+        "siding",
+        "yard"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "length_m": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Length M"
+    },
+    "line_no": {
+      "minimum": 1,
+      "title": "Line No",
+      "type": "integer"
+    },
+    "line_speed_kmh": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Line Speed Kmh"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "op_code": {
+      "title": "Op Code",
+      "type": "string"
+    },
+    "passenger_ok": {
+      "default": true,
+      "title": "Passenger Ok",
+      "type": "boolean"
+    },
+    "platform": {
+      "default": false,
+      "title": "Platform",
+      "type": "boolean"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "status": {
+      "default": "in_use",
+      "enum": [
+        "in_use",
+        "out_of_use"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    }
+  },
+  "required": [
+    "network_version",
+    "op_code",
+    "line_no",
+    "kind",
+    "directions"
+  ],
+  "title": "StationLine",
+  "type": "object"
+}

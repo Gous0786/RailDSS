@@ -1,0 +1,179 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "brake_decel_mps2": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Brake Decel Mps2"
+    },
+    "code": {
+      "title": "Code",
+      "type": "string"
+    },
+    "davis_a": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Davis A"
+    },
+    "davis_b": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Davis B"
+    },
+    "davis_c": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Davis C"
+    },
+    "length_m": {
+      "exclusiveMinimum": 0,
+      "title": "Length M",
+      "type": "number"
+    },
+    "mass_t": {
+      "exclusiveMinimum": 0,
+      "title": "Mass T",
+      "type": "number"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "power_kw": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Power Kw"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "te_curve": {
+      "description": "(speed km/h, TE kN)",
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Te Curve",
+      "type": "array"
+    },
+    "te_start_kn": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Te Start Kn"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "traction": {
+      "enum": [
+        "electric",
+        "diesel"
+      ],
+      "title": "Traction",
+      "type": "string"
+    },
+    "vmax_kmh": {
+      "exclusiveMinimum": 0,
+      "title": "Vmax Kmh",
+      "type": "number"
+    }
+  },
+  "required": [
+    "network_version",
+    "code",
+    "traction",
+    "mass_t",
+    "length_m",
+    "vmax_kmh"
+  ],
+  "title": "LocoClass",
+  "type": "object"
+}

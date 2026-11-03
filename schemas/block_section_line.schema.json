@@ -1,0 +1,112 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "block_section_id": {
+      "title": "Block Section Id",
+      "type": "string"
+    },
+    "category": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Category"
+    },
+    "direction": {
+      "enum": [
+        "DN",
+        "UP",
+        "BOTH"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "length_m": {
+      "exclusiveMinimum": 0,
+      "title": "Length M",
+      "type": "number"
+    },
+    "line_id": {
+      "description": "DN / UP / MID / KK / 1",
+      "title": "Line Id",
+      "type": "string"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "system": {
+      "enum": [
+        "ABS_absolute",
+        "AUTO",
+        "IBS"
+      ],
+      "title": "System",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "vmax_kmh": {
+      "exclusiveMinimum": 0,
+      "title": "Vmax Kmh",
+      "type": "number"
+    }
+  },
+  "required": [
+    "network_version",
+    "block_section_id",
+    "line_id",
+    "direction",
+    "length_m",
+    "system",
+    "vmax_kmh"
+  ],
+  "title": "BlockSectionLine",
+  "type": "object"
+}

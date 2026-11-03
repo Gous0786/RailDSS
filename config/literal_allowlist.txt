@@ -4,3 +4,12 @@
 # config/parameters.yaml instead. Every entry is reviewed in the PR that adds it.
 src/raildss_params/register.py: 12  # length of the short content hash in the version stamp, not a rule value
 src/raildss_params/register.py: 2  # directory depth from the package to the repository root (default register path), not a rule value
+src/raildss_schema/base.py: 90  # latitude range of WGS84 coordinates, not a rule value
+src/raildss_schema/base.py: 180  # longitude range of WGS84 coordinates, not a rule value
+src/raildss_schema/ddl.py: 4326  # EPSG code of WGS84 for PostGIS geometry, not a rule value
+src/raildss_schema/ddl.py: 2  # index of the is_json flag in the column_type() tuple, not a rule value
+src/raildss_schema/entities.py: 3  # minimum length of a block-section id 'A-B', not a rule value
+src/raildss_schema/entities.py: 2  # a signal has at least two aspects (definition), not a tunable rule value
+src/raildss_schema/migrate.py: 2  # directory depth from the package to the repository root, not a rule value
+src/raildss_schema/migrate.py: 5432  # PostgreSQL default port when the URL has none, not a rule value
+src/raildss_schema/__main__.py: 2  # repository-root depth and JSON indent width, not rule values

@@ -1,0 +1,225 @@
+{
+  "$defs": {
+    "Location": {
+      "additionalProperties": false,
+      "description": "A location in three references at once (spec \u00a76.1).\n\nAt least one of ``km`` or (``ne_id`` + ``offset_m``) is required. ``lat``/``lon`` come\ntogether or not at all.",
+      "properties": {
+        "km": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Km"
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lat"
+        },
+        "lon": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lon"
+        },
+        "ne_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ne Id"
+        },
+        "offset_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offset M"
+        }
+      },
+      "title": "Location",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Twin-only signal (synthesised; the dataset has no signal positions, R06 \u00a74.4).",
+  "properties": {
+    "aspects": {
+      "anyOf": [
+        {
+          "minimum": 2,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Aspects"
+    },
+    "block_section_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Block Section Id"
+    },
+    "direction": {
+      "enum": [
+        "DN",
+        "UP"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "line_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Line Id"
+    },
+    "location": {
+      "$ref": "#/$defs/Location"
+    },
+    "network_version": {
+      "minLength": 1,
+      "title": "Network Version",
+      "type": "string"
+    },
+    "op_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Op Code"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "description": "unmapped source fields (spec \u00a76.6)",
+      "title": "Raw",
+      "type": "object"
+    },
+    "rule_catalogue_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rule Catalogue Version"
+    },
+    "source": {
+      "default": "synthetic",
+      "enum": [
+        "data",
+        "synthetic",
+        "dummy"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "timetable_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timetable Version"
+    },
+    "type": {
+      "enum": [
+        "distant",
+        "home",
+        "starter",
+        "advanced_starter",
+        "automatic",
+        "ib",
+        "calling_on",
+        "shunt"
+      ],
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "network_version",
+    "id",
+    "type",
+    "direction",
+    "location"
+  ],
+  "title": "Signal",
+  "type": "object"
+}
