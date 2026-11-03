@@ -1,0 +1,461 @@
+# KTV-PSA COA-master -> canonical schema mapping (spec §6.6, FR-DATA-07; issue #5).
+#
+# Declarative and hand-maintained. The ETL (raildss_etl) reads file paths, cleaning policy, date formats
+# and expected row counts from here. Every column of every source file is listed:
+#   to: Entity.field   (or a list)  -> populates the canonical schema (raildss_schema.entities)
+#   to: raw                          -> kept in the entity's `raw` field, not used by services
+#   to: ignore                       -> dropped; `note` gives the reason. ETL code must never reference
+#                                       an ignored column (DQ-22, tests/etl/test_mapping.py)
+#   conf: H / M / L                  -> confidence from R06 App. A
+#   date: <format name>              -> parsed by stage 1 (#6)
+mapping_version: "2026.11.1"
+dataset: ktv-psa
+raw_dir: data/raw/ktv-psa
+timezone: "+05:30"                # IST; source timestamps are local time, the canonical store is UTC
+open_ended_years:                 # two-digit year 99 marks an open-ended validity (R06 §4.9)
+  "1999": 2099
+date_formats:
+  coa_mdy: "%m/%d/%y"             # 7/15/24  (COA master tables)
+  dmy_mon: "%d-%b-%y"             # 21-May-25 (PSR, TRAIN, SCHEDULE)
+  freight_dmy_hm: "%d/%m/%Y %H:%M"  # 01/08/2025 22:25 (freight log)
+schedule_seconds_columns: [ARRIVAL, DEPARTURE, NEXTARVL]   # seconds since 00:00 of the train's day 1
+ignore_column_patterns:
+  - pattern: '^Unnamed: \d+$'
+    note: empty columns added by the spreadsheet export ("-Table 1" files, R06 §2)
+
+tables:
+  ROUTE_DN:
+    file: 'RouteSttnInfo/KTV-PSA-Table 1.csv'
+    description: 'Ordered route KTV->PSA (DN)'
+    entity: null
+    expected_rows: 22
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'SEQ_NO': {to: OperationalPoint.seq, conf: H, note: 'route order'}
+      'ZONE_CODE': {to: raw, conf: M}
+      'DIVISION_CODE': {to: raw, conf: M}
+      'STATION_CODE': {to: OperationalPoint.code, conf: H, note: 'join key to STATION'}
+      'STATION_NAME': {to: raw, conf: H, note: 'duplicate of STATION.MAVSTTNNAME'}
+      'JUNC_FLAG': {to: OperationalPoint.is_junction, conf: H}
+      'CABIN_FLAG': {to: raw, conf: M}
+      'HALT_FLAG': {to: OperationalPoint.is_halt, conf: H, note: 'cross-check with STATION.MACHALTFLAG'}
+      'IC_FLAG': {to: raw, conf: M}
+      'FROZEN_FLAG': {to: raw, conf: M}
+      'DVSNIC': {to: raw, conf: M}
+      'FROM_STATION': {to: raw, conf: M}
+      'TO_STATION': {to: raw, conf: M}
+      'BLOCK_SECTION': {to: BlockSection.id, conf: H, note: 'route level (split at halts)'}
+      'REVERSE_BLOCK_SECTION': {to: raw, conf: M}
+      'OPPBLCKSCTN': {to: raw, conf: M}
+      'COABLCKSCTN': {to: BlockSection.id, conf: H, note: 'COA level (REC-26)'}
+      'COARVSEBLCKSCTN': {to: raw, conf: M}
+      'COAOPPBLCKSCTN': {to: raw, conf: M}
+      'DISTANCE': {to: BlockSection.length_m, conf: H, note: 'km x 1000, route level'}
+      'COADISTANCE': {to: BlockSection.length_m, conf: H, note: 'km x 1000, COA level'}
+      'CUM_DISTANCE': {to: OperationalPoint.km, conf: H, note: 'section chainage from KTV (DN table)'}
+      'NO_SIGNAL': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+      'SIGNALTYPE': {to: BlockSection.system, conf: H, note: 'AB -> ABS_absolute, AT -> AUTO'}
+      'TRACTION': {to: raw, conf: M}
+      'NOOFTRACKS': {to: BlockSection.n_lines, conf: H}
+      'NOOFTRAIN': {to: raw, conf: M}
+      'REVDISTANCE': {to: raw, conf: M}
+      'DSPL_CUM_DIST': {to: raw, conf: M}
+      'AVGDISTANCE': {to: raw, conf: M}
+  ROUTE_UP:
+    file: 'RouteSttnInfo/PSA-KTV-Table 1.csv'
+    description: 'Ordered route PSA->KTV (UP)'
+    entity: null
+    expected_rows: 22
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'SEQ_NO': {to: OperationalPoint.seq, conf: H, note: 'route order'}
+      'ZONE_CODE': {to: raw, conf: M}
+      'DIVISION_CODE': {to: raw, conf: M}
+      'STATION_CODE': {to: OperationalPoint.code, conf: H, note: 'join key to STATION'}
+      'STATION_NAME': {to: raw, conf: H, note: 'duplicate of STATION.MAVSTTNNAME'}
+      'JUNC_FLAG': {to: OperationalPoint.is_junction, conf: H}
+      'CABIN_FLAG': {to: raw, conf: M}
+      'HALT_FLAG': {to: OperationalPoint.is_halt, conf: H, note: 'cross-check with STATION.MACHALTFLAG'}
+      'IC_FLAG': {to: raw, conf: M}
+      'FROZEN_FLAG': {to: raw, conf: M}
+      'DVSNIC': {to: raw, conf: M}
+      'FROM_STATION': {to: raw, conf: M}
+      'TO_STATION': {to: raw, conf: M}
+      'BLOCK_SECTION': {to: BlockSection.id, conf: H, note: 'route level (split at halts)'}
+      'REVERSE_BLOCK_SECTION': {to: raw, conf: M}
+      'OPPBLCKSCTN': {to: raw, conf: M}
+      'COABLCKSCTN': {to: BlockSection.id, conf: H, note: 'COA level (REC-26)'}
+      'COARVSEBLCKSCTN': {to: raw, conf: M}
+      'COAOPPBLCKSCTN': {to: raw, conf: M}
+      'DISTANCE': {to: BlockSection.length_m, conf: H, note: 'km x 1000, route level'}
+      'COADISTANCE': {to: BlockSection.length_m, conf: H, note: 'km x 1000, COA level'}
+      'CUM_DISTANCE': {to: OperationalPoint.km, conf: H, note: 'section chainage from KTV (DN table)'}
+      'NO_SIGNAL': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+      'SIGNALTYPE': {to: BlockSection.system, conf: H, note: 'AB -> ABS_absolute, AT -> AUTO'}
+      'TRACTION': {to: raw, conf: M}
+      'NOOFTRACKS': {to: BlockSection.n_lines, conf: H}
+      'NOOFTRAIN': {to: raw, conf: M}
+      'REVDISTANCE': {to: raw, conf: M}
+      'DSPL_CUM_DIST': {to: raw, conf: M}
+      'AVGDISTANCE': {to: raw, conf: M}
+  STATION:
+    file: 'KTV-PSA-Infra/STATION-Table 1.csv'
+    description: 'Station master'
+    entity: OperationalPoint
+    expected_rows: 22
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MAVSTTNCODE': {to: OperationalPoint.code, conf: H}
+      'MAVSTTNNAME': {to: OperationalPoint.name, conf: H}
+      'MAVDVSNCODE': {to: raw, conf: M}
+      'MACCLASSFLAG': {to: OperationalPoint.type, conf: M, note: 'B -> block_station_B, D -> halt'}
+      'MACJUNCTION': {to: OperationalPoint.is_junction, conf: H, note: 'Y/N'}
+      'MACCABINFLAG': {to: OperationalPoint.is_cabin, conf: H, note: 'Y/N'}
+      'MACHALTFLAG': {to: OperationalPoint.is_halt, conf: H, note: 'Y/N'}
+      'MACICFLAG': {to: OperationalPoint.is_boundary, conf: H, note: 'interchange point (PSA)'}
+      'MAVCIVILDSTNAME': {to: raw, conf: M}
+      'MAVCONSTITUENCY': {to: raw, conf: M}
+      'MAVINTRLOCKSTD': {to: OperationalPoint.interlocking_std, conf: H, note: 'R2 / R3 / S3 (S3 meaning L)'}
+      'MAVSGNLARRNGMENT': {to: OperationalPoint.signalling, conf: H, note: 'MACL -> MACLS'}
+      'MACNOMSTTNCTONORDR': {to: raw, conf: M}
+      'MACPRCDCROSSFCLTY': {to: OperationalPoint.crossing_facility, conf: H, note: 'Y/N; used by VER-XNG-01'}
+      'MACTRTNCHNG': {to: OperationalPoint.traction_change, conf: H, note: 'Y/N'}
+      'MACCREWCHNG': {to: OperationalPoint.crew_change, conf: H, note: 'Y/N'}
+      'MACFREZFLAG': {to: raw, conf: M}
+      'MANXCALCCORD': {to: raw, conf: M}
+      'MANYCALCCORD': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MAVBLOCKINSTTYPE': {to: OperationalPoint.block_instrument, conf: M, note: 'TL tokenless; BT at NWP'}
+      'MANSTARTBUFFER': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MANENDBUFFER': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MAVTRAFFICTYPE': {to: raw, conf: M}
+      'MAVSTATUS': {to: raw, conf: M}
+      'MACPFFREEZE': {to: raw, conf: M}
+      'MADPFMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVPFMDFYBY': {to: raw, conf: M}
+      'MACIGNRTRTN': {to: raw, conf: M}
+      'MACIGNRJN': {to: raw, conf: M}
+      'MANDVSNIC': {to: raw, conf: M}
+      'MANZONEIC': {to: raw, conf: M}
+      'MACMNTCFREEZE': {to: raw, conf: M}
+      'MADMNTCMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMNTCMDFYBY': {to: raw, conf: M}
+      'MACSHAREFLAG': {to: raw, conf: M}
+      'MAVADDEDBY': {to: raw, conf: M}
+      'MADADDEDDATE': {to: raw, conf: M, date: coa_mdy}
+      'MACCOARPTNGFLAG': {to: raw, conf: M}
+      'MADVALIDFROM': {to: OperationalPoint.valid_from, conf: H, date: coa_mdy}
+      'MADVALIDTO': {to: OperationalPoint.valid_to, conf: H, date: coa_mdy, note: '99 -> 2099 (open-ended)'}
+      'MANLATITUDE': {to: OperationalPoint.lat, conf: H, note: 'coarse (~1 km)'}
+      'MANLONGITUDE': {to: OperationalPoint.lon, conf: H, note: 'coarse (~1 km)'}
+      'MAVREFSTTN_I': {to: raw, conf: M}
+      'MAVREFSTTN_II': {to: raw, conf: M}
+      'MAVREFSTTN_III': {to: raw, conf: M}
+      'MANMILEPOSTKM_I': {to: OperationalPoint.km_ref_hwh, conf: M, note: 'km post from reference station I (HWH)'}
+      'MANMILEPOSTSUBKM_I': {to: OperationalPoint.km_ref_hwh, conf: M, note: 'sub-km part'}
+      'MANMILEPOSTKM_II': {to: raw, conf: M}
+      'MANMILEPOSTSUBKM_II': {to: raw, conf: M}
+      'MANMILEPOSTKM_III': {to: raw, conf: M}
+      'MANMILEPOSTSUBKM_III': {to: raw, conf: M}
+      'MAVSTATECODE': {to: raw, conf: M}
+  BLOCKSCTN:
+    file: 'KTV-PSA-Infra/BLOCKSCTN-Table 1.csv'
+    description: 'Block sections'
+    entity: BlockSection
+    expected_rows: 63
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: exact}
+    columns:
+      'MAVBLCKSCTN': {to: BlockSection.id, conf: H, note: 'directed edge A-B'}
+      'MAVFROMSTTNCODE': {to: BlockSection.from_op, conf: H}
+      'MAVTOSTTNCODE': {to: BlockSection.to_op, conf: H}
+      'MAVSUBSCTNNAME': {to: raw, conf: M}
+      'MANINTRDIST': {to: BlockSection.length_m, conf: H, note: 'km x 1000'}
+      'MANNUMBLINES': {to: BlockSection.n_lines, conf: H}
+      'MANNUMBSGNL': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+      'MANNUMBLVLCRSG': {to: raw, conf: M}
+      'MAVSGNLTYPE': {to: BlockSection.system, conf: H, note: 'AB -> ABS_absolute, AT -> AUTO'}
+      'MAVGAUGE': {to: raw, conf: M}
+      'MAVTRTNTYPE': {to: raw, conf: M}
+      'MAVDVSNCODE': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MACFREZFLAG': {to: raw, conf: M}
+      'MACFLAG': {to: raw, conf: M}
+      'MACSDNGBLCKSCTN': {to: raw, conf: M}
+      'MACFREZRUNTIME': {to: raw, conf: M}
+      'MADRUNTIMEMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVRUNTIMEMDFYBY': {to: raw, conf: M}
+      'MANCOABLCKSCTN': {to: BlockSection.level, conf: H, note: '1 -> coa, 0 -> route_split_at_halt'}
+      'MAVSCTNCODE': {to: BlockSection.controller_section, conf: M}
+      'MANSTATUS': {to: raw, conf: M}
+      'MANRBSDISTANCE': {to: raw, conf: M}
+      'MANICMSINTRDIST': {to: raw, conf: M}
+      'MAVTRAFFICTYPE': {to: raw, conf: M}
+      'MADVALIDFROM': {to: raw, conf: M, date: coa_mdy}
+      'MADVALIDTO': {to: raw, conf: M, date: coa_mdy}
+      'MANMAXSPEED': {to: BlockSection.vmax_kmh, conf: H}
+      'MAVDRTN': {to: BlockSection.direction, conf: H, note: 'DN = KTV->PSA'}
+      'MANSIGNALNUMB': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+      'MAVSIGNALPOSN': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+  BLOCKSCTNLINE:
+    file: 'KTV-PSA-Infra/BLOCKSCTNLINE-Table 1.csv'
+    description: 'Lines per block section'
+    entity: BlockSectionLine
+    expected_rows: 99
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: exact}
+    columns:
+      'MAVBLCKSCTN': {to: BlockSectionLine.block_section_id, conf: H}
+      'MANSEQNUMB': {to: raw, conf: M}
+      'MAVLINENUMB': {to: BlockSectionLine.line_id, conf: M, note: 'DN / UP / MID / KK / 1'}
+      'MANLINELENGTH': {to: BlockSectionLine.length_m, conf: H, note: 'km x 1000'}
+      'MAVLINECATEGORY': {to: BlockSectionLine.category, conf: H, note: 'NRML; TSL undecoded (OD-29)'}
+      'MANNUMBSGNL': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+      'MANNUMBLVLCRSG': {to: raw, conf: M}
+      'MAVSGNLTYPE': {to: BlockSectionLine.system, conf: H}
+      'MACGAUGE': {to: raw, conf: M}
+      'MACTRTNTYPE': {to: raw, conf: M}
+      'MAVDVSNCODE': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MAVLINENAME': {to: raw, conf: M}
+      'MANMAXSPEED': {to: BlockSectionLine.vmax_kmh, conf: H}
+      'MAVDRTN': {to: BlockSectionLine.direction, conf: H}
+  STTNLINE:
+    file: 'KTV-PSA-Infra/STTNLINE-Table 1.csv'
+    description: 'Station lines'
+    entity: StationLine
+    expected_rows: 103
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MAVSTTNCODE': {to: StationLine.op_code, conf: H}
+      'MANSEQNUMB': {to: StationLine.line_no, conf: H, note: 'PSA: number and name swapped (fix in #8)'}
+      'MAVLINENUMB': {to: raw, conf: M}
+      'MAVLINETYPE': {to: raw, conf: M}
+      'MACLINECATEGORY': {to: StationLine.kind, conf: H, note: 'M main, L loop, S siding, Y yard'}
+      'MANLINELENGTH': {to: StationLine.length_m, conf: H}
+      'MAVDRTN': {to: StationLine.directions, conf: H, note: 'cross-check with Connections'}
+      'MANNUMBTRAINALLWD': {to: StationLine.capacity_trains, conf: M}
+      'MANCAPACITY': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MACGAUGE': {to: raw, conf: M}
+      'MACTRTNTYPE': {to: StationLine.electrified, conf: M, note: 'E -> true'}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MAVLINENAME': {to: StationLine.name, conf: H, note: 'PSA: swapped with MAVLINENUMB'}
+      'MANSTARTBUFFER': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MANENDBUFFER': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MANCSR': {to: StationLine.csr_m, conf: H, note: 'PSA: 0 -> derived estimates (#8)'}
+      'MANLINESPEED': {to: StationLine.line_speed_kmh, conf: H}
+      'MACPLATFORM': {to: StationLine.platform, conf: H, note: 'Y/N'}
+  PLATFORM:
+    file: 'KTV-PSA-Infra/Platform-Table 1.csv'
+    description: 'Platforms'
+    entity: Platform
+    expected_rows: 70
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MAVSTTNCODE': {to: Platform.op_code, conf: H}
+      'MANSEQNUMB': {to: Platform.station_line_no, conf: H, note: 'joins STTNLINE.MANSEQNUMB'}
+      'MAVPLATFORMNUMB': {to: Platform.platform_no, conf: H}
+      'MAVPFVPOSITION': {to: Platform.side, conf: M, note: 'U/D'}
+      'MAVPFHPOSITION': {to: raw, conf: M}
+      'MANLENGTH': {to: Platform.length_m, conf: H}
+      'MAVPFTYPE': {to: Platform.platform_type, conf: H, note: 'HIGH/LOW/RAIL'}
+      'MANCAPACITY': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MAVFACILITY': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MANSTARTBUFFER': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MANENDBUFFER': {to: ignore, conf: '-', note: 'undecoded field, not used by the DSS (R06 §4.13, spec OD-29)'}
+      'MACSUBURBANFLAG': {to: raw, conf: M}
+  CONNECTIONS:
+    file: 'KTV-PSA-Infra/Connections-Table 1.csv'
+    description: 'Station line <-> block line'
+    entity: ConnectionEdge
+    expected_rows: 392
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MAVSTTNCODE': {to: ConnectionEdge.op_code, conf: H}
+      'MANSTTNLINENUMB': {to: ConnectionEdge.station_line_no, conf: H}
+      'MAVBLCKSCTN': {to: ConnectionEdge.block_section_id, conf: H}
+      'MANBSLINENUMB': {to: ConnectionEdge.block_line_id, conf: H}
+      'MACRECVSENDFLAG': {to: ConnectionEdge.mode, conf: H, note: 'R -> receive, S -> send'}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+  STATIONPOSITION:
+    file: 'KTV-PSA-Infra/Stationposition-Table 1.csv'
+    description: 'Schematic layout hints'
+    entity: null
+    expected_rows: 57
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MAVSTTNCODE': {to: raw, conf: M}
+      'MAVNEXTSTTN': {to: raw, conf: M}
+      'MACHPOSITION': {to: raw, conf: M}
+      'MANVPOSITION': {to: raw, conf: M}
+      'MANLINES': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: coa_mdy}
+      'MAVMDFYBY': {to: raw, conf: M}
+  FREIGHT:
+    file: 'KTV-PSA-Infra/WAT_GOODS_TRAIN_AUG25_01082025_27082025.csv'
+    description: 'Freight movements Aug 2025 (division)'
+    entity: FreightLoad
+    expected_rows: 95214
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: exact}
+    columns:
+      'LoadId': {to: [FreightLoad.load_id, TrainRun.load_id], conf: H}
+      'RakeId': {to: FreightLoad.rake_id, conf: H}
+      'From Zone': {to: raw, conf: M}
+      'From Division': {to: raw, conf: M}
+      'From Section': {to: raw, conf: M}
+      'Source': {to: FreightLoad.origin, conf: H}
+      'Zone To': {to: raw, conf: M}
+      'Division To': {to: raw, conf: M}
+      'Section To': {to: raw, conf: M}
+      'Destination': {to: FreightLoad.destination, conf: H}
+      'Load Type': {to: FreightLoad.wagon_type, conf: H, note: '-> consist template'}
+      'Total Km': {to: raw, conf: M}
+      'Block Section': {to: FreightLoad.path, conf: H, note: 'ordered per load'}
+      'Block Km': {to: ignore, conf: H, note: 'unreliable: 0 or corrupted in 24 % of rows; recompute from BLOCKSCTN (R06 §4.10)'}
+      'Block Hrs': {to: raw, conf: H, note: 'day fraction; consistency check only'}
+      'Speed': {to: ignore, conf: H, note: 'derived from Block Km, unreliable (R06 §4.10)'}
+      'Ic Sttn': {to: raw, conf: M}
+      'LE': {to: FreightLoad.loaded, conf: H, note: 'L loaded / E empty'}
+      'Commodity': {to: FreightLoad.commodity, conf: H}
+      'Description': {to: raw, conf: M}
+      'Sttn': {to: [FreightLoad.entry_point, FreightLoad.exit_point], conf: H, note: 'derived per load'}
+      'Arrival Time': {to: [FreightLoad.entry_time, FreightLoad.exit_time], conf: H, date: freight_dmy_hm, note: 'D/M/YYYY H:M, IST'}
+      'Depart Time': {to: [FreightLoad.entry_time, FreightLoad.exit_time], conf: H, date: freight_dmy_hm, note: 'D/M/YYYY H:M, IST'}
+  TRAIN:
+    file: 'KTV_PSA_Passenger_Schedule/TRAIN-KTV-PSA-Table 1.csv'
+    description: 'Passenger train versions'
+    entity: Service
+    expected_rows: 250
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'TRAINID': {to: Service.train_id, conf: H}
+      'PROPOSAL_ID': {to: raw, conf: M}
+      'SOURCE': {to: raw, conf: M}
+      'DESTINATION': {to: raw, conf: M}
+      'TRAIN_NUMBER': {to: Service.train_no, conf: H}
+      'TRAIN_NAME': {to: Service.name, conf: H}
+      'ROUTE_TYPE': {to: raw, conf: M}
+      'TRAIN_TYPE': {to: [Service.icms_train_type, Service.priority_class], conf: H, note: 'priority_class via policy.class_map'}
+      'DAY_OF_SERVICES': {to: Service.days, conf: H, note: 'Monday-first mask, journey-origin day'}
+      'NO_OF_COACHES': {to: Service.coaches, conf: H}
+      'TRAIN_COMPOSITION': {to: raw, conf: M}
+      'REVERSE_TRAIN_NUMBER': {to: Service.reverse_train_no, conf: H}
+      'FORECOLOR': {to: Service.forecolor, conf: H, note: 'COA palette (REC-28)'}
+      'VALIDFROM': {to: Service.valid_from, conf: H, date: dmy_mon}
+      'VALIDTO': {to: Service.valid_to, conf: H, date: dmy_mon, note: '99 -> 2099'}
+  SCHEDULE:
+    file: 'KTV_PSA_Passenger_Schedule/SCHEDULE-KTV-PSA-Table 1.csv'
+    description: 'WTT train x station'
+    entity: TimetablePoint
+    expected_rows: 4260
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'TRAINID': {to: TimetablePoint.train_id, conf: H}
+      'PROPOSAL_ID': {to: raw, conf: M}
+      'ID': {to: raw, conf: M}
+      'TRAIN_NO': {to: raw, conf: M}
+      'TRAIN_TYPE': {to: raw, conf: M}
+      'ROUTE_SEQ_NO': {to: raw, conf: M}
+      'DIRECTION': {to: TimetablePoint.direction, conf: M, note: 'derive per block where it flips'}
+      'STTN_CODE': {to: TimetablePoint.op_code, conf: H}
+      'HALT_FLAG': {to: raw, conf: H, note: 'marks halt stations, NOT stops (R06 §4.7)'}
+      'BLOCK_SCTN': {to: TimetablePoint.block_section_id, conf: H}
+      'PREV_BLCK_SCTN': {to: raw, conf: M}
+      'COA_BLCK_SCTN': {to: TimetablePoint.coa_block_section_id, conf: H}
+      'PREV_COA_BLCK_SCTN': {to: raw, conf: M}
+      'DAY_OF_SERVICES': {to: raw, conf: M}
+      'BLOCK_BUSY_DAYS': {to: raw, conf: M}
+      'CUM_DISTANCE': {to: raw, conf: M}
+      'SCHEDULE_SEQ_NO': {to: TimetablePoint.seq, conf: H, note: 'order by this, not ROUTE_SEQ_NO'}
+      'NO_OF_SIGNAL': {to: ignore, conf: H, note: 'always 0 or empty in this extract; no signal-level data (R06 §4.4)'}
+      'SGNL_TYPE': {to: raw, conf: M}
+      'INTR_DIST': {to: raw, conf: M}
+      'ENGGALWC': {to: TimetablePoint.eng_allowance_s, conf: H, note: 'seconds'}
+      'TRFCALWC': {to: TimetablePoint.traffic_allowance_s, conf: H, note: 'seconds'}
+      'ARRIVAL': {to: TimetablePoint.arr_s, conf: H, note: 'seconds since 00:00 of day 1'}
+      'DEPARTURE': {to: TimetablePoint.dep_s, conf: H, note: 'stop = DEPARTURE > ARRIVAL'}
+      'NEXTARVL': {to: raw, conf: M}
+      'DAY_OF_RUN': {to: TimetablePoint.day_offset, conf: H, note: 'DAY_OF_RUN - 1; day of DEPARTURE: floor(DEPARTURE/86400)+1 for 4,260/4,260 rows (R06 §3 says ARRIVAL; differs for 1 stop across midnight)'}
+      'INTERCHANGEPOINT': {to: raw, conf: M}
+      'VALIDFROM': {to: raw, conf: M, date: dmy_mon}
+      'VALIDTO': {to: raw, conf: M, date: dmy_mon}
+      'PTTARVL': {to: raw, conf: M}
+      'PTTDPRT': {to: raw, conf: M}
+      'CROSSINGTRAIN': {to: TimetablePoint.booked_crossing_train, conf: H}
+      'CREWCHANGE': {to: TimetablePoint.crew_change, conf: M}
+      'TRTNCODE': {to: TimetablePoint.traction_change, conf: H}
+      'RVRSL': {to: TimetablePoint.reversal, conf: H}
+      'PLATFORM': {to: TimetablePoint.planned_line, conf: H, note: '7-element, Monday-first'}
+      'ACCTIME': {to: TimetablePoint.acc_s, conf: H, note: 'seconds'}
+      'DECTIME': {to: TimetablePoint.dec_s, conf: H, note: 'seconds'}
+  PSR_DN:
+    file: 'KTV_PSA_Passenger_Schedule/PSR (KTV-PSA)-Table 1.csv'
+    description: 'Permanent speed restrictions KTV->PSA'
+    entity: SpeedProfile
+    expected_rows: 5
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MANBLCKPSRID': {to: SpeedProfile.id, conf: H}
+      'MAVBLCKSCTN': {to: SpeedProfile.block_section_id, conf: H}
+      'MANSEQNUMBER': {to: raw, conf: M}
+      'MANFROMKM': {to: SpeedProfile.location_from, conf: H, note: 'km'}
+      'MANTOKM': {to: SpeedProfile.location_to, conf: H, note: 'km'}
+      'MAVFROMSUBKM': {to: SpeedProfile.location_from, conf: M, note: 'OHE mast or km post per MACKMOHEFLAG'}
+      'MAVTOSUBKM': {to: SpeedProfile.location_to, conf: M}
+      'MACKMOHEFLAG': {to: [SpeedProfile.location_from, SpeedProfile.location_to], conf: M, note: 'O = OHE mast, K = km post'}
+      'MADFROMDATE': {to: raw, conf: M, date: dmy_mon}
+      'MADTODATE': {to: raw, conf: M, date: dmy_mon}
+      'MANPASSPEED': {to: SpeedProfile.vmax_passenger_kmh, conf: H}
+      'MANGDSSPEED': {to: SpeedProfile.vmax_goods_kmh, conf: H}
+      'MAVREMARKS': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: dmy_mon}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MACLEFLAG': {to: raw, conf: M}
+      'MAVAUTHORITY': {to: raw, conf: M}
+      'MAVREASON': {to: SpeedProfile.reason, conf: H}
+      'MACSTATUS': {to: raw, conf: M}
+      'MANFROMTIME': {to: raw, conf: M}
+      'MANTOTIME': {to: raw, conf: M}
+      'MADMDFYBYDATE': {to: raw, conf: M, date: dmy_mon}
+      'MANDISTANCE': {to: SpeedProfile.length_m, conf: H}
+      'MACSTOPDEAD': {to: SpeedProfile.stop_dead, conf: H}
+      'MANTIMELOSSPSGR': {to: SpeedProfile.time_loss_passenger_s, conf: H}
+      'MANTIMELOSSGOODS': {to: SpeedProfile.time_loss_goods_s, conf: H}
+  PSR_UP:
+    file: 'KTV_PSA_Passenger_Schedule/PSR (PSA-KTV)-Table 1.csv'
+    description: 'Permanent speed restrictions PSA->KTV'
+    entity: SpeedProfile
+    expected_rows: 3
+    clean: {drop_blank_rows: true, drop_header_rows: true, deduplicate: none}
+    columns:
+      'MANBLCKPSRID': {to: SpeedProfile.id, conf: H}
+      'MAVBLCKSCTN': {to: SpeedProfile.block_section_id, conf: H}
+      'MANSEQNUMBER': {to: raw, conf: M}
+      'MANFROMKM': {to: SpeedProfile.location_from, conf: H, note: 'km'}
+      'MANTOKM': {to: SpeedProfile.location_to, conf: H, note: 'km'}
+      'MAVFROMSUBKM': {to: SpeedProfile.location_from, conf: M, note: 'OHE mast or km post per MACKMOHEFLAG'}
+      'MAVTOSUBKM': {to: SpeedProfile.location_to, conf: M}
+      'MACKMOHEFLAG': {to: [SpeedProfile.location_from, SpeedProfile.location_to], conf: M, note: 'O = OHE mast, K = km post'}
+      'MADFROMDATE': {to: raw, conf: M, date: dmy_mon}
+      'MADTODATE': {to: raw, conf: M, date: dmy_mon}
+      'MANPASSPEED': {to: SpeedProfile.vmax_passenger_kmh, conf: H}
+      'MANGDSSPEED': {to: SpeedProfile.vmax_goods_kmh, conf: H}
+      'MAVREMARKS': {to: raw, conf: M}
+      'MADMDFYTIME': {to: raw, conf: M, date: dmy_mon}
+      'MAVMDFYBY': {to: raw, conf: M}
+      'MACLEFLAG': {to: raw, conf: M}
+      'MAVAUTHORITY': {to: raw, conf: M}
+      'MAVREASON': {to: SpeedProfile.reason, conf: H}
+      'MACSTATUS': {to: raw, conf: M}
+      'MANFROMTIME': {to: raw, conf: M}
+      'MANTOTIME': {to: raw, conf: M}
+      'MADMDFYBYDATE': {to: raw, conf: M, date: dmy_mon}
+      'MANDISTANCE': {to: SpeedProfile.length_m, conf: H}
+      'MACSTOPDEAD': {to: SpeedProfile.stop_dead, conf: H}
+      'MANTIMELOSSPSGR': {to: SpeedProfile.time_loss_passenger_s, conf: H}
+      'MANTIMELOSSGOODS': {to: SpeedProfile.time_loss_goods_s, conf: H}
