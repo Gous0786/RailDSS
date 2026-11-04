@@ -12,6 +12,7 @@ The admin client must authenticate as a super user (``admin`` in docker-compose.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -196,6 +197,15 @@ def ensure_acls(admin: AdminClient, catalogue: Catalogue) -> AclReport:
         for fut in admin.create_acls(missing, request_timeout=timeout).values():
             fut.result()
         report.created = len(missing)
+        # ACL metadata propagates asynchronously; wait so the next run (and callers) see it.
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            have = describe_acls(admin, timeout)
+            if not {_key(b) for b in missing} - {_key(b) for b in have}:
+                break
+            time.sleep(1)
+        else:
+            raise TimeoutError(f"created ACLs not visible after {timeout} s")
     managed = {p.kafka_principal for p in catalogue.principals}
     wanted_keys = {_key(b) for b in wanted}
     report.extra = [_describe(b) for b in have if b.principal in managed and _key(b) not in wanted_keys]
