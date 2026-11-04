@@ -8,6 +8,20 @@ open-ended years {'1999': 2099}.
 
 Columns matching these patterns are ignored: `^Unnamed: \d+$` (empty columns added by the spreadsheet export ("-Table 1" files, R06 §2))
 
+Null tokens: '', 'NA'.
+
+## Value maps
+
+| Map | Code -> value |
+|---|---|
+| `yes_no` | `Y` -> `True`, `N` -> `False` |
+| `station_class` | `B` -> `block_station_B`, `D` -> `halt` |
+| `signalling` | `MACL` -> `MACLS` |
+| `block_system` | `AB` -> `ABS_absolute`, `AT` -> `AUTO` |
+| `coa_level` | `1` -> `coa`, `0` -> `route_split_at_halt` |
+| `recv_send` | `R` -> `receive`, `S` -> `send` |
+| `line_direction` | `DN` -> `DN`, `UP` -> `UP`, `MID` -> `BOTH`, `KK` -> `BOTH`, `1` -> `BOTH` |
+
 ## ROUTE_DN
 
 `RouteSttnInfo/KTV-PSA-Table 1.csv` · Ordered route KTV->PSA (DN) · entity: `—` · expected rows after cleaning: 22 · dedupe: none

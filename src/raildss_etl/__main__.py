@@ -11,6 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from raildss_etl import topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -23,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
     p_doc.add_argument("--write", action="store_true")
     p_s1 = sub.add_parser("stage1", help="load and clean the raw CSV files")
     p_s1.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    p_s2 = sub.add_parser("stage2", help="build the topology (runs stage 1 in memory)")
+    p_s2.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -41,6 +44,14 @@ def main(argv: list[str] | None = None) -> int:
         else:
             sys.stdout.write(doc)
         return 0
+
+    if args.cmd == "stage2":
+        tables, s1 = run_stage1(mapping, write=False)
+        topo, rep = topology.build_topology(tables, mapping)
+        topology.write_topology(topo, rep, args.out)
+        print(rep.model_dump_json(indent=1))
+        print(f"stage2: {'OK' if s1.ok and rep.ok else 'FAILED'} hash={topo.content_hash()} -> {args.out}")
+        return 0 if s1.ok and rep.ok else 1
 
     _, report = run_stage1(mapping, out_dir=args.out)
     for t in report.tables.values():

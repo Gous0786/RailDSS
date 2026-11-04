@@ -15,3 +15,4 @@ src/raildss_schema/migrate.py: 5432  # PostgreSQL default port when the URL has 
 src/raildss_schema/__main__.py: 2  # repository-root depth and JSON indent width, not rule values
 src/raildss_etl/load.py: 86400  # seconds per day (unit conversion for WTT seconds-since-day-1), not a rule value
 src/raildss_etl/mapping.py: 2  # directory depth from the package to the repository root, not a rule value
+src/raildss_etl/topology.py: 1000  # metres per km (unit conversion), not a rule value
