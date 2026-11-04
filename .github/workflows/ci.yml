@@ -41,6 +41,10 @@ jobs:
         run: uv run python -m raildss_schema check
       - name: Mapping spec vs dataset and schema (issue #5)
         run: uv run python -m raildss_etl mapping-check
+      - name: Event envelope schema up to date (issue #19)
+        run: uv run python -m raildss_common schema check
+      - name: Kafka topic catalogue and ground-truth isolation lint (issue #19)
+        run: uv run python -m raildss_common kafka lint
       - name: Tests (incl. dataset manifest, issue #2)
         run: uv run pytest
 
@@ -107,4 +111,42 @@ jobs:
       - name: docker compose config
         env:
           POSTGRES_PASSWORD: ci-not-a-secret
+          KAFKA_ADMIN_PASSWORD: ci-admin-not-a-secret
+          KAFKA_TWIN_PASSWORD: ci-twin-not-a-secret
+          KAFKA_EVALUATION_PASSWORD: ci-evaluation-not-a-secret
+          KAFKA_DSS_PASSWORD: ci-dss-not-a-secret
         run: docker compose config --quiet
+
+  kafka:
+    name: Kafka topics, ACLs and ground-truth isolation (issue #19)
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-not-a-secret
+      KAFKA_ADMIN_PASSWORD: ci-admin-not-a-secret
+      KAFKA_TWIN_PASSWORD: ci-twin-not-a-secret
+      KAFKA_EVALUATION_PASSWORD: ci-evaluation-not-a-secret
+      KAFKA_DSS_PASSWORD: ci-dss-not-a-secret
+      RAILDSS_KAFKA_BOOTSTRAP: localhost:9092
+      RAILDSS_KAFKA_USERNAME: admin
+      RAILDSS_KAFKA_PASSWORD: ci-admin-not-a-secret
+      RAILDSS_TEST_KAFKA_BOOTSTRAP: localhost:9092
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3  # setup-uv publishes no floating major tag after v7
+      - name: Install dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+      - name: Start the compose Kafka broker (SASL + StandardAuthorizer)
+        run: docker compose up -d --wait kafka
+      - name: Create topics and ACLs
+        run: uv run python -m raildss_common kafka apply
+      - name: Re-apply is a no-op (idempotent)
+        run: uv run python -m raildss_common kafka apply --expect-no-changes
+      - name: Ground-truth isolation deployment check (DQ-12)
+        run: uv run python -m raildss_common kafka check
+      - name: Kafka integration tests (ACL denial, duplicates, DLQ)
+        run: uv run pytest -m kafka -v
+      - name: Broker logs on failure
+        if: failure()
+        run: docker compose logs kafka
