@@ -74,6 +74,8 @@ def test_dss_principals_have_no_ground_truth_access() -> None:
                 assert not cat.can_read(p.name, t.name)
     assert cat.can_read("evaluation", "gt.state")
     assert not [b for b in acl_bindings(cat) if b.principal == "User:dss" and b.name.startswith("gt")]
+    bindings = acl_bindings(cat)
+    assert len({(b.restype, b.name, b.principal, b.operation) for b in bindings}) == len(bindings)
 
 
 @pytest.mark.parametrize(("op", "grant"), [("read", "gt."), ("read", "gt.state"), ("write", "gt.delay")])

@@ -144,7 +144,7 @@ def acl_bindings(catalogue: Catalogue) -> list[AclBinding]:
                     AclPermissionType.ALLOW,
                 )
             )
-    return out
+    return list({_key(b): b for b in out}.values())  # read+write on one pattern share DESCRIBE
 
 
 def _key(b: AclBinding) -> tuple[object, ...]:
