@@ -1,0 +1,33 @@
+RailDSS
+Copyright 2026 The RailDSS contributors
+
+RailDSS source code is licensed under the Apache License, Version 2.0 (see LICENSE).
+Data files keep their own licences; each dataset directory has a provenance card
+(PROVENANCE.md). Licence review: docs/decisions/0001-licence-review-m0.md.
+
+Redistributors must keep this NOTICE file, including the third-party notices below.
+
+------------------------------------------------------------------------------
+KTV-PSA dataset (data/raw/ktv-psa/)
+------------------------------------------------------------------------------
+Used as supplied by the project owner; see data/raw/ktv-psa/PROVENANCE.md.
+
+------------------------------------------------------------------------------
+OpenStreetMap
+------------------------------------------------------------------------------
+Data derived from OpenStreetMap: © OpenStreetMap contributors.
+Available under the Open Database License (ODbL) 1.0:
+https://opendatacommons.org/licenses/odbl/1-0/ - see https://www.openstreetmap.org/copyright
+Databases in this repository derived from OpenStreetMap are offered under the ODbL 1.0;
+their provenance cards say which files these are.
+
+------------------------------------------------------------------------------
+Copernicus DEM GLO-30 (gradient and curve gap-fill, issue #14)
+------------------------------------------------------------------------------
+produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved
+
+The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30.
+
+Redistributors of Copernicus WorldDEM-30 data, modified or not, are bound by Article 6 of the
+Copernicus DEM GLO-30 licence:
+https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf
