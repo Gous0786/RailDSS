@@ -3,6 +3,7 @@
 python -m raildss_etl mapping-check                 # mapping vs dataset headers and schema
 python -m raildss_etl mapping-doc [--write]         # docs/etl/mapping-ktv-psa.md
 python -m raildss_etl stage1 [--out DIR]            # load & clean -> data/interim/ktv-psa
+python -m raildss_etl stage2|stage3|stage4 [--out DIR]  # topology | station lines | PSRs and speeds
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import freight, stations, timetable, topology
+from raildss_etl import freight, speeds, stations, timetable, topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -32,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     p_wtt.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     p_fr = sub.add_parser("freight", help="freight demand + historical stats (runs stages 1-2 in memory)")
     p_fr.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
+    p_s4 = sub.add_parser("stage4", help="place PSRs and complete line speeds (runs stages 1-3 in memory)")
+    p_s4.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -51,6 +54,18 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(doc)
         return 0
 
+    if args.cmd == "stage4":
+        tables, s1 = run_stage1(mapping, write=False)
+        topo, rep2 = topology.build_topology(tables, mapping)
+        lines, _, rep3 = stations.build_station_lines(tables, mapping)
+        result, rep4 = speeds.build_speeds(tables, topo, lines, mapping)
+        speeds.write_speeds(result, rep4, args.out)
+        for p in rep4.problems:
+            print(f"FAIL  {p}")
+        print(rep4.model_dump_json(indent=1, exclude={"placements"}))
+        ok = s1.ok and rep2.ok and rep3.ok and rep4.ok
+        print(f"stage4: {'OK' if ok else 'FAILED'} -> {args.out}")
+        return 0 if ok else 1
     if args.cmd == "stage3":
         tables, s1 = run_stage1(mapping, write=False)
         lines, platforms, rep3 = stations.build_station_lines(tables, mapping)
