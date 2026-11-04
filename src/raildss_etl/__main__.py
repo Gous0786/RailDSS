@@ -11,7 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import topology
+from raildss_etl import timetable, topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -26,6 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     p_s1.add_argument("--out", type=Path, default=DEFAULT_OUT)
     p_s2 = sub.add_parser("stage2", help="build the topology (runs stage 1 in memory)")
     p_s2.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
+    p_wtt = sub.add_parser("wtt", help="import the WTT (runs stage 1 in memory)")
+    p_wtt.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -45,6 +47,13 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(doc)
         return 0
 
+    if args.cmd == "wtt":
+        tables, s1 = run_stage1(mapping, write=False)
+        tt, rep5 = timetable.build_timetable(tables, mapping)
+        timetable.write_timetable(tt, rep5, args.out)
+        print(rep5.model_dump_json(indent=1))
+        print(f"wtt: {'OK' if s1.ok and rep5.ok else 'FAILED'} -> {args.out}")
+        return 0 if s1.ok and rep5.ok else 1
     if args.cmd == "stage2":
         tables, s1 = run_stage1(mapping, write=False)
         topo, rep = topology.build_topology(tables, mapping)
