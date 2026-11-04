@@ -7,6 +7,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "confluent-kafka>=2.6",
     "pandas>=2.3",
     "pg8000>=1.31",
     "pyarrow>=21",
@@ -23,6 +24,8 @@ dev = [
     "pre-commit>=4.3",
     "types-pyyaml>=6.0.12.20261030",
     "pandas-stubs>=3.1.0.261029",
+    "jsonschema>=4.23",
+    "rfc3339-validator>=0.1.4",
 ]
 
 [build-system]
@@ -72,6 +75,11 @@ check_untyped_defs = true
 module = ["pg8000", "pg8000.*"]
 ignore_missing_imports = true
 
+# confluent-kafka's admin package re-exports its types without __all__.
+[[tool.mypy.overrides]]
+module = ["confluent_kafka.admin"]
+implicit_reexport = true
+
 # Spec #1: strict typing for the canonical schema package.
 [[tool.mypy.overrides]]
 module = ["raildss_schema.*"]
@@ -81,7 +89,10 @@ strict = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
-markers = ["db: needs PostgreSQL + PostGIS (RAILDSS_TEST_DB_URL); run in the CI db job"]
+markers = [
+    "db: needs PostgreSQL + PostGIS (RAILDSS_TEST_DB_URL); run in the CI db job",
+    "kafka: needs the docker-compose Kafka broker with SASL + ACLs (RAILDSS_TEST_KAFKA_BOOTSTRAP); run in the CI kafka job",
+]
 
 # ---------------------------------------------------------------- import-linter
 # NFR-MNT-02: the verifier is an independent codebase. It must not import the

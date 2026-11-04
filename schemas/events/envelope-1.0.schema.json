@@ -1,0 +1,1409 @@
+{
+  "$defs": {
+    "CrewStatusPayload": {
+      "additionalProperties": false,
+      "description": "``CREW_STATUS`` on ``ops.crew`` (CMS-like). The duty limit comes from the parameter register.",
+      "properties": {
+        "crew_duty_id": {
+          "pattern": "^\\S+$",
+          "title": "Crew Duty Id",
+          "type": "string"
+        },
+        "duty_limit_min": {
+          "exclusiveMinimum": 0,
+          "title": "Duty Limit Min",
+          "type": "number"
+        },
+        "sign_on": {
+          "format": "date-time",
+          "title": "Sign On",
+          "type": "string"
+        },
+        "train_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train Run Id"
+        }
+      },
+      "required": [
+        "crew_duty_id",
+        "sign_on",
+        "duty_limit_min"
+      ],
+      "title": "CrewStatusPayload",
+      "type": "object"
+    },
+    "DisruptionClearedPayload": {
+      "additionalProperties": false,
+      "description": "``DISRUPTION_CLEARED`` on ``ops.disruptions``.",
+      "properties": {
+        "cause_code": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cause Code"
+        },
+        "etr": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr"
+        },
+        "etr_sigma_min": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr Sigma Min"
+        },
+        "etr_source": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr Source"
+        },
+        "incident_id": {
+          "pattern": "^\\S+$",
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "lines_affected": {
+          "items": {
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Lines Affected",
+          "type": "array"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EventLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "const": "CLEARED",
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^\\S+$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_id",
+        "type",
+        "status"
+      ],
+      "title": "DisruptionClearedPayload",
+      "type": "object"
+    },
+    "DisruptionRaisedPayload": {
+      "additionalProperties": false,
+      "description": "``DISRUPTION_RAISED`` on ``ops.disruptions``. The ETR is an estimate, not truth.",
+      "properties": {
+        "cause_code": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cause Code"
+        },
+        "etr": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr"
+        },
+        "etr_sigma_min": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr Sigma Min"
+        },
+        "etr_source": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr Source"
+        },
+        "incident_id": {
+          "pattern": "^\\S+$",
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "lines_affected": {
+          "items": {
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Lines Affected",
+          "type": "array"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EventLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "const": "RAISED",
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^\\S+$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_id",
+        "type",
+        "status"
+      ],
+      "title": "DisruptionRaisedPayload",
+      "type": "object"
+    },
+    "DisruptionUpdatedPayload": {
+      "additionalProperties": false,
+      "description": "``DISRUPTION_UPDATED`` on ``ops.disruptions``.",
+      "properties": {
+        "cause_code": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cause Code"
+        },
+        "etr": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr"
+        },
+        "etr_sigma_min": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr Sigma Min"
+        },
+        "etr_source": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Etr Source"
+        },
+        "incident_id": {
+          "pattern": "^\\S+$",
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "lines_affected": {
+          "items": {
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Lines Affected",
+          "type": "array"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EventLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "const": "UPDATED",
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^\\S+$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_id",
+        "type",
+        "status"
+      ],
+      "title": "DisruptionUpdatedPayload",
+      "type": "object"
+    },
+    "EventLocation": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "km": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "km"
+          ]
+        },
+        {
+          "properties": {
+            "ne_id": {
+              "type": "string"
+            },
+            "offset_m": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ne_id",
+            "offset_m"
+          ]
+        }
+      ],
+      "dependentRequired": {
+        "lat": [
+          "lon"
+        ],
+        "lon": [
+          "lat"
+        ]
+      },
+      "description": "Location of §6.2: the canonical :class:`raildss_schema.Location` plus GPS accuracy.",
+      "properties": {
+        "accuracy_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accuracy M"
+        },
+        "km": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Km"
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lat"
+        },
+        "lon": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lon"
+        },
+        "ne_id": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ne Id"
+        },
+        "offset_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offset M"
+        }
+      },
+      "title": "EventLocation",
+      "type": "object"
+    },
+    "EventType": {
+      "description": "Closed list of event types in envelope 1.0 (spec §6.2 table, §7.1 and §7.2).",
+      "enum": [
+        "TRAIN_POSITION",
+        "STATION_EVENT",
+        "TDS_OCCUPANCY",
+        "SIGNAL_ASPECT",
+        "POINT_POSITION",
+        "ROUTE_SET",
+        "ROUTE_RELEASED",
+        "LINE_CLEAR",
+        "TRAIN_OUT_OF_SECTION",
+        "TSR_ISSUED",
+        "TSR_WITHDRAWN",
+        "MAINT_BLOCK",
+        "DISRUPTION_RAISED",
+        "DISRUPTION_UPDATED",
+        "DISRUPTION_CLEARED",
+        "RAKE_READY",
+        "CREW_STATUS",
+        "WEATHER",
+        "CONTROL_ORDER",
+        "ORDER_ACK",
+        "CONTROLLER_ACTION",
+        "HEARTBEAT",
+        "TRAIN_STATE",
+        "DELAY_RECORD",
+        "STATE_SNAPSHOT",
+        "PREDICTIONS",
+        "CONFLICTS",
+        "CANDIDATE",
+        "VERIFICATION",
+        "RECOMMENDATION",
+        "EXPLANATION",
+        "ALERT",
+        "KPI_SNAPSHOT",
+        "AUDIT_RECORD"
+      ],
+      "title": "EventType",
+      "type": "string"
+    },
+    "HeartbeatPayload": {
+      "additionalProperties": false,
+      "description": "``HEARTBEAT`` on ``obs.heartbeat`` (feed health, 10 s per source).",
+      "properties": {
+        "count_10s": {
+          "minimum": 0,
+          "title": "Count 10S",
+          "type": "integer"
+        },
+        "lag_s": {
+          "minimum": 0,
+          "title": "Lag S",
+          "type": "number"
+        },
+        "source": {
+          "pattern": "^[A-Z][A-Z0-9_-]*(\\.[A-Z0-9_-]+)*$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "lag_s",
+        "count_10s"
+      ],
+      "title": "HeartbeatPayload",
+      "type": "object"
+    },
+    "LineClearPayload": {
+      "additionalProperties": false,
+      "description": "``LINE_CLEAR`` on ``obs.block`` (block instruments).",
+      "properties": {
+        "block_section": {
+          "pattern": "^[A-Z]{1,6}-[A-Z]{1,6}$",
+          "title": "Block Section",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "LINE_CLEAR_REQ",
+            "LINE_CLEAR_GRANTED",
+            "LINE_CLEAR_CANCELLED"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "train_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train Run Id"
+        }
+      },
+      "required": [
+        "block_section",
+        "kind"
+      ],
+      "title": "LineClearPayload",
+      "type": "object"
+    },
+    "OccupancyPayload": {
+      "additionalProperties": false,
+      "description": "``TDS_OCCUPANCY`` on ``obs.occupancy`` (logger / EI).",
+      "properties": {
+        "occupied": {
+          "title": "Occupied",
+          "type": "boolean"
+        },
+        "tds_id": {
+          "minLength": 1,
+          "title": "Tds Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tds_id",
+        "occupied"
+      ],
+      "title": "OccupancyPayload",
+      "type": "object"
+    },
+    "PositionPayload": {
+      "additionalProperties": false,
+      "description": "``TRAIN_POSITION`` on ``obs.position`` (RTIS-like, 30 s).",
+      "properties": {
+        "heading_deg": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 360.0,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heading Deg"
+        },
+        "speed_kmh": {
+          "minimum": 0,
+          "title": "Speed Kmh",
+          "type": "number"
+        }
+      },
+      "required": [
+        "speed_kmh"
+      ],
+      "title": "PositionPayload",
+      "type": "object"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "description": "Data-quality flags (DQ-02, DQ-03). ``duplicate_of`` names the first copy of a duplicate.",
+      "properties": {
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duplicate Of"
+        },
+        "late": {
+          "default": false,
+          "title": "Late",
+          "type": "boolean"
+        },
+        "simulated_noise": {
+          "default": false,
+          "title": "Simulated Noise",
+          "type": "boolean"
+        }
+      },
+      "title": "Quality",
+      "type": "object"
+    },
+    "RakeReadyPayload": {
+      "additionalProperties": false,
+      "description": "``RAKE_READY`` on ``ops.rakes`` (FOIS RMS-like).",
+      "properties": {
+        "commodity": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commodity"
+        },
+        "consist": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Consist"
+        },
+        "entry_point": {
+          "pattern": "^[A-Z]{1,6}$",
+          "title": "Entry Point",
+          "type": "string"
+        },
+        "load_id": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Load Id"
+        },
+        "loaded": {
+          "title": "Loaded",
+          "type": "boolean"
+        },
+        "rake_id": {
+          "pattern": "^\\S+$",
+          "title": "Rake Id",
+          "type": "string"
+        },
+        "ready_time": {
+          "format": "date-time",
+          "title": "Ready Time",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^\\S+$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rake_id",
+        "type",
+        "loaded",
+        "entry_point",
+        "ready_time"
+      ],
+      "title": "RakeReadyPayload",
+      "type": "object"
+    },
+    "StationEventPayload": {
+      "additionalProperties": false,
+      "description": "``STATION_EVENT`` on ``obs.station`` (COA-like; minute resolution at manual stations).",
+      "properties": {
+        "kind": {
+          "enum": [
+            "ARR",
+            "DEP",
+            "PASS"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "line_used": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line Used"
+        },
+        "manual": {
+          "title": "Manual",
+          "type": "boolean"
+        },
+        "reported_time": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reported Time"
+        },
+        "station": {
+          "pattern": "^[A-Z]{1,6}$",
+          "title": "Station",
+          "type": "string"
+        }
+      },
+      "required": [
+        "station",
+        "kind",
+        "manual"
+      ],
+      "title": "StationEventPayload",
+      "type": "object"
+    },
+    "TrainOutOfSectionPayload": {
+      "additionalProperties": false,
+      "description": "``TRAIN_OUT_OF_SECTION`` on ``obs.block``.",
+      "properties": {
+        "block_section": {
+          "pattern": "^[A-Z]{1,6}-[A-Z]{1,6}$",
+          "title": "Block Section",
+          "type": "string"
+        },
+        "kind": {
+          "const": "TRAIN_OUT_OF_SECTION",
+          "default": "TRAIN_OUT_OF_SECTION",
+          "title": "Kind",
+          "type": "string"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "train_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train Run Id"
+        }
+      },
+      "required": [
+        "block_section"
+      ],
+      "title": "TrainOutOfSectionPayload",
+      "type": "object"
+    },
+    "TsrIssuedPayload": {
+      "additionalProperties": false,
+      "description": "``TSR_ISSUED`` on ``ops.tsr`` (caution-order register).",
+      "properties": {
+        "caution_order_no": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caution Order No"
+        },
+        "km_from": {
+          "title": "Km From",
+          "type": "number"
+        },
+        "km_to": {
+          "title": "Km To",
+          "type": "number"
+        },
+        "notice_station": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{1,6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notice Station"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "tsr_id": {
+          "pattern": "^\\S+$",
+          "title": "Tsr Id",
+          "type": "string"
+        },
+        "valid_from": {
+          "format": "date-time",
+          "title": "Valid From",
+          "type": "string"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid To"
+        },
+        "vmax_kmh": {
+          "exclusiveMinimum": 0,
+          "title": "Vmax Kmh",
+          "type": "number"
+        }
+      },
+      "required": [
+        "tsr_id",
+        "km_from",
+        "km_to",
+        "vmax_kmh",
+        "valid_from"
+      ],
+      "title": "TsrIssuedPayload",
+      "type": "object"
+    },
+    "TsrWithdrawnPayload": {
+      "additionalProperties": false,
+      "description": "``TSR_WITHDRAWN`` on ``ops.tsr``.",
+      "properties": {
+        "caution_order_no": {
+          "anyOf": [
+            {
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caution Order No"
+        },
+        "tsr_id": {
+          "pattern": "^\\S+$",
+          "title": "Tsr Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tsr_id"
+      ],
+      "title": "TsrWithdrawnPayload",
+      "type": "object"
+    },
+    "WeatherPayload": {
+      "additionalProperties": false,
+      "description": "``WEATHER`` on ``ops.weather`` (IMD-like, P2).",
+      "properties": {
+        "rain_mm_h": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rain Mm H"
+        },
+        "visibility_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visibility M"
+        }
+      },
+      "title": "WeatherPayload",
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/Gous0786/RailDSS/schemas/events/envelope-1.0.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "TRAIN_POSITION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "location": {
+            "not": {
+              "type": "null"
+            }
+          },
+          "payload": {
+            "$ref": "#/$defs/PositionPayload"
+          },
+          "train_run_id": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "train_run_id",
+          "location"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "STATION_EVENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/StationEventPayload"
+          },
+          "train_run_id": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "train_run_id"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "TDS_OCCUPANCY"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/OccupancyPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "LINE_CLEAR"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/LineClearPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "TRAIN_OUT_OF_SECTION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/TrainOutOfSectionPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "TSR_ISSUED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/TsrIssuedPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "TSR_WITHDRAWN"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/TsrWithdrawnPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "DISRUPTION_RAISED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/DisruptionRaisedPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "DISRUPTION_UPDATED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/DisruptionUpdatedPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "DISRUPTION_CLEARED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/DisruptionClearedPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "RAKE_READY"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/RakeReadyPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "CREW_STATUS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/CrewStatusPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "WEATHER"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/WeatherPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "HEARTBEAT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/HeartbeatPayload"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "TRAIN_STATE"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "location": {
+            "not": {
+              "type": "null"
+            }
+          },
+          "train_run_id": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "train_run_id",
+          "location"
+        ]
+      }
+    }
+  ],
+  "description": "The §6.2 envelope. ``section_id`` is the default partition key (NFR-SCL-08).",
+  "properties": {
+    "event_id": {
+      "format": "uuid",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_time": {
+      "format": "date-time",
+      "title": "Event Time",
+      "type": "string"
+    },
+    "event_type": {
+      "$ref": "#/$defs/EventType"
+    },
+    "ingest_time": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set when the feed delivered it",
+      "title": "Ingest Time"
+    },
+    "location": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EventLocation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "loco_id": {
+      "anyOf": [
+        {
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Loco Id"
+    },
+    "network_version": {
+      "pattern": "^\\S+$",
+      "title": "Network Version",
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    },
+    "quality": {
+      "$ref": "#/$defs/Quality"
+    },
+    "scenario_id": {
+      "anyOf": [
+        {
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Null in live operation",
+      "title": "Scenario Id"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "section_id": {
+      "description": "Partition key, e.g. KTV-PSA",
+      "pattern": "^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$",
+      "title": "Section Id",
+      "type": "string"
+    },
+    "seq": {
+      "description": "Per-source sequence number (DQ-03)",
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "source": {
+      "description": "Producing system, e.g. SIM.RTIS",
+      "pattern": "^[A-Z][A-Z0-9_-]*(\\.[A-Z0-9_-]+)*$",
+      "title": "Source",
+      "type": "string"
+    },
+    "train_run_id": {
+      "anyOf": [
+        {
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Train Run Id"
+    }
+  },
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "source",
+    "section_id",
+    "network_version",
+    "seq",
+    "event_time",
+    "payload"
+  ],
+  "title": "RailDSS event envelope 1.0",
+  "type": "object"
+}

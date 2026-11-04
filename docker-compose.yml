@@ -21,29 +21,60 @@ services:
 
   kafka:
     # Apache Kafka 4.x in KRaft mode, single node (spec REC-05). No Redpanda (BSL).
+    # Clients authenticate with SASL/PLAIN and are authorised by ACLs (NFR-SEC-03, FR-TWIN-14):
+    # users admin (super user), twin, evaluation and dss. Topics and ACLs come from
+    # config/kafka/topics.yaml:  uv run python -m raildss_common kafka apply  (as admin).
+    # The controller listener is bound to the container's loopback only.
     image: apache/kafka:4.4.0
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: SASL_PLAINTEXT://:9092,CONTROLLER://localhost:9093
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://localhost:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_LISTENER_NAME_SASL__PLAINTEXT_PLAIN_SASL_JAAS_CONFIG: >-
+        org.apache.kafka.common.security.plain.PlainLoginModule required
+        username="admin"
+        password="${KAFKA_ADMIN_PASSWORD:?Set KAFKA_ADMIN_PASSWORD in .env (see .env.example)}"
+        user_admin="${KAFKA_ADMIN_PASSWORD}"
+        user_twin="${KAFKA_TWIN_PASSWORD:?Set KAFKA_TWIN_PASSWORD in .env (see .env.example)}"
+        user_evaluation="${KAFKA_EVALUATION_PASSWORD:?Set KAFKA_EVALUATION_PASSWORD in .env (see .env.example)}"
+        user_dss="${KAFKA_DSS_PASSWORD:?Set KAFKA_DSS_PASSWORD in .env (see .env.example)}";
+      # ACLs are enforced; anything not granted is denied. ANONYMOUS is only reachable on the
+      # loopback controller listener (broker-to-controller traffic inside the container).
+      # The image's configure script insists on KAFKA_OPTS when SASL is on; the JAAS config is
+      # given per listener above, so a harmless system property is enough.
+      KAFKA_OPTS: -Draildss.jaas=listener-property
+      KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+      KAFKA_SUPER_USERS: User:admin;User:ANONYMOUS
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       # Retention: scenario duration + 30 days (spec FR-AUD-04).
       KAFKA_LOG_RETENTION_HOURS: 720
+      # Not a KAFKA_* variable, so the image does not turn it into a broker property.
+      RAILDSS_KAFKA_ADMIN_PASSWORD: ${KAFKA_ADMIN_PASSWORD}
     ports:
       - "9092:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      test:
+        - CMD-SHELL
+        - >-
+          printf 'security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="%s";\n'
+          "$$RAILDSS_KAFKA_ADMIN_PASSWORD" > /tmp/healthcheck.properties &&
+          /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
+          --command-config /tmp/healthcheck.properties > /dev/null 2>&1
       interval: 10s
-      timeout: 10s
+      timeout: 20s
       retries: 15
 
 volumes:

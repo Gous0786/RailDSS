@@ -1,0 +1,80 @@
+# Kafka topic catalogue and access control (spec §7.1-7.2, REC-05, FR-TWIN-14, DQ-12, NFR-SEC-03; issue #19).
+#
+# Applied by `python -m raildss_common kafka apply` (idempotent: creates what is missing, aligns topic
+# configs, adds missing ACLs). `python -m raildss_common kafka check` is the DQ-12 deployment check.
+#
+# Topics
+#   key   what the producer uses as the record key. `section_id` is the envelope field (NFR-SCL-08);
+#         `payload.<field>` is a field of the payload (spec §7.2 key column). Default: section_id.
+#
+# Principals (SASL/PLAIN users; passwords come from .env, see docker-compose.yml)
+#   role  dss | simulator | evaluation. A `dss` principal may never be granted any access to a
+#         `gt.*` topic (FR-TWIN-14, DQ-12); loading this file fails if one is.
+#   read / write  topic grants. An entry ending in "." is a PREFIXED grant, otherwise a LITERAL topic.
+#   Consumer groups: a principal may use group ids that start with "<name>." (PREFIXED group ACL).
+
+version: 1
+
+client:
+  timeout_s: 30                 # admin request / flush timeout used by the CLI and helpers
+
+defaults:
+  partitions: 3                 # > 1 so multi-section is a deployment change (NFR-SCL-08)
+  replication_factor: 1         # single-node KRaft demo broker (REC-05)
+  key: section_id
+  config:
+    cleanup.policy: delete
+    retention.ms: "2678400000"  # 31 days >= scenario duration (<= 1 day in M0) + 30 days (FR-AUD-04)
+
+topics:
+  # ---------------------------------------------------------------- simulated feeds, twin -> DSS (§7.1)
+  - {name: obs.position, description: RTIS-like train position, 30 s}
+  - {name: obs.station, description: COA-like station event (ARR / DEP / PASS)}
+  - {name: obs.occupancy, description: Data-logger / EI track-section occupancy}
+  - {name: obs.block, description: Block-instrument events (line clear, train out of section)}
+  - {name: obs.heartbeat, description: Feed health per source}
+  - {name: ops.tsr, description: Caution orders (TSR issued / withdrawn)}
+  - {name: ops.blocks, description: Maintenance blocks}
+  - {name: ops.disruptions, description: Control-log disruptions with ETR estimates}
+  - {name: ops.rakes, description: FOIS RMS-like rake readiness}
+  - {name: ops.crew, description: CMS-like crew status}
+  - {name: ops.weather, description: IMD-like weather (P2)}
+  # ---------------------------------------------------------------- ground truth, evaluation only (§7.1, FR-TWIN-14)
+  - {name: gt.state, description: 1 s true train state}
+  - {name: gt.occupancy, description: Every true occupancy change}
+  - {name: gt.signal, description: Every signal, point and route change}
+  - {name: gt.delay, description: Delay records with cause tags}
+  # ---------------------------------------------------------------- internal DSS topics (§7.2)
+  - {name: dss.state, description: DS-3 state snapshot}
+  - {name: dss.predictions, description: DS-4 ETA predictions}
+  - {name: dss.conflicts, description: DS-5 conflicts}
+  - {name: dss.candidates, key: payload.rec_id, description: DS-6 candidate plans}
+  - {name: dss.verification, key: payload.option_id, description: DS-7 verification results}
+  - {name: dss.recommendations, description: DS-9 recommendations}
+  - {name: dss.explanations, key: payload.option_id, description: DS-10 explanations}
+  - {name: dss.alerts, description: DS-14 alerts}
+  - {name: dss.kpi, key: payload.scope, description: DS-8 KPI snapshots}
+  - {name: ctrl.decisions, key: payload.rec_id, description: DS-11 controller decisions}
+  - {name: ctrl.orders, key: payload.station, description: DS-12 control orders to the twin (TW-7)}
+  - {name: ctrl.order_acks, key: payload.order_id, description: TW-7 order acknowledgements}
+  - {name: audit.log, description: Hash-chained audit records (DS-15)}
+  # ---------------------------------------------------------------- dead letters (DQ-01, FR-ING-01)
+  - {name: dlq.obs, description: Rejected obs.* records with the reason}
+  - {name: dlq.ops, description: Rejected ops.* records with the reason}
+  - {name: dlq.internal, description: Rejected dss.* / ctrl.* / audit.log records with the reason}
+
+principals:
+  - name: twin
+    role: simulator
+    description: Digital twin and feed simulators (TW-*)
+    write: [obs., ops., gt., ctrl.order_acks]
+    read: [ctrl.orders]
+  - name: evaluation
+    role: evaluation
+    description: Evaluation store and KPI harness; the only reader of ground truth
+    read: [gt., obs., ops., dss., ctrl., audit.log]
+  - name: dss
+    role: dss
+    description: DSS online services (DS-1 to DS-16); no access to gt.*
+    read: [obs., ops., dss., ctrl., audit.log]
+    write: [dss., ctrl.decisions, ctrl.orders, audit.log, dlq.]

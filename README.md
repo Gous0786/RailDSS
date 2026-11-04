@@ -45,9 +45,16 @@ It fails on BSL, ELv2, SSPL, Prosperity, GPL or AGPL. LGPL and unknown licences 
 ## Local infrastructure
 
 ```bash
-cp .env.example .env          # set POSTGRES_PASSWORD; .env is git-ignored
+cp .env.example .env          # set POSTGRES_PASSWORD and the KAFKA_*_PASSWORD values; .env is git-ignored
 docker compose up -d db kafka
+uv run python -m raildss_common kafka apply   # topics + ACLs from config/kafka/topics.yaml (idempotent; as admin)
+uv run python -m raildss_common kafka check   # DQ-12: DSS principals cannot reach gt.*
 ```
+
+Kafka clients authenticate with SASL/PLAIN as one of `admin`, `twin`, `evaluation` or `dss`
+(`RAILDSS_KAFKA_USERNAME` / `RAILDSS_KAFKA_PASSWORD`). Every message uses the versioned event
+envelope (`schemas/events/envelope-1.0.schema.json`, spec §6.2); see `raildss_common.envelope`
+and `raildss_common.bus`. Kafka integration tests: `RAILDSS_TEST_KAFKA_BOOTSTRAP=localhost:9092 uv run pytest -m kafka`.
 
 | Service | Image | Port |
 |---|---|---|

@@ -16,3 +16,6 @@ src/raildss_schema/__main__.py: 2  # repository-root depth and JSON indent width
 src/raildss_etl/load.py: 86400  # seconds per day (unit conversion for WTT seconds-since-day-1), not a rule value
 src/raildss_etl/mapping.py: 2  # directory depth from the package to the repository root, not a rule value
 src/raildss_etl/topology.py: 1000  # metres per km (unit conversion), not a rule value
+src/raildss_common/__main__.py: 2  # JSON indent width of the generated schema, not a rule value
+src/raildss_common/envelope.py: 360  # degrees in a full circle (heading range), not a rule value
+src/raildss_common/topics.py: 2  # directory depth from the package to the repository root, not a rule value
