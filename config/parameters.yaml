@@ -320,6 +320,13 @@ parameters:
     status: SA
     owner: data
     valid_from: 2026-11-03
+  - key: freight.through_transit_min_stations
+    value: 15
+    unit: count
+    source: R06 §2 (through-transit definition)
+    status: DATA
+    owner: data
+    valid_from: 2026-11-04
   - key: freight.tt_share
     value: 0.0
     unit: fraction
@@ -539,6 +546,13 @@ parameters:
     status: SA
     owner: dss
     valid_from: 2026-11-03
+  - key: kpi.freight_long_dwell_min
+    value: 30
+    unit: min
+    source: R06 §2 (share of freight stops longer than 30 min, e.g. 29.7 % at VZM)
+    status: DATA
+    owner: dss
+    valid_from: 2026-11-04
   - key: kpi.scott.efficiency
     value: 0.7
     unit: fraction

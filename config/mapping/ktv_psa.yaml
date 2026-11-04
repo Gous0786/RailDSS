@@ -28,6 +28,7 @@ value_maps:                       # code -> canonical value, used by ETL stage 2
   coa_level: {"1": coa, "0": route_split_at_halt}           # MANCOABLCKSCTN (REC-26)
   recv_send: {"R": receive, "S": send}                      # Connections MACRECVSENDFLAG
   line_direction: {"DN": DN, "UP": UP, "MID": BOTH, "KK": BOTH, "1": BOTH}  # BLOCKSCTNLINE.MAVDRTN is blank; derive from line id
+  loaded_empty: {"L": true, "E": false}                              # freight LE
 wtt:                              # WTT list encodings (issue #10)
   list_separator: ","             # DAY_OF_SERVICES, BLOCK_BUSY_DAYS, PLATFORM: 7 values, Monday-first
   runs: "1"                       # day-mask value meaning "runs"

@@ -21,6 +21,7 @@ Null tokens: '', 'NA'.
 | `coa_level` | `1` -> `coa`, `0` -> `route_split_at_halt` |
 | `recv_send` | `R` -> `receive`, `S` -> `send` |
 | `line_direction` | `DN` -> `DN`, `UP` -> `UP`, `MID` -> `BOTH`, `KK` -> `BOTH`, `1` -> `BOTH` |
+| `loaded_empty` | `L` -> `True`, `E` -> `False` |
 
 ## ROUTE_DN
 

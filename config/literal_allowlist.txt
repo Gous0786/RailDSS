@@ -19,3 +19,13 @@ src/raildss_etl/topology.py: 1000  # metres per km (unit conversion), not a rule
 src/raildss_common/__main__.py: 2  # JSON indent width of the generated schema, not a rule value
 src/raildss_common/envelope.py: 360  # degrees in a full circle (heading range), not a rule value
 src/raildss_common/topics.py: 2  # directory depth from the package to the repository root, not a rule value
+src/raildss_etl/freight.py: 1440  # minutes per day (unit conversion), not a rule value
+src/raildss_etl/freight.py: 24  # hours per day (unit conversion), not a rule value
+src/raildss_etl/freight.py: 60  # minutes per hour (unit conversion), not a rule value
+src/raildss_etl/freight.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_etl/freight.py: 0.1  # p10 quantile level of reported statistics, not a rule value
+src/raildss_etl/freight.py: 0.5  # median quantile level, not a rule value
+src/raildss_etl/freight.py: 0.9  # p90 quantile level of reported statistics, not a rule value
+src/raildss_etl/freight.py: 2  # rounding digits / a block id has two ends, not a rule value
+src/raildss_etl/freight.py: 3  # rounding digits of a share, not a rule value
+src/raildss_etl/freight.py: 4  # rounding digits of an agreement rate, not a rule value
