@@ -29,3 +29,8 @@ src/raildss_etl/freight.py: 0.9  # p90 quantile level of reported statistics, no
 src/raildss_etl/freight.py: 2  # rounding digits / a block id has two ends, not a rule value
 src/raildss_etl/freight.py: 3  # rounding digits of a share, not a rule value
 src/raildss_etl/freight.py: 4  # rounding digits of an agreement rate, not a rule value
+src/raildss_etl/signalling.py: 1000  # metres per km (unit conversion), not a rule value
+src/raildss_etl/signalling.py: 3.6  # km/h per m/s (unit conversion), not a rule value
+src/raildss_etl/signalling.py: 2  # v^2 / 2a in the braking-distance formula and the two non-warning aspects, not rule values
+src/raildss_etl/signalling.py: 6  # rounding digits of chainage, not a rule value
+src/raildss_etl/signalling.py: 0.000001  # floating-point tolerance for tiling, not a rule value

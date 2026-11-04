@@ -117,6 +117,24 @@ parameters:
       (2000/Elect(G)/113/4/Safety, 8 Oct 2024) is electrical, not signalling; secondary sources
       give 1-1.5 km between automatic signals.
 
+  - key: twin.abs_signal_aspects
+    value: 4
+    unit: count
+    source: spec FR-TWIN-04 (MACL automatic block; 4-aspect assumed)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-04
+    notes: Warning distance = (aspects - 2) sub-blocks must cover the braking distance.
+  - key: twin.service_braking_decel_mps2
+    value: 0.7
+    unit: m/s2
+    source: spec FR-TWIN-04 braking check
+    status: DUMMY
+    owner: twin
+    provenance: placeholder
+    valid_from: 2026-11-04
+    notes: "Placeholder service-braking deceleration for the fastest consist; replaced by #15 / #16 dynamics."
+
   # ------------------------------------------------------------------ station lines and platforms
   - key: station_line.csr
     value_ref: STTNLINE.MANCSR
