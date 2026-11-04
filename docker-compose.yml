@@ -47,6 +47,9 @@ services:
         user_dss="${KAFKA_DSS_PASSWORD:?Set KAFKA_DSS_PASSWORD in .env (see .env.example)}";
       # ACLs are enforced; anything not granted is denied. ANONYMOUS is only reachable on the
       # loopback controller listener (broker-to-controller traffic inside the container).
+      # The image's configure script insists on KAFKA_OPTS when SASL is on; the JAAS config is
+      # given per listener above, so a harmless system property is enough.
+      KAFKA_OPTS: -Draildss.jaas=listener-property
       KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
       KAFKA_SUPER_USERS: User:admin;User:ANONYMOUS
