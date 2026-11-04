@@ -120,6 +120,13 @@ def raw_fields(row: pd.Series, table: TableSpec) -> dict[str, Any]:
     return {c: _jsonable(row[c]) for c, s in table.columns.items() if s.targets == ["raw"] and c in row.index}
 
 
+def _speed(kmh: Decimal | None, where: str) -> float:
+    """Max speed in km/h. A blank, NA or non-positive value is a data error, not 0 km/h."""
+    if kmh is None or kmh <= 0:
+        raise ValueError(f"{where}: missing or non-positive MANMAXSPEED ({kmh})")
+    return float(kmh)
+
+
 def _metres(km: Decimal | None) -> float:
     if km is None:
         raise ValueError("missing distance")
@@ -229,7 +236,7 @@ def build_topology(
                 n_lines=int(b["MANNUMBLINES"]),
                 system=codec.decode("block_system", b["MAVSGNLTYPE"]),
                 length_m=_metres(codec.number(b["MANINTRDIST"])),
-                vmax_kmh=float(codec.number(b["MANMAXSPEED"]) or 0),
+                vmax_kmh=_speed(codec.number(b["MANMAXSPEED"]), f"BLOCKSCTN {bid}"),
                 controller_section=codec.text(b["MAVSCTNCODE"]),
                 raw=raw_fields(b, bs_spec),
             )
@@ -257,7 +264,7 @@ def build_topology(
                 direction=codec.decode("line_direction", line_id),
                 length_m=_metres(codec.number(row["MANLINELENGTH"])),
                 system=codec.decode("block_system", row["MAVSGNLTYPE"]),
-                vmax_kmh=float(codec.number(row["MANMAXSPEED"]) or 0),
+                vmax_kmh=_speed(codec.number(row["MANMAXSPEED"]), f"BLOCKSCTNLINE {bid}/{line_id}"),
                 category=codec.text(row["MAVLINECATEGORY"]),
                 raw=raw_fields(row, bsl_spec),
             )

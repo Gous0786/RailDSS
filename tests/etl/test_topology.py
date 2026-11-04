@@ -88,3 +88,16 @@ def test_build_is_deterministic_and_written(
     write_topology(*built, tmp_path)
     assert (tmp_path / "topology_report.json").exists()
     assert len((tmp_path / "operational_points.jsonl").read_text(encoding="utf-8").splitlines()) == 22
+
+
+@pytest.mark.parametrize(("table", "block"), [("BLOCKSCTN", "KUK-VZM"), ("BLOCKSCTNLINE", "KUK-VZM")])
+@pytest.mark.parametrize("blank", ["", "NA", "0"])
+def test_missing_max_speed_is_an_error(
+    tables: dict[str, pd.DataFrame], table: str, block: str, blank: str
+) -> None:
+    broken = dict(tables)
+    df = tables[table].copy()
+    df.loc[df["MAVBLCKSCTN"] == block, "MANMAXSPEED"] = blank
+    broken[table] = df
+    with pytest.raises(ValueError, match=f"{table} {block}.*MANMAXSPEED"):
+        build_topology(broken)
