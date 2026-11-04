@@ -229,7 +229,9 @@ def isolation_violations(
     problems: list[str] = []
     if not broker_config.get("authorizer.class.name"):
         problems.append("broker has no authorizer (authorizer.class.name is empty): ACLs are not enforced")
-    if broker_config.get("allow.everyone.if.no.acl.found", "false").lower() != "false":
+    # Authorizer-specific keys come back with a null value from DescribeConfigs; Kafka's default
+    # is false, so only an explicit "true" is a violation.
+    if broker_config.get("allow.everyone.if.no.acl.found", "").strip().lower() == "true":
         problems.append("allow.everyone.if.no.acl.found is not false: unknown principals can read gt.*")
     dss: list[Principal] = [p for p in catalogue.principals if p.is_dss]
     dss_names = {p.kafka_principal for p in dss}

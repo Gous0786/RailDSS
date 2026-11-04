@@ -127,6 +127,7 @@ def test_isolation_check_flags_every_exposure() -> None:
         assert isolation_violations([bad], SECURE, cat)  # type: ignore[list-item]
     assert isolation_violations([], {**SECURE, "authorizer.class.name": ""}, cat)
     assert isolation_violations([], {**SECURE, "allow.everyone.if.no.acl.found": "true"}, cat)
+    assert isolation_violations([], {**SECURE, "allow.everyone.if.no.acl.found": ""}, cat) == []
     assert isolation_violations([], {**SECURE, "super.users": "User:admin;User:dss"}, cat)
 
 
