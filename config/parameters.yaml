@@ -133,7 +133,7 @@ parameters:
     owner: twin
     provenance: placeholder
     valid_from: 2026-11-04
-    notes: Placeholder service-braking deceleration for the fastest consist; replaced by #15 / #16 dynamics.
+    notes: "Placeholder service-braking deceleration for the fastest consist; replaced by #15 / #16 dynamics."
 
   # ------------------------------------------------------------------ station lines and platforms
   - key: station_line.csr
