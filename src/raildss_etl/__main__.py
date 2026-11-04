@@ -11,7 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import timetable, topology
+from raildss_etl import freight, timetable, topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -28,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
     p_s2.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     p_wtt = sub.add_parser("wtt", help="import the WTT (runs stage 1 in memory)")
     p_wtt.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
+    p_fr = sub.add_parser("freight", help="freight demand + historical stats (runs stages 1-2 in memory)")
+    p_fr.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -54,6 +56,13 @@ def main(argv: list[str] | None = None) -> int:
         print(rep5.model_dump_json(indent=1))
         print(f"wtt: {'OK' if s1.ok and rep5.ok else 'FAILED'} -> {args.out}")
         return 0 if s1.ok and rep5.ok else 1
+    if args.cmd == "freight":
+        tables, s1 = run_stage1(mapping, write=False)
+        topo, rep2 = topology.build_topology(tables, mapping)
+        demand, rep6 = freight.build_freight(tables, topo, mapping)
+        freight.write_freight(demand, rep6, args.out)
+        print(rep6.model_dump_json(indent=1, exclude={"loads_per_day_by_block"}))
+        return 0 if s1.ok and rep2.ok else 1
     if args.cmd == "stage2":
         tables, s1 = run_stage1(mapping, write=False)
         topo, rep = topology.build_topology(tables, mapping)
