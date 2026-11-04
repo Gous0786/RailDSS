@@ -84,8 +84,8 @@ EventId = Annotated[UUID, BeforeValidator(_canonical_uuid)]
 EventTime = Annotated[UtcDatetime, BeforeValidator(_timestamp_text)]
 """A timezone-aware RFC 3339 timestamp, normalised to UTC. Epoch numbers and naive times fail."""
 
-Number = Annotated[float, Strict()]
-"""A JSON number (int or float). Strings are not coerced."""
+Number = Annotated[float, Strict(), Field(allow_inf_nan=False)]
+"""A finite JSON number (int or float). Strings are not coerced; NaN and Infinity are rejected."""
 Count = Annotated[int, Strict()]
 Flag = Annotated[bool, Strict()]
 Token = Annotated[str, Field(pattern=TOKEN_PATTERN)]
@@ -377,12 +377,16 @@ def _summary(exc: ValidationError) -> str:
     return "; ".join(f"{'.'.join(str(p) for p in e['loc']) or '<root>'}: {e['msg']}" for e in exc.errors())
 
 
+def _reject_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not valid JSON")
+
+
 def parse_event(raw: bytes | str | Mapping[str, Any]) -> EventEnvelope:
     """Decode and validate one event (DQ-01). Raises :class:`EnvelopeError` with the reason."""
     if isinstance(raw, bytes | str):
         try:
-            data = json.loads(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            data = json.loads(raw, parse_constant=_reject_constant)
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
             raise EnvelopeError(f"not valid JSON: {exc}") from None
     else:
         data = raw

@@ -15,7 +15,9 @@ broker's ACLs decide what each principal may read and write (see ``config/kafka/
 
 from __future__ import annotations
 
+import dataclasses
 import json
+import logging
 import os
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
@@ -23,10 +25,12 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 from uuid import UUID
 
-from confluent_kafka import Consumer, KafkaError, KafkaException, Message, Producer
+from confluent_kafka import Consumer, KafkaError, KafkaException, Message, Producer, TopicPartition
 
 from raildss_common.envelope import EnvelopeError, EventEnvelope, parse_event
 from raildss_common.topics import Catalogue, partition_key
+
+log = logging.getLogger(__name__)
 
 ENV_PREFIX = "RAILDSS_KAFKA_"
 DEFAULT_BOOTSTRAP = "localhost:9092"
@@ -47,16 +51,18 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls, prefix: str = ENV_PREFIX) -> KafkaSettings:
-        """Read ``<prefix>BOOTSTRAP``, ``USERNAME``, ``PASSWORD`` and ``SECURITY_PROTOCOL``."""
+        """Read ``<prefix>`` + BOOTSTRAP, USERNAME, PASSWORD, SECURITY_PROTOCOL and SASL_MECHANISM."""
         return cls(
             bootstrap_servers=os.environ.get(f"{prefix}BOOTSTRAP", DEFAULT_BOOTSTRAP),
             username=os.environ.get(f"{prefix}USERNAME"),
             password=os.environ.get(f"{prefix}PASSWORD"),
             security_protocol=os.environ.get(f"{prefix}SECURITY_PROTOCOL", "SASL_PLAINTEXT"),
+            sasl_mechanism=os.environ.get(f"{prefix}SASL_MECHANISM", "PLAIN"),
         )
 
     def as_principal(self, username: str, password: str) -> KafkaSettings:
-        return KafkaSettings(self.bootstrap_servers, username, password, self.security_protocol)
+        """The same connection with another principal's credentials (all other fields kept)."""
+        return dataclasses.replace(self, username=username, password=password)
 
     def client_config(self) -> dict[str, str | int | float | bool]:
         conf: dict[str, str | int | float | bool] = {
@@ -138,6 +144,8 @@ class ConsumerStats:
     delivered: int = 0
     duplicates: int = 0
     rejected: int = 0
+    unrouted: int = 0
+    """Rejections that could not be dead-lettered (no DLQ for the topic); logged at ERROR."""
 
 
 class EventProcessor:
@@ -168,8 +176,12 @@ class EventProcessor:
             event = parse_event(raw)
         except EnvelopeError as exc:
             self.stats.rejected += 1
+            rejection = Rejection(exc.reason, tuple(exc.errors), raw, topic, partition, offset, key)
             if self.on_reject is not None:
-                self.on_reject(Rejection(exc.reason, tuple(exc.errors), raw, topic, partition, offset, key))
+                self.on_reject(rejection)
+            else:
+                self.stats.unrouted += 1
+                _log_unrouted(rejection, "no dead-letter handler")
             return "rejected"
         if event.event_id in self.store:
             self.stats.duplicates += 1
@@ -178,6 +190,17 @@ class EventProcessor:
         self.store.add(event.event_id)
         self.stats.delivered += 1
         return "delivered"
+
+
+def _log_unrouted(rejection: Rejection, why: str) -> None:
+    log.error(
+        "rejected record not dead-lettered (%s): topic=%s partition=%s offset=%s reason=%s",
+        why,
+        rejection.topic,
+        rejection.partition,
+        rejection.offset,
+        rejection.reason,
+    )
 
 
 # --------------------------------------------------------------------------- Kafka clients
@@ -244,7 +267,9 @@ class EventConsumer:
         processor: EventProcessor,
         dlq_producer: EventProducer | None = None,
         extra: dict[str, Any] | None = None,
+        client: Consumer | None = None,
     ) -> None:
+        """``client`` replaces the confluent-kafka consumer (tests); otherwise one is built."""
         self.catalogue = catalogue
         self.processor = processor
         self.dlq_producer = dlq_producer
@@ -254,7 +279,7 @@ class EventConsumer:
             "enable.auto.commit": False,
             "auto.offset.reset": "earliest",
         }
-        self._consumer = Consumer(conf | (extra or {}))
+        self._consumer = client if client is not None else Consumer(conf | (extra or {}))
         self._consumer.subscribe(self.topics)
         if dlq_producer is not None and processor.on_reject is None:
             processor.on_reject = self._dead_letter
@@ -262,25 +287,34 @@ class EventConsumer:
     def _dead_letter(self, rejection: Rejection) -> None:
         assert self.dlq_producer is not None
         dlq = self.catalogue.topic(rejection.topic).dlq if rejection.topic else None
-        if dlq is not None:
-            self.dlq_producer.publish_raw(dlq, rejection.dlq_record(), key=rejection.key)
-            self.dlq_producer.flush()
+        if dlq is None:  # gt.* and dlq.* have no dead-letter topic: count and log, never drop silently
+            self.processor.stats.unrouted += 1
+            _log_unrouted(rejection, f"no dead-letter topic for {rejection.topic}")
+            return
+        self.dlq_producer.publish_raw(dlq, rejection.dlq_record(), key=rejection.key)
+        self.dlq_producer.flush()
 
     def poll(self, timeout_s: float) -> Outcome | None:
-        """Handle at most one record. Broker errors (e.g. authorisation failures) raise KafkaException."""
+        """Handle at most one record. Broker errors (e.g. authorisation failures) raise KafkaException.
+
+        If the handler raises, the consumer seeks back to the failed record before re-raising, so
+        the next ``poll`` retries it (no skipping or reordering); its offset is not committed.
+        """
         msg = self._consumer.poll(timeout_s)
         if msg is None:
             return None
         err = msg.error()
         if err is not None:
             raise KafkaException(err)
-        outcome = self.processor.process(
-            msg.value() or b"",
-            topic=msg.topic(),
-            partition=msg.partition(),
-            offset=msg.offset(),
-            key=msg.key(),
-        )
+        topic, partition, offset = msg.topic(), msg.partition(), msg.offset()
+        try:
+            outcome = self.processor.process(
+                msg.value() or b"", topic=topic, partition=partition, offset=offset, key=msg.key()
+            )
+        except Exception:
+            if topic is not None and partition is not None and offset is not None:
+                self._consumer.seek(TopicPartition(topic, partition, offset))
+            raise
         self._consumer.commit(message=msg, asynchronous=False)
         return outcome
 
