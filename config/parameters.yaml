@@ -114,6 +114,24 @@ parameters:
       Normal ABS signal spacing (~1 km) per a Railway Board guideline letter of 9 Oct 2024 as
       reported in web search results; the PDF returned 404 on 3 Nov 2026. Sensitivity 1.25 / 1.5 km.
 
+  - key: twin.abs_signal_aspects
+    value: 4
+    unit: count
+    source: spec FR-TWIN-04 (MACL automatic block; 4-aspect assumed)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-04
+    notes: Warning distance = (aspects - 2) sub-blocks must cover the braking distance.
+  - key: twin.service_braking_decel_mps2
+    value: 0.7
+    unit: m/s2
+    source: spec FR-TWIN-04 braking check
+    status: DUMMY
+    owner: twin
+    provenance: placeholder
+    valid_from: 2026-11-04
+    notes: Placeholder service-braking deceleration for the fastest consist; replaced by #15 / #16 dynamics.
+
   # ------------------------------------------------------------------ station lines and platforms
   - key: station_line.csr
     value_ref: STTNLINE.MANCSR

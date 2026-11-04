@@ -10,3 +10,4 @@ Register version: `2026.11.1`
 |---|---|---|---|---|
 | `abs.subblock_spacing_km.ktv_vzm` | `1.0` | km | https://indianrailways.gov.in/railwayboard/uploads/directorate/signal/2024/09_10_24.pdf | Normal ABS signal spacing (~1 km) per a Railway Board guideline letter of 9 Oct 2024 as reported in web search results; the PDF returned 404 on 3 Nov 2026. Sensitivity 1.25 / 1.5 km. |
 | `crew.duty_limit_h` | `{"running": 9, "sign_on_to_sign_off": 11, "crew_change_station": "PSA"}` | h | https://www.zeebiz.com/india/news-indian-railways-union-demands-shorter-duty-hours-more-rest-for-loco-pilots-60273/amp | News reports of current IR practice; HOER primary text not retrieved (C-14). |
+| `twin.service_braking_decel_mps2` | `0.7` | m/s2 | placeholder | Placeholder service-braking deceleration for the fastest consist; replaced by |
