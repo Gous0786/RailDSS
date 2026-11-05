@@ -9,8 +9,17 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from raildss_etl.boundaries import LOCAL, BoundaryConfig, BoundaryReport, Flow, build_boundaries, load_config
-from raildss_etl.freight import build_freight
+from raildss_etl.boundaries import (
+    LOCAL,
+    BoundaryConfig,
+    BoundaryReport,
+    Flow,
+    build_boundaries,
+    freight_day_mismatches,
+    load_config,
+    local_division_violations,
+)
+from raildss_etl.freight import FreightDemand, build_freight
 from raildss_etl.load import run_stage1
 from raildss_etl.timetable import build_timetable, ist
 from raildss_etl.topology import build_topology
@@ -19,10 +28,16 @@ Built = tuple[dict[str, Flow], dict[str, Flow], BoundaryReport, dict[str, pd.Dat
 
 
 @pytest.fixture(scope="module")
-def built() -> Built:
+def inputs() -> tuple[dict[str, pd.DataFrame], FreightDemand, set[str]]:
     tables: dict[str, pd.DataFrame] = run_stage1(write=False)[0]
     topo = build_topology(tables)[0]
-    demand = build_freight(tables, topo)[0]
+    return tables, build_freight(tables, topo)[0], {o.code for o in topo.operational_points}
+
+
+@pytest.fixture(scope="module")
+def built(inputs: tuple[dict[str, pd.DataFrame], FreightDemand, set[str]]) -> Built:
+    tables, demand, _ = inputs
+    topo = build_topology(tables)[0]
     wtt, freight, report = build_boundaries(build_timetable(tables)[0], demand, tables, topo, ist())
     return wtt, freight, report, tables
 
@@ -51,7 +66,7 @@ def test_every_train_and_load_has_entry_and_exit(built: Built) -> None:
 
 def test_daily_counts_match_freight_log(built: Built) -> None:
     _, freight, report, tables = built
-    assert report.freight_day_totals_match
+    assert report.freight_day_mismatches == []
     assert len(report.entries_per_day) == 27
     # A load whose log origin / destination division is elsewhere never enters / exits as local.
     assert report.freight_local_but_outside_od == {"entry": 0, "exit": 0}
@@ -114,3 +129,35 @@ def test_one_default_per_station_and_unique_blocks() -> None:
     bad["boundaries"]["A-Y"]["blocks"] = ["A-X"]
     with pytest.raises(ValidationError):
         BoundaryConfig.model_validate(bad)
+
+
+def test_day_check_fails_when_a_load_is_missing(
+    inputs: tuple[dict[str, pd.DataFrame], FreightDemand, set[str]],
+) -> None:
+    tables, demand, section = inputs
+    assert freight_day_mismatches(demand, tables["FREIGHT"], section, ist()) == []
+    days = [d.model_copy(deep=True) for d in demand.days]
+    dropped = days[5].run_ids.pop()
+    broken = demand.model_copy(update={"days": days})
+    problems = freight_day_mismatches(broken, tables["FREIGHT"], section, ist())
+    assert len(problems) == 1 and "entry" in problems[0] and dropped in problems[0]
+    # An exit moved to another day is caught as well.
+    loads = list(demand.loads)
+    assert loads[0].exit_time is not None
+    loads[0] = loads[0].model_copy(update={"exit_time": loads[0].exit_time + dt.timedelta(days=2)})
+    problems = freight_day_mismatches(
+        demand.model_copy(update={"loads": loads}), tables["FREIGHT"], section, ist()
+    )
+    assert sum("exit" in p for p in problems) == 2  # missing on one day, extra on another
+
+
+def test_division_check_fails_on_inconsistent_log(built: Built) -> None:
+    _, freight, _, tables = built
+    log = tables["FREIGHT"]
+    assert local_division_violations(freight, log) == {"entry": 0, "exit": 0}
+    local_in = next(lid for lid, f in freight.items() if f.entry.startswith(LOCAL))
+    local_out = next(lid for lid, f in freight.items() if f.exit.startswith(LOCAL))
+    bad = log.copy()
+    bad.loc[bad["LoadId"] == local_in, "From Division"] = "KUR"
+    bad.loc[bad["LoadId"] == local_out, "Division To"] = "KUR"
+    assert local_division_violations(freight, bad) == {"entry": 1, "exit": 1}

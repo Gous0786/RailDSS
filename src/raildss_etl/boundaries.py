@@ -15,12 +15,15 @@ WTT (per train version):
 
 Freight (per load, division log): the neighbouring off-section station before the first / after
 the last section row names the boundary (``via``); a load whose log starts / ends at a ``log_edge``
-station crossed the division boundary; otherwise the load is ``local``. Unknown neighbours fall back
-to the station's default boundary and are counted.
+station crossed the division boundary. With no neighbouring row, the load is ``local`` when its
+log origin (destination) is inside the section: the Source (Destination) station is a section
+station or the From Section (Section To) has both ends in the section. Otherwise it is a log gap,
+filled from the station's boundary or by direction (``gap_fill``). Unknown neighbours fall back to
+the station's default boundary and are counted.
 
-Cross-checks: a load whose log origin (destination) division is not the section's division must
-not enter (exit) as ``local``; a WTT train that terminates locally must have that station as its
-DESTINATION.
+Cross-checks, on fields the assignment does not read: a load entering (exiting) as ``local`` must
+have its From Division (Division To) equal to the section's division; a WTT train that terminates
+locally must have that station as its DESTINATION.
 """
 
 from __future__ import annotations
@@ -164,7 +167,7 @@ class BoundaryReport(BaseModel):
     freight_local_but_outside_od: dict[str, int]
     entries_per_day: dict[str, dict[str, dict[str, int]]]  # day -> "wtt"/"freight" -> boundary -> n
     exits_per_day: dict[str, dict[str, dict[str, int]]]
-    freight_day_totals_match: bool
+    freight_day_mismatches: list[str]  # per day: loads missing from / extra in the entry / exit counts
 
     @property
     def ok(self) -> bool:
@@ -173,7 +176,7 @@ class BoundaryReport(BaseModel):
             and not self.freight_unassigned
             and not self.wtt_local_exit_destination_mismatch
             and not any(self.freight_local_but_outside_od.values())
-            and self.freight_day_totals_match
+            and not self.freight_day_mismatches
         )
 
 
@@ -233,6 +236,10 @@ def assign_freight(
     has_boundary = {b.station for b in cfg.boundaries.values()}
     defaults: Counter[str] = Counter()
 
+    def in_section(station: Any, stretch: Any) -> bool:
+        ends = str(stretch).split("-")
+        return str(station) in section or (len(ends) > 1 and all(e in section for e in ends))
+
     def side(end: str, station: str, neighbour: str | None, direction: str, outside: bool) -> tuple[str, str]:
         fill = cfg.gap_fill.get(end, {}).get(direction, "")
         if neighbour is None:
@@ -260,12 +267,10 @@ def assign_freight(
         before = seq[idx[0] - 1] if idx[0] > 0 else None
         after = seq[idx[-1] + 1] if idx[-1] + 1 < len(seq) else None
         row = first.loc[load.load_id]
-        entry, entry_rule = side(
-            "entry", seq[idx[0]], before, load.direction, other_division(row["From Division"])
-        )
-        exit_, exit_rule = side(
-            "exit", seq[idx[-1]], after, load.direction, other_division(row["Division To"])
-        )
+        from_outside = not in_section(row["Source"], row["From Section"])
+        to_outside = not in_section(row["Destination"], row["Section To"])
+        entry, entry_rule = side("entry", seq[idx[0]], before, load.direction, from_outside)
+        exit_, exit_rule = side("exit", seq[idx[-1]], after, load.direction, to_outside)
         flows[load.load_id] = Flow(
             entry=entry,
             exit=exit_,
@@ -278,6 +283,68 @@ def assign_freight(
 
 
 # ---------------------------------------------------------------- report
+
+
+def local_division_violations(freight: dict[str, Flow], log: pd.DataFrame) -> dict[str, int]:
+    """Local entries (exits) whose log From Division (Division To) is another division.
+
+    The assignment decides ``local`` from origin / destination stations and sections, never from
+    the division fields, so this check can fail on inconsistent data.
+    """
+    first = log.sort_values(["LoadId", "Arrival Time"], kind="stable").groupby("LoadId").first()
+    out = {"entry": 0, "exit": 0}
+    for lid, f in freight.items():
+        row = first.loc[lid]
+        out["entry"] += f.entry.startswith(LOCAL) and other_division(row["From Division"])
+        out["exit"] += f.exit.startswith(LOCAL) and other_division(row["Division To"])
+    return out
+
+
+def log_day_sets(
+    log: pd.DataFrame, section: set[str], tz: dt.tzinfo
+) -> tuple[dict[dt.date, set[str]], dict[dt.date, set[str]]]:
+    """Loads per entry day and per exit day, recomputed from the raw freight log.
+
+    In-section rows are those whose block has both ends in the section. Entry time = departure
+    from the previous logged station (else arrival at the first in-section row); exit time =
+    arrival at the last in-section row. Days are local (``tz``).
+    """
+    ends = log["Block Section"].astype(str).str.split("-")
+    inside = ends.map(lambda e: len(e) == 2 and all(x in section for x in e))
+    prev_dep = log.groupby("LoadId", sort=False)["Depart Time"].shift()
+    entry: dict[dt.date, set[str]] = defaultdict(set)
+    exit_: dict[dt.date, set[str]] = defaultdict(set)
+    for lid, idx in log[inside].groupby("LoadId", sort=False).groups.items():
+        first, last = idx[0], idx[-1]
+        start: Any = prev_dep[first] if pd.notna(prev_dep[first]) else log.at[first, "Arrival Time"]
+        stop: Any = log.at[last, "Arrival Time"]
+        entry[pd.Timestamp(start).tz_convert(tz).date()].add(str(lid))
+        exit_[pd.Timestamp(stop).tz_convert(tz).date()].add(str(lid))
+    return entry, exit_
+
+
+def freight_day_mismatches(
+    demand: FreightDemand, log: pd.DataFrame, section: set[str], tz: dt.tzinfo
+) -> list[str]:
+    """Compare the per-day loads counted for entries / exits with the log's own per-day loads."""
+    exp_entry, exp_exit = log_day_sets(log, section, tz)
+    got_entry = {d.day: set(d.run_ids) for d in demand.days}
+    got_exit: dict[dt.date, set[str]] = defaultdict(set)
+    for load in demand.loads:
+        if load.exit_time is not None:
+            got_exit[load.exit_time.astimezone(tz).date()].add(load.load_id)
+    problems: list[str] = []
+    for end, exp, got in (("entry", exp_entry, got_entry), ("exit", exp_exit, got_exit)):
+        for day in sorted(set(exp) | set(got)):
+            missing, extra = (
+                exp.get(day, set()) - got.get(day, set()),
+                got.get(day, set()) - exp.get(day, set()),
+            )
+            if missing or extra:
+                problems.append(
+                    f"{day} {end}: missing {sorted(missing)[:3]} ({len(missing)}), extra {len(extra)}"
+                )
+    return problems
 
 
 def build_boundaries(
@@ -298,30 +365,20 @@ def build_boundaries(
         for tid, f in wtt.items()
         if f.exit.startswith(LOCAL) and str(trains.loc[tid, "DESTINATION"]) != f.exit_station
     )
-    first_rows = (
-        tables["FREIGHT"].sort_values(["LoadId", "Arrival Time"], kind="stable").groupby("LoadId").first()
-    )
-    outside = {"entry": 0, "exit": 0}
-    for lid, f in freight.items():
-        row = first_rows.loc[lid]
-        if f.entry.startswith(LOCAL) and str(row["From Division"]) not in (
-            SECTION_DIVISION,
-            "",
-            "nan",
-            "None",
-        ):
-            outside["entry"] += 1
-        if f.exit.startswith(LOCAL) and str(row["Division To"]) not in (SECTION_DIVISION, "", "nan", "None"):
-            outside["exit"] += 1
+    section = {o.code for o in topology.operational_points}
+    outside = local_division_violations(freight, tables["FREIGHT"])
+    day_mismatches = freight_day_mismatches(demand, tables["FREIGHT"], section, tz)
+    exit_day: dict[dt.date, list[str]] = defaultdict(list)
+    for load in demand.loads:
+        if load.exit_time is not None:
+            exit_day[load.exit_time.astimezone(tz).date()].append(load.load_id)
 
     entries: dict[str, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(dict))
     exits: dict[str, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(dict))
-    totals_match = True
     for day in demand.days:
         key = day.day.isoformat()
         fe = Counter(freight[i].entry for i in day.run_ids)
-        fx = Counter(freight[i].exit for i in day.run_ids)
-        totals_match &= sum(fe.values()) == len(day.run_ids)
+        fx = Counter(freight[i].exit for i in exit_day.get(day.day, []))
         runs = timetable.runs_on(day.day, tz, topology.network_version)
         we = Counter(wtt[r.train_id].entry for r in runs if r.train_id)
         wx = Counter(wtt[r.train_id].exit for r in runs if r.train_id)
@@ -341,7 +398,7 @@ def build_boundaries(
         freight_local_but_outside_od=outside,
         entries_per_day={d: dict(v) for d, v in entries.items()},
         exits_per_day={d: dict(v) for d, v in exits.items()},
-        freight_day_totals_match=totals_match,
+        freight_day_mismatches=day_mismatches,
     )
     return wtt, freight, report
 
