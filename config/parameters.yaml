@@ -182,6 +182,30 @@ parameters:
     status: DATA
     owner: data
     valid_from: 2026-11-03
+  - key: station_line.siding_speed_kmh
+    value: 15
+    unit: km/h
+    source: spec FR-TWIN-05 (loops 15 km/h); R06 §2
+    status: SA
+    owner: data
+    valid_from: 2026-11-04
+    notes: STTNLINE.MANLINESPEED is 0 for the 3 sidings (PDU 2, PDU 5, NWP 1); stage 4 assigns the loop speed and reports it as assigned.
+  - key: psr.post_spacing_m
+    value: 36
+    unit: m
+    source: PSR.MAVFROMSUBKM; PSR.MACKMOHEFLAG; R06 App. A.6
+    status: SA
+    owner: data
+    valid_from: 2026-11-04
+    notes: Distance per OHE-mast or km-post number within a km. The dataset has no mast table. The largest post number in the PSR files is 27, so 36 m is the largest round spacing that keeps every reference inside its km. Moves a PSR by at most one km; the restricted length itself comes from MANDISTANCE.
+  - key: psr.block_end_tolerance_m
+    value: 1500
+    unit: m
+    source: PSR 5440 (KUK-VZM at km 817.7, in the VZM yard); STATION.MANMILEPOSTKM_I
+    status: SA
+    owner: data
+    valid_from: 2026-11-04
+    notes: How far past a block's end stations (by km_ref_hwh) a PSR may start or end and still be placed on that block. Station km_ref_hwh is the station reference, not the yard throat.
   - key: station_line.trains_allowed
     value: 1
     unit: count
