@@ -227,10 +227,11 @@ def build_speeds(
                 for ln in topology.block_section_lines
                 if ln.block_section_id == profile.block_section_id and ln.line_id in placement.lines
             )
-            if profile.vmax_passenger_kmh > line_speed:
+            fastest = max(profile.vmax_passenger_kmh, profile.vmax_goods_kmh)
+            if fastest > line_speed:
                 problems.append(
-                    f"PSR {profile.id}: {profile.vmax_passenger_kmh:g} km/h is above the line speed "
-                    f"{line_speed:g} km/h"
+                    f"PSR {profile.id}: {fastest:g} km/h (passenger {profile.vmax_passenger_kmh:g}, "
+                    f"goods {profile.vmax_goods_kmh:g}) is above the line speed {line_speed:g} km/h"
                 )
             profiles.append(profile)
             placements.append(placement)
@@ -259,6 +260,11 @@ def build_speeds(
         key = f"{sl.op_code}/{sl.line_no}"
         speed, source = sl.line_speed_kmh, "data"
         if not speed:
+            if sl.kind != "siding":
+                problems.append(
+                    f"station line {key}: {sl.kind} line has no speed (MANLINESPEED missing or 0)"
+                )
+                continue
             speed, source = siding, "assigned"
             assigned.append(f"{key} ({sl.kind})")
             sl = sl.model_copy(update={"line_speed_kmh": speed})

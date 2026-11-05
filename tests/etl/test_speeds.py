@@ -33,7 +33,10 @@ def test_all_eight_psrs_map_to_the_right_direction(ctx: Ctx) -> None:
     assert [(p.direction, p.kind) for p in psrs].count(("UP", "PSR")) == 3
     blocks = {b.id: b for b in topo.block_sections if b.level == "coa"}
     lines = {(x.block_section_id, x.line_id): x for x in topo.block_section_lines}
-    for p, pl in zip(psrs, rep.placements, strict=True):
+    placed = {pl.id: pl for pl in rep.placements}
+    assert set(placed) == {p.id for p in psrs}
+    for p in psrs:
+        pl = placed[p.id]
         assert p.block_section_id in blocks and blocks[p.block_section_id].direction == p.direction
         assert pl.lines and all((p.block_section_id, lid) in lines for lid in pl.lines)
         assert all(lines[(p.block_section_id, lid)].direction in (p.direction, "BOTH") for lid in pl.lines)
@@ -91,3 +94,28 @@ def test_unresolved_reference_fails_the_stage(ctx: Ctx, column: str, value: str,
     assert not rep.ok
     assert any("PSR 5440" in p and message in p for p in rep.problems), rep.problems
     assert len(rep.placements) == 7  # the bad PSR is not placed approximately
+
+
+def test_goods_speed_above_the_line_speed_fails(ctx: Ctx) -> None:
+    tables = copy.deepcopy(ctx[0])
+    tables["PSR_DN"].loc[tables["PSR_DN"].index[1], "MANGDSSPEED"] = (
+        "125"  # VZM-NML DN line is 130; use a slower one
+    )
+    topo = ctx[1].model_copy(
+        update={
+            "block_section_lines": [
+                x.model_copy(update={"vmax_kmh": 100.0}) if x.block_section_id == "VZM-NML" else x
+                for x in ctx[1].block_section_lines
+            ]
+        }
+    )
+    _, rep = build_speeds(tables, topo, ctx[2])
+    assert any("PSR 5441" in p and "goods 125" in p and "above the line speed" in p for p in rep.problems)
+
+
+def test_missing_main_line_speed_fails_instead_of_defaulting(ctx: Ctx) -> None:
+    main = next(x for x in ctx[2] if x.kind == "main")
+    lines = [x.model_copy(update={"line_speed_kmh": None}) if x is main else x for x in ctx[2]]
+    _, rep = build_speeds(ctx[0], ctx[1], lines)
+    assert not rep.ok and any(f"{main.op_code}/{main.line_no}" in p and "no speed" in p for p in rep.problems)
+    assert f"{main.op_code}/{main.line_no} (main)" not in rep.assigned_station_lines
