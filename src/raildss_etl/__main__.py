@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import freight, geo, gradients, speeds, stations, timetable, topology
+from raildss_etl import boundaries, freight, geo, gradients, speeds, stations, timetable, topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -39,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     p_geo.add_argument("--update", action="store_true", help="record new hashes in inputs.yaml")
     p_gr = sub.add_parser("gradients", help="derive alignment, gradients and curves (issue #14)")
     p_gr.add_argument("--out", type=Path, default=gradients.OUT_DIR)
+    p_bd = sub.add_parser("boundaries", help="entry / exit boundary of every train and load (issue #12)")
+    p_bd.add_argument("--out", type=Path, default=boundaries.DEFAULT_OUT)
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -96,6 +98,16 @@ def main(argv: list[str] | None = None) -> int:
         print(rep5.model_dump_json(indent=1))
         print(f"wtt: {'OK' if s1.ok and rep5.ok else 'FAILED'} -> {args.out}")
         return 0 if s1.ok and rep5.ok else 1
+    if args.cmd == "boundaries":
+        tables, s1 = run_stage1(mapping, write=False)
+        topo, _ = topology.build_topology(tables, mapping)
+        tt, _ = timetable.build_timetable(tables, mapping)
+        demand, _ = freight.build_freight(tables, topo, mapping)
+        wtt, frt, rep7 = boundaries.build_boundaries(tt, demand, tables, topo, timetable.ist(mapping))
+        boundaries.write_boundaries(wtt, frt, rep7, args.out)
+        print(rep7.model_dump_json(indent=1, exclude={"entries_per_day", "exits_per_day"}))
+        print(f"boundaries: {'OK' if s1.ok and rep7.ok else 'FAILED'} -> {args.out}")
+        return 0 if s1.ok and rep7.ok else 1
     if args.cmd == "freight":
         tables, s1 = run_stage1(mapping, write=False)
         topo, rep2 = topology.build_topology(tables, mapping)

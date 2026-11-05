@@ -1,0 +1,55 @@
+# Section boundaries and acceptance windows for KTV-PSA (issue #12; spec FR-TWIN-22, A-12, RK-21, R06 §7).
+#
+# A boundary is where trains enter or leave the modelled section. Each has:
+#   station:    the section station at the boundary
+#   blocks:     COA block sections that leave the section through it (WTT rows)
+#   via:        neighbouring off-section stations seen in the freight log (it skips stations)
+#   log_edge:   section stations where the division freight log starts / ends for loads that
+#               cross the division boundary (no neighbouring row exists)
+#   default:    used for an unknown neighbour at this station (at most one per station)
+# Flows that start or end inside the section are "local:<station>" (sidings, goods sheds).
+#
+# acceptance_windows: daily "HH:MM" intervals when a boundary accepts trains. An empty list or a
+# missing boundary means always open (default). Windows may not overlap within a boundary;
+# end > start (a window ending at midnight is written "24:00").
+
+boundaries:
+  KTV-VSKP:
+    station: KTV
+    towards: Visakhapatnam via Pendurti / Simhachalam North
+    blocks: [KTV-PDT, PDT-KTV]
+    via: [PDT, SCMN, VSKP]
+    default: true
+  KTV-KK:
+    station: KTV
+    towards: Kirandul (KK line)
+    blocks: [KTV-MVW, MVW-KTV]
+    via: [MVW]
+  VZM-RGDA:
+    station: VZM
+    towards: Rayagada branch (Gotlam)
+    blocks: [VZM-GTLM, GTLM-VZM]
+    via: [GTLM, GRBL, RGDA]
+    default: true
+  NWP-GNPR:
+    station: NWP
+    towards: Gunupur branch (Tekkali / Parlakhemundi)
+    blocks: [NWP-TEK, TEK-NWP, NWP-PLH, PLH-NWP]
+    via: [TEK, PLH]
+    default: true
+  PSA-KUR:
+    station: PSA
+    towards: Khurda Road division (Summadevi)
+    blocks: [PSA-SUDV, SUDV-PSA]
+    via: [SUDV]
+    log_edge: [PUN, PSA]
+    default: true
+
+acceptance_windows: {}
+
+# Freight log gaps: the division log sometimes skips the boundary station or starts / ends
+# mid-section for loads from / to other divisions. At a station with a boundary, its default is
+# used; elsewhere the load's direction decides (DN runs KTV -> PSA).
+gap_fill:
+  entry: {DN: KTV-VSKP, UP: PSA-KUR}
+  exit: {DN: PSA-KUR, UP: KTV-VSKP}
