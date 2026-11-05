@@ -745,6 +745,24 @@ parameters:
       Distant at normal braking distance, not less than 1 km from the stop signal; IRFCA FAQ
       (https://irfca.org/faq/faq-signal.html) gives ~1 km. Home not less than 180 m (double line)
       / 300 m (single line) in rear of the first facing points. IRSEM para 7.1 primary text not found.
+  - key: gradient.derivation
+    value:
+      step_m: 25
+      track_link_m: 25
+      median_window_m: 1000
+      segment_m: 2000
+      max_permille: 10
+      curve: {chord_m: 100, max_radius_m: 1750, min_length_m: 100}
+    unit: null
+    source: "spec §6.4 (gradients row), FR-TWIN-05; method parameters for issue #14"
+    status: SA
+    owner: twin
+    valid_from: 2026-11-04
+    notes: >-
+      Alignment resampling step, running-median window over the DEM surface, gradient segment
+      length, plausibility bound (10 permille = 1 in 100) and curve detection (radius from the
+      heading change over +-chord_m; a curve is a run with radius <= max_radius_m, i.e. >= 1
+      degree, at least min_length_m long).
   - key: gradient.dem_source
     value: {dataset: Copernicus DEM GLO-30, resolution_m: 30, fallback: SRTM 1 arc-second}
     unit: null
