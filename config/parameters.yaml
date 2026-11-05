@@ -228,7 +228,7 @@ parameters:
     status: DATA
     owner: data
     valid_from: 2026-11-03
-    notes: 8 PSRs (5 KTV->PSA, 3 PSA->KTV), mapped to net elements by the ETL (issue #9).
+    notes: "8 PSRs (5 KTV->PSA, 3 PSA->KTV), mapped to net elements by the ETL (issue #9)."
 
   # ------------------------------------------------------------------ rolling stock
   - key: consist.passenger.coaches
@@ -405,7 +405,7 @@ parameters:
     status: SA
     owner: twin
     valid_from: 2026-11-03
-    notes: Service braking deceleration per consist type; to be calibrated in issue #16.
+    notes: "Service braking deceleration per consist type; to be calibrated in issue #16."
 
   # ------------------------------------------------------------------ timetable
   - key: wtt.time_tolerance_s
@@ -446,7 +446,7 @@ parameters:
     status: DATA
     owner: data
     valid_from: 2026-11-03
-    notes: Example NML-GVI 12.3 km p10 = 12 min. Computed by the ETL (issue #11).
+    notes: "Example NML-GVI 12.3 km p10 = 12 min. Computed by the ETL (issue #11)."
   - key: freight.arrival_rate_per_h.ktv
     value: [4, 6]
     unit: per h
@@ -883,7 +883,7 @@ parameters:
   - key: signal.macl.placement_m
     value: {distant_to_home: 1000, home_to_facing_points_double_line: 180, home_to_facing_points_single_line: 300}
     unit: m
-    source: spec §6.4 (signals row); issue #13 consumes
+    source: "spec §6.4 (signals row); issue #13 consumes"
     status: DUMMY
     owner: twin
     provenance: https://www.railwaysignallingconcepts.in/railway-signals-location-home-signal-distant-signal-routing-signal-starter-signal-advanced-starter/
@@ -914,7 +914,7 @@ parameters:
   - key: gradient.dem_source
     value: {dataset: Copernicus DEM GLO-30, resolution_m: 30, fallback: SRTM 1 arc-second}
     unit: null
-    source: spec §6.4 (gradients row); issue #14 consumes; licence decision issue #23
+    source: "spec §6.4 (gradients row); issue #14 consumes; licence decision issue #23"
     status: DUMMY
     owner: twin
     provenance: https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf
