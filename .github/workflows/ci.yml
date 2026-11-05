@@ -41,6 +41,8 @@ jobs:
         run: uv run python -m raildss_schema check
       - name: Mapping spec vs dataset and schema (issue #5)
         run: uv run python -m raildss_etl mapping-check
+      - name: Data-quality report and baseline diff (FR-TWIN-21, DQ-14..22)
+        run: uv run python -m raildss_etl dq --check
       - name: Event envelope schema up to date (issue #19)
         run: uv run python -m raildss_common schema check
       - name: Kafka topic catalogue and ground-truth isolation lint (issue #19)
