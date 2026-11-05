@@ -1,0 +1,43 @@
+# Geo inputs for gradients and curves (issue #14). Written by
+# `python -m raildss_etl geo-fetch --update`; verified by `geo-fetch`.
+# Licences and attribution: PROVENANCE.md in this directory.
+note: KTV-PSA corridor bbox 17.85-18.80 N, 83.15-84.46 E. OSM hash is over the canonical element list.
+inputs:
+- name: osm_rail
+  kind: overpass
+  url: https://overpass.private.coffee/api/interpreter
+  endpoints:
+  - https://overpass-api.de/api/interpreter
+  - https://overpass.kumi.systems/api/interpreter
+  query: '[out:json][timeout:180];(way["railway"="rail"][!"service"](17.85,83.15,18.80,84.46);node["railway"~"^(station|halt)$"](17.85,83.15,18.80,84.46););out geom;'
+  file: osm/ktv-psa-rail.json
+  sha256: 4fb3d504bf8eaffd26da14e2f67f25217f53af90e08a72c725d3dd2905442177
+  bytes: 496662
+  retrieved: '2026-11-04'
+- name: dem_N17_E083
+  kind: http
+  url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N17_00_E083_00_DEM/Copernicus_DSM_COG_10_N17_00_E083_00_DEM.tif
+  endpoints: []
+  query: null
+  file: dem/Copernicus_DSM_COG_10_N17_00_E083_00_DEM.tif
+  sha256: fd8b5c09fc1f1d28deb78f287c830e1c0041ee7eabb813f8bc2b25456653fd29
+  bytes: 8632381
+  retrieved: '2026-11-04'
+- name: dem_N18_E083
+  kind: http
+  url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N18_00_E083_00_DEM/Copernicus_DSM_COG_10_N18_00_E083_00_DEM.tif
+  endpoints: []
+  query: null
+  file: dem/Copernicus_DSM_COG_10_N18_00_E083_00_DEM.tif
+  sha256: f4da3b78bdadb9405c6c6e8d04c68c32424665d63741d60e2e19d48f60274cc5
+  bytes: 44465467
+  retrieved: '2026-11-04'
+- name: dem_N18_E084
+  kind: http
+  url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N18_00_E084_00_DEM/Copernicus_DSM_COG_10_N18_00_E084_00_DEM.tif
+  endpoints: []
+  query: null
+  file: dem/Copernicus_DSM_COG_10_N18_00_E084_00_DEM.tif
+  sha256: 774cb8613317a636528157fbb814d82028f29c16a0823651165236d0d4a87550
+  bytes: 14548308
+  retrieved: '2026-11-04'

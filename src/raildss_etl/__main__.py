@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import freight, speeds, stations, timetable, topology
+from raildss_etl import freight, geo, gradients, speeds, stations, timetable, topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -35,6 +35,10 @@ def main(argv: list[str] | None = None) -> int:
     p_fr.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
     p_s4 = sub.add_parser("stage4", help="place PSRs and complete line speeds (runs stages 1-3 in memory)")
     p_s4.add_argument("--out", type=Path, default=topology.DEFAULT_OUT)
+    p_geo = sub.add_parser("geo-fetch", help="download / verify the OSM and DEM inputs (issue #14)")
+    p_geo.add_argument("--update", action="store_true", help="record new hashes in inputs.yaml")
+    p_gr = sub.add_parser("gradients", help="derive alignment, gradients and curves (issue #14)")
+    p_gr.add_argument("--out", type=Path, default=gradients.OUT_DIR)
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -66,6 +70,18 @@ def main(argv: list[str] | None = None) -> int:
         ok = s1.ok and rep2.ok and rep3.ok and rep4.ok
         print(f"stage4: {'OK' if ok else 'FAILED'} -> {args.out}")
         return 0 if ok else 1
+    if args.cmd == "geo-fetch":
+        problems = geo.fetch(update=args.update)
+        for p in problems:
+            print(f"FAIL  {p}")
+        print("geo inputs:", "FAILED" if problems else "OK", f"(cache: {geo.cache_dir()})")
+        return 1 if problems else 0
+    if args.cmd == "gradients":
+        gc, rep_g = gradients.run()
+        for path in gradients.write(gc, rep_g, args.out):
+            print(f"wrote {path}")
+        print(f"gradients: {'OK' if rep_g.ok else 'FAILED'} clipped={rep_g.clipped} curves={rep_g.curves}")
+        return 0 if rep_g.ok else 1
     if args.cmd == "stage3":
         tables, s1 = run_stage1(mapping, write=False)
         lines, platforms, rep3 = stations.build_station_lines(tables, mapping)

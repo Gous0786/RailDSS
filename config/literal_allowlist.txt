@@ -38,3 +38,20 @@ src/raildss_twin/rolling_stock.py: 0.745699872  # mechanical horsepower to kW (u
 src/raildss_twin/rolling_stock.py: 3.6  # km/h per m/s (unit conversion), not a rule value
 src/raildss_twin/rolling_stock.py: 1000  # N per kN (unit conversion), not a rule value
 src/raildss_etl/speeds.py: 3  # decimal places of a chainage in km (1 m), not a rule value
+src/raildss_etl/gradients.py: 2  # window half-width doubling (centred window = 2h + 1) and rounding digits of gradient / degree values, not rule values
+src/raildss_etl/gradients.py: 3  # rounding digits of a distance in km, not a rule value
+src/raildss_etl/gradients.py: 4  # rounding digits of a chainage in km (0.1 m), not a rule value
+src/raildss_etl/gradients.py: 7  # rounding digits of a coordinate in degrees (1 cm), not a rule value
+src/raildss_etl/gradients.py: 180  # degrees per half turn in a radians-to-degrees conversion, not a rule value
+src/raildss_etl/gradients.py: 1750  # radius x degree for the Indian Railways 30.5 m chord convention (a definition, not a tunable rule value)
+src/raildss_etl/gradients.py: 6371000  # mean Earth radius in metres (geodesy constant), not a rule value
+src/raildss_etl/gradients.py: 1000  # metres per km and permille per unit (unit conversions), not rule values
+src/raildss_etl/geo.py: 3  # TIFF predictor code 3 (floating-point), not a rule value
+src/raildss_etl/geo.py: 4  # bytes per float32 sample, not a rule value
+src/raildss_etl/geo.py: 8  # TIFF compression code 8 (DEFLATE) and bits per byte, not rule values
+src/raildss_etl/geo.py: 20  # shift for the 1 MiB read-chunk size, not a rule value
+src/raildss_etl/geo.py: 30  # seconds of back-off between download attempts, not a rule value
+src/raildss_etl/geo.py: 200  # width of the manifest YAML dump, not a rule value
+src/raildss_etl/geo.py: 300  # HTTP timeout in seconds for a download, not a rule value
+src/raildss_etl/geo.py: 2  # divisor in the ceiling division and the pixel-index arithmetic, not a rule value
+src/raildss_etl/geo.py: 0.5  # pixel-centre offset of a pixel-is-area raster, not a rule value
