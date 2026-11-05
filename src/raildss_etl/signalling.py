@@ -169,7 +169,7 @@ def validate(signalling: Signalling, topology: Topology, register: Register | No
     """Tiling (no gap, no overlap, exact ends), braking cover and route coverage problems."""
     reg = register or load()
     aspects = int(reg.value("twin.abs_signal_aspects"))
-    decel = float(reg.value("twin.service_braking_decel_mps2"))
+    decel = float(reg.value("brake.decel_mps2")["passenger"])  # fastest consist at line speed
     problems: list[str] = []
     by_line: dict[tuple[str, str], list[SubBlock]] = {}
     for sb in signalling.sub_blocks:
