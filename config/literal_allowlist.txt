@@ -55,3 +55,5 @@ src/raildss_etl/geo.py: 200  # width of the manifest YAML dump, not a rule value
 src/raildss_etl/geo.py: 300  # HTTP timeout in seconds for a download, not a rule value
 src/raildss_etl/geo.py: 2  # divisor in the ceiling division and the pixel-index arithmetic, not a rule value
 src/raildss_etl/geo.py: 0.5  # pixel-centre offset of a pixel-is-area raster, not a rule value
+src/raildss_etl/boundaries.py: 60  # minutes per hour (unit conversion), not a rule value
+src/raildss_etl/boundaries.py: 24  # hours per day (upper bound of a time of day), not a rule value
