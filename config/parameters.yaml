@@ -381,7 +381,7 @@ parameters:
     status: SA
     owner: twin
     valid_from: 2026-11-03
-    notes: Service braking deceleration per consist type; to be calibrated in issue #16.
+    notes: "Service braking deceleration per consist type; to be calibrated in issue #16."
 
   # ------------------------------------------------------------------ timetable
   - key: wtt.time_tolerance_s
