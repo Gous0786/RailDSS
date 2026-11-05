@@ -77,8 +77,8 @@ def main(argv: list[str] | None = None) -> int:
         print("geo inputs:", "FAILED" if problems else "OK", f"(cache: {geo.cache_dir()})")
         return 1 if problems else 0
     if args.cmd == "gradients":
-        result, rep_g = gradients.run()
-        for path in gradients.write(result, rep_g, args.out):
+        gc, rep_g = gradients.run()
+        for path in gradients.write(gc, rep_g, args.out):
             print(f"wrote {path}")
         print(f"gradients: {'OK' if rep_g.ok else 'FAILED'} clipped={rep_g.clipped} curves={rep_g.curves}")
         return 0 if rep_g.ok else 1
