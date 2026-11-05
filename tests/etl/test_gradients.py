@@ -181,3 +181,16 @@ def test_rederivation_matches_committed_outputs(
     result, rep = gradients.build(tables, topo, geo.load_osm(paths[0]), geo.Dem(paths[1:]))
     assert rep.ok
     assert [g.model_dump(mode="json") for g in result.gradients] == [g.model_dump(mode="json") for g in grads]
+
+
+def test_segment_without_enough_points_is_reported_not_zero_filled(topo: Topology) -> None:
+    # 5 km alignment step against 500 m segments: most segments hold no point at all
+    points = [
+        Point(chain_m=i * 5000.0, km=i * 5.0, km_hwh=0, lat=18.0, lon=83.0, elev_smooth_m=100.0 + i)
+        for i in range(36)
+    ]
+    grads, _, _, missing = gradients.build_gradients(points, topo, 500.0, 25.0)
+    assert missing and all("alignment point" in m for m in missing)
+    assert not any(g.gradient_permille == 0 for g in grads)  # a row exists only where a slope was measured
+    with pytest.raises(ValueError, match="alignment point"):
+        gradients._slope_permille(np.array([1.0]), np.array([5.0]))

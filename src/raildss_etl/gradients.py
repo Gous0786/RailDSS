@@ -82,12 +82,18 @@ class GradientReport(BaseModel):
     psr_checks: list[PsrCheck]
     psr_match_tolerance_km: float
     blocks_without_profile: list[str]
+    segments_without_data: list[str] = []
 
     @property
     def ok(self) -> bool:
         """Every block has a profile, and every running-line curve PSR has a detected curve nearby."""
         curve_psrs = [c for c in self.psr_checks if c.running_line_curve]
-        return not self.blocks_without_profile and bool(curve_psrs) and all(c.confirmed for c in curve_psrs)
+        return (
+            not self.blocks_without_profile
+            and not self.segments_without_data
+            and bool(curve_psrs)
+            and all(c.confirmed for c in curve_psrs)
+        )
 
 
 class GradientsAndCurves(BaseModel):
@@ -245,28 +251,37 @@ def profile(points: list[Point], dem: geo.Dem, median_window_m: float, step_m: f
 
 
 def _slope_permille(km: np.ndarray, z: np.ndarray) -> float:
+    """Least-squares slope in permille. Raises when the points cannot define one (never 0 for no data)."""
     if len(km) < 2 or km[-1] == km[0]:
-        return 0.0
+        raise ValueError(
+            f"{len(km)} alignment point(s) in the segment; a slope needs two at different chainages"
+        )
     slope = np.polyfit(km * M_PER_KM, z, 1)[0]
     return float(slope * PERMILLE)
 
 
 def build_gradients(
     points: list[Point], topology: Topology, segment_m: float, max_permille: float
-) -> tuple[list[Gradient], int, float]:
+) -> tuple[list[Gradient], int, float, list[str]]:
+    """Gradient rows, clipped count, worst raw value, and segments with too few points (no row)."""
     km = np.array([p.km for p in points])
     z = np.array([p.elev_smooth_m for p in points], dtype=float)
     nv = topology.network_version
     km_of = {o.code: o.km for o in topology.operational_points}
     records: list[Gradient] = []
     clipped, worst = 0, 0.0
+    undetermined: list[str] = []
     for block in sorted(topology.block_sections, key=lambda b: b.id):
         lo, hi = sorted((km_of[block.from_op], km_of[block.to_op]))
         n = max(1, round((hi - lo) * M_PER_KM / segment_m))
         edges = np.linspace(lo, hi, n + 1)
         for i in range(n):
             mask = (km >= edges[i]) & (km <= edges[i + 1])
-            g = _slope_permille(km[mask], z[mask])
+            try:
+                g = _slope_permille(km[mask], z[mask])
+            except ValueError as exc:
+                undetermined.append(f"{block.id}-G{i + 1:02d} (km {edges[i]:.3f}-{edges[i + 1]:.3f}): {exc}")
+                continue
             worst = max(worst, abs(g))
             if abs(g) > max_permille:
                 clipped += 1
@@ -282,7 +297,7 @@ def build_gradients(
                     source="synthetic",
                 )
             )
-    return records, clipped, round(worst, 2)
+    return records, clipped, round(worst, 2), undetermined
 
 
 # ---------------------------------------------------------------- curves
@@ -411,7 +426,9 @@ def build(
     step = float(p["step_m"])
     points, anchors, offsets = build_alignment(osm, topology, step, float(p["track_link_m"]))
     profile(points, dem, float(p["median_window_m"]), step)
-    grads, clipped, worst = build_gradients(points, topology, float(p["segment_m"]), float(p["max_permille"]))
+    grads, clipped, worst, undetermined = build_gradients(
+        points, topology, float(p["segment_m"]), float(p["max_permille"])
+    )
     c = p["curve"]
     runs = detect_curves(
         points, topology, float(c["chord_m"]), step, float(c["max_radius_m"]), float(c["min_length_m"])
@@ -429,6 +446,7 @@ def build(
         curves=len(runs),
         psr_checks=psr_checks(tables, runs, float(c["psr_match_km"])),
         psr_match_tolerance_km=float(c["psr_match_km"]),
+        segments_without_data=undetermined,
         blocks_without_profile=sorted(b.id for b in topology.block_sections if b.id not in covered),
     )
     return GradientsAndCurves(alignment=points, gradients=grads, curves=curves), report

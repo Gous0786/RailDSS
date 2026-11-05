@@ -89,5 +89,6 @@
   }
  ],
  "psr_match_tolerance_km": 1.0,
- "blocks_without_profile": []
+ "blocks_without_profile": [],
+ "segments_without_data": []
 }
