@@ -133,16 +133,6 @@ parameters:
     owner: twin
     valid_from: 2026-11-04
     notes: Warning distance = (aspects - 2) sub-blocks must cover the braking distance.
-  - key: twin.service_braking_decel_mps2
-    value: 0.7
-    unit: m/s2
-    source: spec FR-TWIN-04 braking check
-    status: DUMMY
-    owner: twin
-    provenance: placeholder
-    valid_from: 2026-11-04
-    notes: "Placeholder service-braking deceleration for the fastest consist; replaced by #15 / #16 dynamics."
-
   # ------------------------------------------------------------------ station lines and platforms
   - key: station_line.csr
     value_ref: STTNLINE.MANCSR
@@ -414,6 +404,41 @@ parameters:
     owner: twin
     valid_from: 2026-11-03
     notes: "Service braking deceleration per consist type; to be calibrated in issue #16."
+
+  - key: runtime.model
+    value: {step_m: 10, rotational_mass_factor: {passenger: 1.06, freight: 1.04}}
+    unit: null
+    source: "spec FR-TWIN-06; issue #16"
+    status: SA
+    owner: twin
+    valid_from: 2026-11-05
+    notes: >-
+      Integration step of the point-mass running-time calculator and the rotational mass factor
+      (effective mass / static mass) per consist class.
+  - key: runtime.calibration
+    value:
+      min_samples: 30
+      freight_tolerance: 0.15
+      freight_share: 0.9
+      span_share: 0.95
+      freight_reference_wagon: BOXN
+      freight_caps_kmh: [45, 50, 55, 60, 65, 70, 75]
+      passenger_caps_kmh: [90, 100, 105, 110, 120, 130]
+      passenger_coaches_default: 22
+      span_min_legs: 3
+      span_tolerance_s: 60
+      padding_band_s: 60
+    unit: null
+    source: "spec DSC-10, REC-08; issue #16"
+    status: SA
+    owner: twin
+    valid_from: 2026-11-05
+    notes: >-
+      Calibration search space and acceptance tolerances. Caps are the speed actually held by
+      freight (loaded / empty) and passenger trains; the cap pair is chosen on the physics-only fit,
+      then non-negative block (freight) or leg (passenger) supplements absorb location effects.
+      WTT spans or legs more than padding_band_s above their standard (modal / minimum) time are
+      padded and reported, not scored.
 
   # ------------------------------------------------------------------ timetable
   - key: wtt.time_tolerance_s
