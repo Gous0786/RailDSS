@@ -139,6 +139,7 @@ uv run python -m raildss_etl mapping-doc --write   # regenerate the Markdown vie
 uv run python -m raildss_etl stage1                # load & clean -> data/interim/ktv-psa/*.parquet
 uv run python -m raildss_etl geo-fetch              # cache + verify the OSM and GLO-30 inputs (issue #14)
 uv run python -m raildss_etl gradients             # synthetic gradients and curves -> data/derived/ktv-psa
+uv run python -m raildss_etl dq --check              # whole ETL in memory -> DQ report; fails on drift from docs/etl/dq baseline
 ```
 
 Stage 1 drops spreadsheet-export columns, blank and repeated-header rows and exact duplicates, parses

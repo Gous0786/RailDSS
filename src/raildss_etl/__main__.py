@@ -12,9 +12,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import boundaries, freight, geo, gradients, speeds, stations, timetable, topology
+from raildss_etl import boundaries, dq, freight, geo, gradients, speeds, stations, timetable, topology
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
+
+MAX_DIFF_LINES = 60  # diff lines printed before truncating the CI log
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +43,14 @@ def main(argv: list[str] | None = None) -> int:
     p_gr.add_argument("--out", type=Path, default=gradients.OUT_DIR)
     p_bd = sub.add_parser("boundaries", help="entry / exit boundary of every train and load (issue #12)")
     p_bd.add_argument("--out", type=Path, default=boundaries.DEFAULT_OUT)
+    p_dq = sub.add_parser(
+        "dq", help="run the whole ETL in memory and write the data-quality report (issue #17)"
+    )
+    p_dq.add_argument("--out", type=Path, default=dq.DEFAULT_OUT)
+    p_dq.add_argument(
+        "--check", action="store_true", help="fail if the report differs from the committed baseline"
+    )
+    p_dq.add_argument("--update-baseline", action="store_true", help="rewrite docs/etl/dq/ktv-psa-baseline.*")
     args = ap.parse_args(argv)
     mapping = load_mapping()
 
@@ -60,6 +70,27 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(doc)
         return 0
 
+    if args.cmd == "dq":
+        report_dq = dq.build_report(mapping)
+        for path in dq.write_report(report_dq, args.out):
+            print(f"wrote {path}")
+        for c in report_dq.checks:
+            print(f"{c.status}  {c.id}  {c.title}")
+        if args.update_baseline:
+            for path in dq.write_baseline(report_dq):
+                print(f"baseline: wrote {path}")
+        failed = [] if report_dq.ok else ["a check or stage is not PASS"]
+        if args.check:
+            diff = dq.diff_against_baseline(report_dq)
+            for line in diff[:MAX_DIFF_LINES]:
+                print(line)
+            failed += [
+                "report differs from the baseline (update it deliberately with --update-baseline)"
+            ] * bool(diff)
+        for f in failed:
+            print(f"FAIL  {f}")
+        print(f"dq: {'FAILED' if failed else 'OK'} -> {args.out}")
+        return 1 if failed else 0
     if args.cmd == "stage4":
         tables, s1 = run_stage1(mapping, write=False)
         topo, rep2 = topology.build_topology(tables, mapping)

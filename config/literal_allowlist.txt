@@ -59,3 +59,4 @@ src/raildss_etl/boundaries.py: 60  # minutes per hour (unit conversion), not a r
 src/raildss_etl/boundaries.py: 24  # hours per day (upper bound of a time of day), not a rule value
 src/raildss_etl/boundaries.py: 3  # number of sample load ids shown in a mismatch message, not a rule value
 src/raildss_etl/boundaries.py: 2  # a block id has two ends, not a rule value
+src/raildss_etl/__main__.py: 60  # diff lines printed before truncating a CI log, not a rule value

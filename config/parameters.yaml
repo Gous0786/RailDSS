@@ -49,6 +49,14 @@ parameters:
     owner: data
     valid_from: 2026-11-03
 
+  - key: dq.freight_block_hrs_min_agreement
+    value: 0.95
+    unit: ratio
+    source: spec DQ-21
+    status: SA
+    owner: data
+    valid_from: 2026-11-05
+    notes: "Share of freight rows whose Block Hrs x 1440 matches the timestamp difference (within 1 min) for DQ-21 to pass."
   - key: dq.route_reverse_tolerance_km
     value: 0.05
     unit: km
