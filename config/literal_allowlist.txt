@@ -71,3 +71,11 @@ src/raildss_twin/running_time.py: 2  # the 2 in v^2 = u^2 + 2 a s and in 2 dx / 
 src/raildss_etl/cli.py: 40  # lines of differences printed before truncating the CI log, not a rule value
 src/raildss_etl/validator.py: 1000  # metres per km (unit conversion), not a rule value
 src/raildss_etl/validator.py: 8  # problems listed per rule in the report (display cap), not a rule value
+src/raildss_twin/clock.py: 0.05  # wall-clock polling interval while paused, not a rule value
+src/raildss_twin/plans.py: 86400  # seconds per day (unit conversion), not a rule value
+src/raildss_twin/run.py: 2  # decimals when rounding the wall time for display, not a rule value
+src/raildss_twin/sim.py: 3.6  # km/h per m/s (unit conversion), not a rule value
+src/raildss_twin/sim.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_twin/sim.py: 1000  # metres per km (unit conversion), not a rule value
+src/raildss_twin/sim.py: 2  # unit conversion / display rounding of event values, not a rule value
+src/raildss_twin/sim.py: 3  # decimals when rounding positions for display, not a rule value

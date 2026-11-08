@@ -13,6 +13,7 @@ dependencies = [
     "pyarrow>=21",
     "pydantic>=2.11",
     "pyyaml>=6.0",
+    "simpy>=4.1.2",
     "tifffile>=2025.1",
 ]
 

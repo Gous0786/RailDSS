@@ -413,6 +413,29 @@ parameters:
     valid_from: 2026-11-03
     notes: "Service braking deceleration per consist type; to be calibrated in issue #16."
 
+  - key: twin.sim
+    value:
+      state_period_s: 60
+      min_dwell_s: 30
+      clearing_speed_kmh: 20
+      exit_clear_s: 60
+      horizon_grace_h: 24
+      monitor_period_s: 300
+      max_speed_factor: 60
+      default_seed: 0
+    unit: null
+    source: "spec FR-TWIN-10, FR-TWIN-12, FR-TWIN-14; issue #20"
+    status: SA
+    owner: twin
+    valid_from: 2026-11-08
+    notes: >-
+      Skeleton movement simulator (BL-0). state_period_s: spacing of gt.state samples (spec target 1 s,
+      raise the resolution at the cost of run time). min_dwell_s: shortest stop once a train is in a
+      station line. clearing_speed_kmh: speed at which the tail clears a block or line, so a block is
+      released (train length + adequate distance) / clearing speed after the head leaves it. exit_clear_s:
+      time a train stays on its exit line before leaving the section. horizon_grace_h: simulation continues
+      this long after the last planned event, then trains still inside are reported as stuck.
+      monitor_period_s: how often deadlocks are checked for. max_speed_factor: fastest clock multiple.
   - key: runtime.model
     value: {step_m: 10, rotational_mass_factor: {passenger: 1.06, freight: 1.04}}
     unit: null
