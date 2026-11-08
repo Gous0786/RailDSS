@@ -19,7 +19,11 @@ import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATASET_DIRS = [ROOT / "data" / "raw" / "ktv-psa", ROOT / "data" / "derived" / "ktv-psa"]
+DATASET_DIRS = [
+    ROOT / "data" / "raw" / "ktv-psa",
+    ROOT / "data" / "derived" / "ktv-psa",
+    ROOT / "data" / "published" / "KTV-PSA-2025-08",
+]
 MANIFEST = "MANIFEST.sha256"
 EXCLUDED = {MANIFEST, "PROVENANCE.md"}
 

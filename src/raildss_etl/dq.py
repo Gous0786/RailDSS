@@ -20,15 +20,19 @@ from __future__ import annotations
 
 import difflib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+import pandas as pd
 from pydantic import BaseModel
 
-from raildss_etl import boundaries, freight, speeds, stations, timetable, topology
+from raildss_etl import boundaries, freight, load, speeds, stations, timetable, topology
 from raildss_etl.load import run_stage1
 from raildss_etl.mapping import REPO, MappingSpec, ignored_references, load_mapping
-from raildss_params import Register, load
+from raildss_params import Register
+from raildss_params import load as load_register
+from raildss_schema.entities import Platform, StationLine
 
 BASELINE_DIR = REPO / "docs" / "etl" / "dq"
 BASELINE_JSON = BASELINE_DIR / "ktv-psa-baseline.json"
@@ -69,9 +73,31 @@ def _check(cid: str, title: str, passed: bool, detail: str) -> Check:
     return Check(id=cid, title=title, status="PASS" if passed else "FAIL", detail=detail)
 
 
-def build_report(mapping: MappingSpec | None = None, register: Register | None = None) -> DqReport:
+@dataclass(frozen=True)
+class Stages:
+    """Everything the ETL builds, in memory (shared by the DQ report and the network publication)."""
+
+    spec: MappingSpec
+    register: Register
+    tables: dict[str, pd.DataFrame]
+    s1: load.Stage1Report
+    topo: topology.Topology
+    s2: topology.Stage2Report
+    lines: list[StationLine]
+    platforms: list[Platform]
+    s3: stations.Stage3Report
+    speed_result: speeds.Speeds
+    s4: speeds.Stage4Report
+    tt: timetable.Timetable
+    s5: timetable.Stage5Report
+    demand: freight.FreightDemand
+    s6: freight.Stage6Report
+    s7: boundaries.BoundaryReport
+
+
+def run_stages(mapping: MappingSpec | None = None, register: Register | None = None) -> Stages:
     spec = mapping or load_mapping()
-    reg = register or load()
+    reg = register or load_register()
     tables, s1 = run_stage1(spec, write=False)
     topo, s2 = topology.build_topology(tables, spec, reg)
     lines, platforms, s3 = stations.build_station_lines(tables, spec, reg)
@@ -79,6 +105,20 @@ def build_report(mapping: MappingSpec | None = None, register: Register | None =
     tt, s5 = timetable.build_timetable(tables, spec)
     demand, s6 = freight.build_freight(tables, topo, spec)
     _, _, s7 = boundaries.build_boundaries(tt, demand, tables, topo, timetable.ist(spec))
+    return Stages(
+        spec, reg, tables, s1, topo, s2, lines, platforms, s3, speed_result, s4, tt, s5, demand, s6, s7
+    )
+
+
+def build_report(
+    mapping: MappingSpec | None = None,
+    register: Register | None = None,
+    stages: Stages | None = None,
+) -> DqReport:
+    st = stages or run_stages(mapping, register)
+    spec, reg, tables = st.spec, st.register, st.tables
+    s1, topo, s2, lines, platforms, s3 = st.s1, st.topo, st.s2, st.lines, st.platforms, st.s3
+    speed_result, s4, s5, s6, s7 = st.speed_result, st.s4, st.s5, st.s6, st.s7
     codec = topology.Codec(spec)
 
     row_counts = {

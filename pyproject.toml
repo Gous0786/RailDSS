@@ -16,6 +16,9 @@ dependencies = [
     "tifffile>=2025.1",
 ]
 
+[project.scripts]
+raildss = "raildss_etl.cli:main"
+
 [dependency-groups]
 dev = [
     "ruff>=0.14",

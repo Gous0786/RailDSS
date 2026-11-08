@@ -68,3 +68,6 @@ src/raildss_twin/running_time.py: 1000  # m per km, kg per t, N per kN, permille
 src/raildss_twin/running_time.py: 0.1  # speed floor in m/s that keeps 2 dx / (v_i + v_i+1) finite at a standing start, numerical
 src/raildss_twin/running_time.py: 0.5  # midpoint of an integration step, not a rule value
 src/raildss_twin/running_time.py: 2  # the 2 in v^2 = u^2 + 2 a s and in 2 dx / (v_i + v_i+1), not a rule value
+src/raildss_etl/cli.py: 40  # lines of differences printed before truncating the CI log, not a rule value
+src/raildss_etl/validator.py: 1000  # metres per km (unit conversion), not a rule value
+src/raildss_etl/validator.py: 8  # problems listed per rule in the report (display cap), not a rule value
