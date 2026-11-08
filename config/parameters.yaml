@@ -627,11 +627,12 @@ parameters:
   - key: cd.horizon_min
     value: 120
     unit: min
-    source: spec REC-12
+    source: spec REC-12; OD-25 (product-owner decision 2026-11-08, DR-0003)
     status: SA
     owner: dss
     bounds: {low: 60, high: 180}
-    valid_from: 2026-11-03
+    valid_from: 2026-11-08
+    notes: OD-25 decided with the recommended default (H = 120 min, configurable 60-180).
   - key: cd.rerun_max_interval_s
     value: 30
     unit: s
@@ -649,17 +650,27 @@ parameters:
   - key: opt.replan_max_interval_min
     value: 5
     unit: min
-    source: spec REC-12
+    source: spec REC-12; OD-25 (product-owner decision 2026-11-08, DR-0003)
     status: SA
     owner: dss
-    valid_from: 2026-11-03
+    valid_from: 2026-11-08
+    notes: OD-25 - re-plan on trigger events (opt.replan_triggers) and at least every 5 min.
+  - key: opt.replan_triggers
+    value: [new_conflict, disruption, controller_action, order_decline]
+    unit: null
+    source: spec FR-OPT-07; OD-25 (product-owner decision 2026-11-08, DR-0003)
+    status: SA
+    owner: dss
+    valid_from: 2026-11-08
+    notes: Events that start an immediate re-plan (OD-25), in addition to the periodic re-plan.
   - key: opt.freeze_window_min
     value: 10
     unit: min
-    source: R04 §4.3
+    source: R04 §4.3; OD-25 (product-owner decision 2026-11-08, DR-0003)
     status: SA
     owner: dss
-    valid_from: 2026-11-03
+    valid_from: 2026-11-08
+    notes: OD-25 - decisions starting within 10 min of the plan time are frozen.
   - key: opt.time_limit_s
     value: {routine: 15, disruption: 60, refine: 120}
     unit: s
@@ -686,11 +697,21 @@ parameters:
   - key: policy.weights
     value: {premium: 10, mail_express: 5, passenger: 3, freight_timetabled: 2, freight_other: 1}
     unit: null
-    source: R04 §4.4 (spec REC-09)
+    source: R04 §4.4 (spec REC-09); OD-04 (product-owner decision 2026-11-08, DR-0003)
     status: SA
     owner: rules
-    valid_from: 2026-11-03
-    notes: Placeholder pending OD-04 (official IR precedence order unverified).
+    valid_from: 2026-11-08
+    notes: >-
+      OD-04 decided with the recommended default weights 10/5/3/2/1. The official IR precedence
+      order is still unverified; the weights are a product-owner policy, not an IR fact.
+  - key: policy.weights_in_explanations
+    value: true
+    unit: null
+    source: spec FR-DATA-02; OD-04 (product-owner decision 2026-11-08, DR-0003)
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: OD-04 - every recommendation explanation shows the class weights it used.
   - key: policy.class_map
     value:
       RAJ: premium
@@ -718,14 +739,27 @@ parameters:
     status: SA
     owner: rules
     valid_from: 2026-11-03
-    notes: Mapping of ICMS train types to classes is a spec-author default (OD-04).
+    notes: Mapping of ICMS train types to classes, accepted with OD-04 (product-owner decision 2026-11-08, DR-0003).
   - key: policy.hard_rules
     value: [relief_trains_first]
     unit: null
-    source: R01 §2.2
-    status: U
+    source: R01 §2.2; OD-04 (product-owner decision 2026-11-08, DR-0003)
+    status: SA
     owner: rules
-    valid_from: 2026-11-03
+    valid_from: 2026-11-08
+    notes: >-
+      OD-04 - relief trains are a hard top rule, above every weighted class. Status SA: a
+      product-owner policy decision; the underlying IR practice remains unverified (R01 §2.2).
+  - key: rules.unverified_max_severity
+    value: WARN
+    unit: null
+    source: spec §9.2, RK-02; OD-05 (product-owner decision 2026-11-08, DR-0003)
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: >-
+      OD-05 - there is no SME rule owner. Rule fidelity is per public sources (G&SR text and the
+      COA data); a rule whose fact is [U] reports at most WARN, never FAIL.
 
   # ------------------------------------------------------------------ verification
   - key: ver.buffer_warn_min
