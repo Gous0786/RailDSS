@@ -102,7 +102,6 @@ that came from the twin and converter work (F13 to F21).
 |---|---|
 | Passenger running-time fidelity (F01) | Booked-time adherence in the twin and the optimiser's run-time minima depend on it |
 | Solver latency at KTV–PSA scale (RK-06, OD-33, F19) | The M1 latency spike decides full section vs the VZM–PSA fallback |
-| DISPLIB licence (OD-17, F21) | The request to SINTEF is drafted but **not sent** ([status](../licensing/displib-licence-request.md): "drafted, awaiting user to send"). Until it is answered, use stays internal and nothing is benchmarked publicly |
 | Synthetic infrastructure | Gradients come from a surface DEM, curves from OSM, and signals and sub-blocks are synthetic (1 km spacing is DUMMY). The calibration supplements absorb some of their errors |
 | Version governance (F05, F06) | Parameter edits silently change published content |
 | Scenario library v0 (#21) | Not started; needs F10 and F11 |
@@ -120,7 +119,6 @@ These remain open on 2026-11-08:
 - OD-13 graded punctuality;
 - OD-14 evaluation protocol;
 - OD-15 LLM hosting;
-- OD-17 DISPLIB licence;
 - OD-18 solver licensing;
 - OD-20 regulatory posture;
 - OD-21 railML;
@@ -273,11 +271,13 @@ order within a group is not a priority.
   OSM map attribution, and Grafana per DR-0001 section 4.
 - **AC:** the licence gate passes and the conditions are checked in CI.
 
-**F21 Owner and spec-owner actions** (low).
-- **Problem:** the SINTEF DISPLIB request is still "drafted, awaiting user to send"; spec section 15 does not yet show
-  OD-16 closed (option A, DR-0001 D1) or OD-17 awaiting send; DSC-10 outcome as in section 3.
-- **Scope:** the owner sends or drops the request and records the status; the spec owner updates section 15.
-- **AC:** the request status table and the spec agree.
+**F21 Spec upkeep** (low).
+- **Problem:** spec section 15 does not yet show OD-16 closed (option A, DR-0001 D1); the DSC-10 outcome is as in section 3.
+- **Scope:** the spec owner updates section 15.
+- **AC:** the spec and this record agree.
+
+RailDSS is a college learning prototype, so licences do not block work. The SINTEF email about DISPLIB is optional, and
+DISPLIB may be used for learning and benchmarking.
 
 ## 7. Consequences
 
