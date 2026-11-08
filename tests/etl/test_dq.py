@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from pathlib import Path
 
 import pytest
 
+import raildss_params
 from raildss_etl import dq
 
 
 @pytest.fixture(scope="module")
-def report() -> dq.DqReport:
-    return dq.build_report()
+def stages() -> dq.Stages:
+    return dq.run_stages()
+
+
+@pytest.fixture(scope="module")
+def report(stages: dq.Stages) -> dq.DqReport:
+    return dq.build_report(stages=stages)
 
 
 def test_all_dq_14_to_22_checks_pass(report: dq.DqReport) -> None:
@@ -79,3 +86,43 @@ def test_a_failing_check_makes_the_report_fail(report: dq.DqReport) -> None:
         update={"checks": [*report.checks[:-1], report.checks[-1].model_copy(update={"status": "FAIL"})]}
     )
     assert not broken.ok
+
+
+# ------------------------------------------------------ the gate and the register hash (DR-0002 F05)
+
+
+def test_register_version_is_recorded_separately_not_in_the_diffed_content(
+    report: dq.DqReport, tmp_path: Path
+) -> None:
+    assert report.register_version  # known to the build ...
+    assert "register_version" not in dq.to_json(report)  # ... but not report content
+    assert report.register_version not in dq.to_markdown(report)
+    assert "register_version" not in report.model_dump(mode="json")
+    dq.write_report(report, tmp_path)
+    meta = json.loads((tmp_path / dq.META_FILE).read_text(encoding="utf-8"))
+    assert meta["register_version"] == report.register_version
+
+
+def test_an_unrelated_parameter_edit_does_not_fail_the_gate(
+    stages: dq.Stages, report: dq.DqReport, tmp_path: Path
+) -> None:
+    """Editing a parameter the ETL does not read changes the register hash, not the report."""
+    text = Path(raildss_params.default_path()).read_text(encoding="utf-8")
+    key = "  - key: ver.buffer_warn_min\n    value: 2\n"
+    assert key in text
+    edited = tmp_path / "parameters.yaml"
+    edited.write_text(text.replace(key, key.replace("value: 2", "value: 3")), encoding="utf-8")
+    altered = raildss_params.load(edited)
+    assert altered.version != stages.register.version
+    after = dq.build_report(stages=dataclasses.replace(stages, register=altered))
+    assert after.register_version == altered.version
+    assert dq.diff_against_baseline(after) == []
+    assert dq.to_json(after) == dq.to_json(report)
+
+
+def test_a_change_to_a_dq_fact_still_fails_the_gate(report: dq.DqReport) -> None:
+    counts = {**report.entity_counts, "services": report.entity_counts["services"] + 1}
+    assert dq.diff_against_baseline(report.model_copy(update={"entity_counts": counts})) != []
+    checks = [report.checks[0].model_copy(update={"status": "FAIL"}), *report.checks[1:]]
+    changed = report.model_copy(update={"checks": checks})
+    assert dq.diff_against_baseline(changed) != [] and not changed.ok
