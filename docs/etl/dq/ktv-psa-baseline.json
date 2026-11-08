@@ -247,7 +247,6 @@
  },
  "mapping_version": "2026.11.1",
  "network_version": "KTV-PSA-2025-08",
- "register_version": "2026.11.1+3c017608efa5",
  "report_version": "1",
  "row_counts": {
   "BLOCKSCTN": {
