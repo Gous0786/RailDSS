@@ -68,7 +68,7 @@ and `raildss_common.bus`. Kafka integration tests: `RAILDSS_TEST_KAFKA_BOOTSTRAP
 | `raildss_common` | Event envelope and shared helpers | §6.2, issue #19 |
 | `raildss_schema` | Canonical data model (micro/meso/macro); strict typing | §6.1, issue #4 |
 | `raildss_params` | Parameter register: every rule value is configuration with a source | C-05, App. B, issue #3 |
-| `raildss_etl` | KTV–PSA ETL from COA master tables, WTT and the freight log | §6.6, issues #5–#12, #17 |
+| `raildss_etl` | KTV–PSA ETL from COA master tables, WTT and the freight log; network publication and the `raildss` command | §6.6, issues #5–#12, #17, #18 |
 | `raildss_twin` | Digital twin: completion, running-time calculator, simulator | §3.3, issues #13–#16, #20 |
 | `raildss_optimiser` | Greedy dispatcher and CP-SAT (placeholder) | §8.4, M1/M2 |
 | `raildss_verifier` | Independent verification engine (placeholder). **Must not import** the optimiser, twin or ETL; enforced by import-linter | §9, NFR-MNT-02 |
@@ -145,6 +145,21 @@ uv run python -m raildss_etl dq --check              # whole ETL in memory -> DQ
 Stage 1 drops spreadsheet-export columns, blank and repeated-header rows and exact duplicates, parses
 the three date formats (year 99 -> 2099), localises freight timestamps to IST, splits WTT seconds into
 day offset + time of day, and writes `stage1_report.json`. It never writes inside `data/raw/`.
+
+## Network publication (issue #18)
+
+`raildss network publish` runs the whole ETL, validates the network (DQ-10: crossing stations have
+loops with CSR > 0, block sections have a system and a length, routes are consistent, references and
+version stamps) and writes `data/published/KTV-PSA-2025-08/`: one JSON file per canonical entity,
+`network.json` (versions, counts per layer, **network hash**), a provenance card and a manifest. It
+refuses to publish while the validator reports an error. Re-run it (and `dq --update-baseline`)
+after changing inputs or `config/parameters.yaml`; CI fails on any difference.
+
+```bash
+uv run raildss network publish --check              # CI gate: rebuild and compare byte for byte
+uv run raildss network show KTV-PSA-2025-08         # version stamps and record count per entity
+uv run raildss network load KTV-PSA-2025-08 --db-url postgresql://...   # PostgreSQL + PostGIS
+```
 
 ## Licence
 

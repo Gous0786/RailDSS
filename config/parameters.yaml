@@ -34,6 +34,14 @@ parameters:
     status: DATA
     owner: data
     valid_from: 2026-11-03
+  - key: timetable.version
+    value: KTV-PSA-TT-2025-08
+    unit: null
+    source: R06 §6.7; FR-DATA-04
+    status: SA
+    owner: data
+    valid_from: 2026-11-08
+    notes: Stamp on the WTT services, timetable points, freight loads and day instances of network KTV-PSA-2025-08.
   - key: section.length_km
     value: {total: 176.83, ktv_vzm: 34.73, vzm_psa: 142.10}
     unit: km
