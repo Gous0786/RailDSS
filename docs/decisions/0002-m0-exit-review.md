@@ -81,8 +81,7 @@ above). The report lists only the ten worst spans; the other 128 scored spans ou
 ## 4. Independent re-check of PRs merged without an AO review
 
 The merged code and tests were read on `main`. Some suspicions were checked against the data; these
-are noted as "probed". Defects become M1 follow-ups F-xx (drafted in the PR for this record). Nothing
-is fixed here.
+are noted as "probed". Defects become M1 follow-ups F-xx (section 6). Nothing is fixed here.
 
 | PR | Scope | Findings |
 |---|---|---|
@@ -94,36 +93,16 @@ is fixed here.
 | #45 | Network publication (#18) | **F06, F07, F08, F09.** Probed: all 50 blocks have gradient records today, so F07 is a missing guard, not missing data |
 | #46 | Twin skeleton and direction-gate fix (#20) | **Direction gate: no defect found.** Checked: claims and releases balance on every path (immediate grant, wait then grant, woken by the gate then retry); the sim interrupts no process, so a claim cannot leak; the new tests cover the same-instant race, queue retention and the deadlock false positive. **Twin: F10** |
 
-### Findings
-
-| ID | Source | Severity | Finding |
-|---|---|---|---|
-| F01 | #43 | High | Passenger calibration is short of DSC-10 (§3). Root cause: no station-approach model at stops |
-| F02 | #43 | Medium | Freight calibration uses one reference consist (BOXN) for every wagon type, while the log p10 mixes types. Per-family templates are not used |
-| F03 | #43 | Medium | The running-time track applies every PSR of a direction to every train, ignoring the PSR's lines (for example 5440, 15 km/h over the VZM diamond, lines DN/MID) |
-| F04 | #43 | Low | `CalibrationReport.reproducible` is an in-process probe on one block. The real guarantee is the committed-vs-fresh test, so the field over-states what it checks |
-| F05 | #44 | Medium | The DQ baseline includes the parameter register content hash, so any unrelated parameter edit fails `dq --check`. This happened in #43 |
-| F06 | #45 | Medium | `network_version.json` embeds the DQ report, including the register hash. A parameter edit changes the hash of `KTV-PSA-2025-08` without a version bump, and `publish --check` then forces a regeneration under the same label |
-| F07 | #45 | Low | The validator has no coverage rule: every COA block has gradients, and every block line has a speed. Today the data is complete, but nothing enforces it |
-| F08 | #45 | Low | N-05 checks `network_version` and `timetable_version` only. `policy_version` and `rule_catalogue_version` are unstamped by design (provenance card), and FR-DATA-04 does not say static tables are exempt |
-| F09 | #45 | Medium | Published layers are incomplete: `train_run` (the dated WTT expansion) and the rolling-stock tables from #15 (`loco_class`, `vehicle_type`, `consist`) are empty. The twin rebuilds them in memory |
-| F10 | #46 | Medium | The twin rejects trains whose path starts or ends at a halt (22501 on 2025-08-20), so a "real day" is not complete |
-| F11 | #42 | Low | Acceptance windows are daily only (no weekday or date range), which limits boundary-closure scenarios for the scenario library |
-| F12 | #42 | Low | Boundary assignment rests on stated assumptions: 11 KTV loads with unlisted neighbours default to KTV-VSKP, and 129 entries / 114 exits are gap-filled. The KK-line `via` list needs an SME check |
-| F13 | #46 | Medium | Twin rules not yet enforced (M1 backlog): the crossing standing-room (CSR) rule is counted (`csr_exceeded`) but not enforced; FR-TWIN-10 in full, the rule auditor (FR-VER-12), the observation model (FR-TWIN-13), the injector and station-master agents (FR-TWIN-15, FR-SCN-02) are absent. The reversible-line direction gate is in the twin but not in the IR |
-| F14 | #46 | Low | No stochastic perturbation yet, so the seed only seeds event ids (FR-TWIN-11). `gt.state` is sampled every 60 s, the spec target is 1 s (`twin.sim.state_period_s`) |
-| F15 | #46 | Low | BL-0 gives long passenger delays on 20 Aug 2025 (mean about 18 min, maximum about 2.9 h) as trains queue first come first served. It is the do-nothing baseline; compare with the historical delays before using it as a KPI reference |
-| F16 | #47 | Medium | DISPLIB-style IR: check field names and occupancy semantics against `displib_spec_2025-09-17.pdf` before P2 (FR-TWIN-19); only trains entering in a window are converted, so rolling windows need frozen decisions for trains already running |
-| F17 | #45 | Low | Data fidelity: HCM is a halt flagged as a crossing facility in the COA data (excluded from the crossing rule); 1,029 freight path legs in the log name blocks that skip stations (kept as observed) |
-| F18 | #23 | Low | M1 frontend and observability: DR-0001 §3.3 conditions (pinned chart version, separate chunk, About page, npm licence gate), the OSM map attribution, and Grafana per DR-0001 §4 |
+Each finding F01 to F12 is an item of the consolidated carry-over list in section 6, which also holds the items
+that came from the twin and converter work (F13 to F21).
 
 ## 5. Open risks for M1
 
 | Risk | Note |
 |---|---|
 | Passenger running-time fidelity (F01) | Booked-time adherence in the twin and the optimiser's run-time minima depend on it |
-| Solver latency at KTV–PSA scale (RK-06, OD-33) | The M1 latency spike decides full section vs the VZM–PSA fallback |
-| DISPLIB licence (OD-17) | The request to SINTEF is drafted but **not sent** ([status](../licensing/displib-licence-request.md): "drafted, awaiting user to send"). Until it is answered, use stays internal and nothing is benchmarked publicly |
+| Solver latency at KTV–PSA scale (RK-06, OD-33, F19) | The M1 latency spike decides full section vs the VZM–PSA fallback |
+| DISPLIB licence (OD-17, F21) | The request to SINTEF is drafted but **not sent** ([status](../licensing/displib-licence-request.md): "drafted, awaiting user to send"). Until it is answered, use stays internal and nothing is benchmarked publicly |
 | Synthetic infrastructure | Gradients come from a surface DEM, curves from OSM, and signals and sub-blocks are synthetic (1 km spacing is DUMMY). The calibration supplements absorb some of their errors |
 | Version governance (F05, F06) | Parameter edits silently change published content |
 | Scenario library v0 (#21) | Not started; needs F10 and F11 |
@@ -156,8 +135,152 @@ Before M1 work starts, the ones that need a decision are:
 - OD-25, for the planning horizon;
 - OD-33, after the latency spike.
 
-## 6. Consequences
+## 6. Consolidated M1 carry-over
 
-- When this PR is merged, M0 closes with the DSC-10 passenger shortfall accepted by the owner; F01 stays open as the M1 follow-up.
-- F01 to F18 are drafted as M1 issues in the PR description of #48 (F01 to F12) and in the description of #49 (F13 to F18). The project owner creates them; they are not created by these PRs.
-- Spec upkeep for the spec owner: OD-16 closed (option A, DR-0001 D1), OD-17 request drafted and awaiting send, DSC-10 outcome as in section 3.
+One numbered list. It merges the twelve follow-ups drafted in the re-check (F01 to F12, PR #48) with the items from
+the twin and converter work and from the M0 backlog's "left for M1" list. Overlaps are merged (the notes name them).
+The project owner creates the issues; none were created by the PRs that carry this record. Items are grouped by area;
+order within a group is not a priority.
+
+### Calibration and running times
+
+**F01 Passenger calibration: station-approach model** (high, #16). Merges the SME flag and the "itemise misses" item.
+- **Problem:** 27.8 % of unpadded WTT spans are within ±1 min, against 95 %. Trains stopping at PSA, CHE and VZM are
+  6 to 9 min too fast. The report lists only the ten worst spans, all CHE-PSA (9 legs, down), so the other 128 scored
+  misses are not itemised.
+- **Scope:** model reception and departure through the station line (turnout and loop speeds from
+  `station_line.speed_kmh` and the line choice); fit supplements only as the approved definition allows (no per-span
+  fitting); itemise every scored miss by span in the report; get the SME answer on what the 3,180 s CHE-PSA time
+  contains beyond running time.
+- **AC:** passenger at least 95 % of unpadded spans, or a documented residual with an SME sign-off.
+
+**F02 Freight calibration per wagon family** (medium, #16).
+- **Problem:** one reference consist (BOXN) stands for every wagon type, while the log p10 mixes types.
+- **Scope:** per-family templates (#15) weighted by each block's wagon mix, or p10 per family where n is at least 30.
+- **AC:** freight still at least 90 %, and the report shows the mix used per block.
+
+**F03 Route-aware PSRs in the running-time track** (medium, #16).
+- **Problem:** every PSR of a direction applies to every train, ignoring the PSR's lines (for example 5440, 15 km/h over
+  the VZM diamond, lines DN/MID).
+- **Scope:** apply a PSR only to trains on its lines.
+- **AC:** a unit test with a PSR on MID does not slow a DN-main run; the calibration is re-run and reported.
+
+**F04 Honest reproducibility check in the calibration report** (low, #16).
+- **Problem:** `CalibrationReport.reproducible` is an in-process probe on one block and over-states the guarantee.
+- **Scope:** replace it with a recorded expected-seconds fixture, or drop the field.
+- **AC:** the check fails when the physics changes.
+
+### Data pipeline, publication and governance
+
+**F05 Decouple the DQ gate from the register hash** (medium, #17).
+- **Problem:** the DQ baseline contains the register content hash, so any unrelated parameter edit fails `dq --check`
+  (it did in #43).
+- **Scope:** keep `register_version` out of the diffed content and record it separately.
+- **AC:** an unrelated parameter edit does not fail `dq --check`; a DQ fact change still does.
+
+**F06 Version governance for the published network** (medium, #18). Includes the "two refreshes after a parameter edit" item.
+- **Problem:** `network_version.json` embeds the DQ report with the register hash, so a parameter edit changes the hash of
+  `KTV-PSA-2025-08` without a version bump, and `publish --check` forces a regeneration under the same label. Any edit
+  to the register or the inputs now needs both `dq --update-baseline` and `raildss network publish`.
+- **Scope:** decide that a content change means a new `network_version`, or keep non-network metadata (DQ report,
+  register hash) out of the network hash.
+- **AC:** a parameter edit that does not touch network content leaves the hash unchanged; a content change is refused
+  under the same label.
+
+**F07 Validator coverage rules** (low, #18).
+- **Problem:** nothing enforces that every COA block has gradients and every block line a speed (true today).
+- **Scope:** add the rule to the validator.
+- **AC:** removing one gradient record fails the rule.
+
+**F08 Version stamps for static tables** (low, #18, FR-DATA-04).
+- **Problem:** N-05 checks `network_version` and `timetable_version` only; `policy_version` and `rule_catalogue_version`
+  are unstamped by design (provenance card), and FR-DATA-04 does not say static tables are exempt.
+- **Scope:** stamp them, or write the exemption into FR-DATA-04.
+- **AC:** N-05 enforces whichever is chosen.
+
+**F09 Publish `train_run` and the rolling-stock tables** (medium, #18).
+- **Problem:** `train_run` (the dated WTT expansion) and `loco_class`, `vehicle_type`, `consist` (#15) are empty in the
+  publication; the twin rebuilds them in memory.
+- **Scope:** add them to the publication.
+- **AC:** `raildss network show` counts are above 0, and the twin reads them from the publication.
+
+**F10 Twin support for paths that start or end at a halt** (medium, #20).
+- **Problem:** train 22501 on 2025-08-20 is rejected, so a "real day" is not complete; trains already running at a
+  window start have no position (see F16).
+- **Scope:** support such trains in the plans.
+- **AC:** the day run has no UNSUPPORTED trains on the 27 freight days.
+
+**F11 Weekday and date-range acceptance windows** (low, #12).
+- **Problem:** acceptance windows are daily only, which limits boundary-closure scenarios.
+- **Scope:** extend `acceptance_windows` with weekdays and validity dates, validated for overlap.
+- **AC:** a boundary-closure scenario can be expressed.
+
+**F12 SME check of boundary assumptions** (low, #12).
+- **Problem:** 11 KTV loads with unlisted neighbours default to KTV-VSKP; 129 entries and 114 exits are gap-filled; the
+  KK-line `via` list is unchecked.
+- **Scope:** an SME reviews the lists and rules.
+- **AC:** reviewed, with any changes recorded in `config/boundaries.yaml`.
+
+**F17 Data-fidelity notes from publication** (low, #18).
+- **Problem:** HCM is a halt flagged as a crossing facility in the COA data (excluded from the crossing rule);
+  1,029 freight path legs in the log name blocks that skip stations (kept as observed).
+- **Scope:** confirm HCM with the data owner; decide whether skipping legs are expanded to the stations between.
+- **AC:** each recorded as confirmed or corrected in the mapping spec.
+
+### Twin and solver
+
+**F13 Twin rule enforcement and the rest of the twin** (medium, #20, M0 backlog "left for M1").
+- **Problem:** the crossing standing-room (CSR) rule is counted (`csr_exceeded`) but not enforced; FR-TWIN-10 in full,
+  the rule auditor (FR-VER-12), the observation model and degradation profiles (FR-TWIN-13), the injector and
+  station-master agents (FR-TWIN-15, FR-SCN-02) are absent. The reversible-line direction gate is in the twin but not
+  in the IR.
+- **Scope:** implement them as planned for M1.
+- **AC:** 30 seeded nominal days with 0 violations by the rule auditor (FR-TWIN-10); CSR violations fail rather than count.
+
+**F14 Perturbation and ground-truth resolution** (low, #20).
+- **Problem:** no stochastic perturbation, so the seed only seeds event ids (FR-TWIN-11); `gt.state` is sampled every
+  60 s against the 1 s target (`twin.sim.state_period_s`).
+- **Scope:** add the perturbations; measure the cost of 1 s state.
+- **AC:** FR-TWIN-11 checks pass; the state period is justified by a measured run time.
+
+**F15 BL-0 as a KPI reference** (low, #20).
+- **Problem:** BL-0 gives long passenger delays on 20 Aug 2025 (mean about 18 min, maximum about 2.9 h) as trains queue
+  first come first served.
+- **Scope:** compare with the historical delays of that day before BL-0 is used as the do-nothing reference.
+- **AC:** the comparison is in the KPI notes with the gap explained or accepted.
+
+**F16 DISPLIB-style IR: spec check and rolling windows** (medium, #22).
+- **Problem:** the field names and occupancy semantics follow the published description as recalled; only trains entering
+  in a window are converted, so trains already running need frozen decisions.
+- **Scope:** check against `displib_spec_2025-09-17.pdf` before P2 (FR-TWIN-19); add frozen decisions for rolling windows.
+- **AC:** a spec cross-check note; a window starting mid-day converts and the evaluator accepts the twin's schedule for it.
+
+**F19 CP-SAT latency spike on the full section** (high, §12.3, RK-06, OD-33).
+- **Problem:** whether the solver meets the latency target at KTV-PSA scale is unknown; the result decides full section
+  against the VZM-PSA fallback.
+- **Scope:** run CP-SAT on IR instances (#22) of growing windows up to the full section.
+- **AC:** time-to-quality results published and the OD-33 decision recorded.
+
+**F20 Scenario library v0** (#21, M1).
+- **Problem:** not started; needs F10 and F11.
+- **Scope:** as in #21.
+- **AC:** 10 scenarios, both real days running.
+
+### Licence, frontend and spec
+
+**F18 M1 frontend and observability** (low, #23).
+- **Scope:** the DR-0001 section 3.3 conditions (pinned chart version, separate chunk, About page, npm licence gate), the
+  OSM map attribution, and Grafana per DR-0001 section 4.
+- **AC:** the licence gate passes and the conditions are checked in CI.
+
+**F21 Owner and spec-owner actions** (low).
+- **Problem:** the SINTEF DISPLIB request is still "drafted, awaiting user to send"; spec section 15 does not yet show
+  OD-16 closed (option A, DR-0001 D1) or OD-17 awaiting send; DSC-10 outcome as in section 3.
+- **Scope:** the owner sends or drops the request and records the status; the spec owner updates section 15.
+- **AC:** the request status table and the spec agree.
+
+## 7. Consequences
+
+- When this PR is merged, M0 closes with the DSC-10 passenger shortfall accepted by the owner; F01 stays open as the
+  M1 follow-up.
+- Section 6 is the single carry-over list; PR #48's draft list is superseded by it (same F-numbers for F01 to F12).
