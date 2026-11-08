@@ -6,16 +6,17 @@
 | Spec references | §13 M0 exit criteria, DQ-10, DQ-14…22, DSC-10 (rev. v1.5), FR-DATA-04, §12.3, RK-06 |
 | Date | 2026-11-08 |
 | Evidence commit | `main` at `28f377a` (merge of #47) |
-| Status | **Proposed.** The project owner decides in the PR review. Merging accepts the recommendation in §3 |
+| Status | **Accepted** on 2026-11-08. The project owner accepted the DSC-10 decision in §3 (documented passenger shortfall accepted as met for M0, CHE-PSA flagged for SME review) |
 | Supersedes | n/a |
 
 ## 1. Summary
 
-M0 meets every exit criterion except one. The passenger part of DSC-10 is not met: 53 of 191 unpadded
+M0 meets every exit criterion except the passenger part of DSC-10, which is not met: 53 of 191 unpadded
 WTT spans (27.8 %) are within ±1 min, against a target of 95 %. The user approved the definition and
-the way a shortfall is handled (spec v1.5), but did not waive the target.
+the way a shortfall is handled (spec v1.5). **On 2026-11-08 the owner accepted the documented shortfall as
+DSC-10 met for M0, with the CHE-PSA spans flagged for SME review** (§3).
 
-**Recommendation:** close M0 with this deviation recorded. Carry the passenger calibration into M1 as
+M0 closes with this deviation recorded. Carry the passenger calibration into M1 as
 follow-up F01. It does not block the M1 work that depends on M0: the twin, the verifier and the
 latency spike all use the published network and the freight calibration, which pass.
 
@@ -27,8 +28,8 @@ Every command was run on `28f377a` on 2026-11-08 and exited 0.
 |---|---|---|---|
 | 1 | DQ-14…22 PASS in the committed DQ report (#17) | **PASS** | `python -m raildss_etl dq --check`: DQ-14 to DQ-22 all `PASS`; the report equals the committed baseline `docs/etl/dq/ktv-psa-baseline.*` |
 | 2 | Network validator 0 errors, `KTV-PSA-2025-08` published (#18) | **PASS** | See the row details below |
-| 3 | DSC-10 calibration met (#16) | **PARTIAL: freight met, passenger not met** | See the row details below |
-| 4a | Chart licence decision recorded (#23) | **PASS** | [DR-0001](0001-licence-review-m0.md) §3 (D2 train-graph component). Status *Proposed*: it is accepted when its PR is merged, and that PR is merged |
+| 3 | DSC-10 calibration met (#16) | **MET for M0 by owner decision: freight met, passenger shortfall documented and accepted** | See the row details below |
+| 4a | Chart licence decision recorded (#23) | **PASS** | [DR-0001](0001-licence-review-m0.md) §3 (D2 train-graph component). Status Accepted (PR #30 merged 2026-11-04) |
 | 4b | Dummy-data catalogue complete (#24) | **PASS** | [`docs/data/dummy-data-catalogue.md`](../data/dummy-data-catalogue.md); `tests/params/test_dummy_catalogue.py` checks that every DUMMY register key is catalogued, with a source and a check date, and passes in CI |
 | 5 | CI green on `main`; open risks and deviations noted for M1, including the M1 latency spike | **PASS** | CI run 42454599980 on `28f377a`: success. Risks and deviations are in §5 and §6 of this record |
 
@@ -60,13 +61,22 @@ Every command was run on `28f377a` on 2026-11-08 and exited 0.
 - 10.0 s wall time, trace hash `6fd6dae0…`.
 - Train 22501 is reported UNSUPPORTED because its path starts or ends at a halt (F10).
 
-## 3. Decision (proposed)
+## 3. Decision
 
-Close M0 with one recorded deviation:
+The owner accepted this documented shortfall as DSC-10 met for M0 (2026-11-08), on the condition that the
+CHE-PSA spans are flagged for SME review (below). M0 closes with one recorded deviation:
 
 | Deviation | Cause | Handling |
 |---|---|---|
 | DSC-10 passenger: 27.8 % of unpadded spans within ±1 min, target 95 % | The model has no station approach. Trains that stop at PSA, CHE or VZM are slowed by turnout and loop speeds on reception, which non-stop legs (where the supplements are fitted) do not show. The worst spans (CHE→PSA, VZM→…) are 6–9 min too fast | Follow-up F01 in M1. Per-span fitting stays excluded (user decision, spec v1.5) |
+
+**Flagged for SME review: the CHE-PSA span of 9 legs, down direction.** It is all ten of the worst spans in the
+calibration report (trains 20842, 22842, 02812, 12515, 22643 twice, 22973, 20854, 22860 and 12659). The booked time
+is 3,180 s and the twin gives 2,612 s to 2,691 s (physics plus 280 s of supplements), 489 s to 568 s too fast. The
+question for the SME is what the 3,180 s contains beyond running time: dwell at the intermediate halts, a speed
+restriction, or part of the booked path that is not in the dataset (this tests the station-approach explanation
+above). The report lists only the ten worst spans; the other 128 scored spans outside the band are not itemised
+(part of F01).
 
 ## 4. Independent re-check of PRs merged without an AO review
 
@@ -100,6 +110,12 @@ is fixed here.
 | F10 | #46 | Medium | The twin rejects trains whose path starts or ends at a halt (22501 on 2025-08-20), so a "real day" is not complete |
 | F11 | #42 | Low | Acceptance windows are daily only (no weekday or date range), which limits boundary-closure scenarios for the scenario library |
 | F12 | #42 | Low | Boundary assignment rests on stated assumptions: 11 KTV loads with unlisted neighbours default to KTV-VSKP, and 129 entries / 114 exits are gap-filled. The KK-line `via` list needs an SME check |
+| F13 | #46 | Medium | Twin rules not yet enforced (M1 backlog): the crossing standing-room (CSR) rule is counted (`csr_exceeded`) but not enforced; FR-TWIN-10 in full, the rule auditor (FR-VER-12), the observation model (FR-TWIN-13), the injector and station-master agents (FR-TWIN-15, FR-SCN-02) are absent. The reversible-line direction gate is in the twin but not in the IR |
+| F14 | #46 | Low | No stochastic perturbation yet, so the seed only seeds event ids (FR-TWIN-11). `gt.state` is sampled every 60 s, the spec target is 1 s (`twin.sim.state_period_s`) |
+| F15 | #46 | Low | BL-0 gives long passenger delays on 20 Aug 2025 (mean about 18 min, maximum about 2.9 h) as trains queue first come first served. It is the do-nothing baseline; compare with the historical delays before using it as a KPI reference |
+| F16 | #47 | Medium | DISPLIB-style IR: check field names and occupancy semantics against `displib_spec_2025-09-17.pdf` before P2 (FR-TWIN-19); only trains entering in a window are converted, so rolling windows need frozen decisions for trains already running |
+| F17 | #45 | Low | Data fidelity: HCM is a halt flagged as a crossing facility in the COA data (excluded from the crossing rule); 1,029 freight path legs in the log name blocks that skip stations (kept as observed) |
+| F18 | #23 | Low | M1 frontend and observability: DR-0001 §3.3 conditions (pinned chart version, separate chunk, About page, npm licence gate), the OSM map attribution, and Grafana per DR-0001 §4 |
 
 ## 5. Open risks for M1
 
@@ -142,5 +158,6 @@ Before M1 work starts, the ones that need a decision are:
 
 ## 6. Consequences
 
-- When this PR is merged, M0 closes with deviation F01 open.
-- F01–F12 are drafted as M1 issues in the PR description. The project owner creates them; they are not created by this PR.
+- When this PR is merged, M0 closes with the DSC-10 passenger shortfall accepted by the owner; F01 stays open as the M1 follow-up.
+- F01 to F18 are drafted as M1 issues in the PR description of #48 (F01 to F12) and in the description of #49 (F13 to F18). The project owner creates them; they are not created by these PRs.
+- Spec upkeep for the spec owner: OD-16 closed (option A, DR-0001 D1), OD-17 request drafted and awaiting send, DSC-10 outcome as in section 3.
