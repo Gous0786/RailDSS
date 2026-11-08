@@ -2,6 +2,7 @@
 
 python -m raildss_twin calibrate [--write]    # running-time calibration (issue #16)
 python -m raildss_twin run --date 2025-08-20  # one real day under BL-0 (issue #20)
+python -m raildss_twin displib --from-h 0 --to-h 2  # DISPLIB-style IR of a window (issue #22)
 
 ``run`` is headless by default. ``--speed N`` (1 to 60) follows the wall clock at N times real time;
 ``--control`` reads ``pause``, ``resume`` and ``speed N`` from standard input while it runs.
@@ -94,6 +95,29 @@ def _run(args: argparse.Namespace) -> int:
     return 0 if report.completed or until else 1
 
 
+def _displib(args: argparse.Namespace) -> int:
+    from raildss_etl.mapping import REPO
+    from raildss_twin import displib, run
+    from raildss_twin.sim import SECONDS_PER_HOUR
+
+    world = run.load_world()
+    day = dt.date.fromisoformat(args.date)
+    start, end = args.from_h * SECONDS_PER_HOUR, args.to_h * SECONDS_PER_HOUR if args.to_h else None
+    instance, plans = displib.build_instance(world, day, start, end)
+    counts = instance.counts
+    print(f"window {args.date} {args.from_h:g} h to {args.to_h:g} h: {len(plans)} trains")
+    for name, n in counts.items():
+        print(f"  {name:<22}{n:>8}")
+    out = args.out or REPO / "data" / "interim" / "ktv-psa" / "displib"
+    out.mkdir(parents=True, exist_ok=True)
+    stem = f"{instance.scenario_id}-{args.from_h:g}-{args.to_h:g}h"
+    plain = json.dumps(instance.to_displib(), separators=(",", ":"))
+    (out / f"{stem}.ir.json").write_text(instance.to_json(), encoding="utf-8", newline="\n")
+    (out / f"{stem}.displib.json").write_text(plain + "\n", encoding="utf-8", newline="\n")
+    print(f"wrote {stem}.ir.json and {stem}.displib.json to {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m raildss_twin")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -108,10 +132,19 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--control", action="store_true", help="read pause/resume/speed N from stdin")
     p_run.add_argument("--trace-out", type=Path, default=None, help="write every gt.* event as JSON lines")
     p_run.add_argument("--report-out", type=Path, default=None)
+    p_dl = sub.add_parser("displib", help="convert a window of a day to the DISPLIB-style IR (issue #22)")
+    p_dl.add_argument("--date", default="2025-08-20")
+    p_dl.add_argument("--from-h", type=float, default=0.0)
+    p_dl.add_argument("--to-h", type=float, default=2.0, help="0 converts to the end of the day")
+    p_dl.add_argument(
+        "--out", type=Path, default=None, help="directory (default data/interim/ktv-psa/displib)"
+    )
     args = ap.parse_args(argv)
 
     if args.cmd == "run":
         return _run(args)
+    if args.cmd == "displib":
+        return _displib(args)
     cal, report = calibration.run()
     doc = calibration.render_markdown(report)
     if args.write:
