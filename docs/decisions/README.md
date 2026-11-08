@@ -10,5 +10,5 @@ except for its status line.
 
 | Record | Title | Status |
 |---|---|---|
-| [DR-0001](0001-licence-review-m0.md) | M0 licence review: train-graph component, Grafana, DEM/OSM, DISPLIB (#23) | Proposed |
-| [DR-0002](0002-m0-exit-review.md) | M0 exit review: criteria evidence, PR re-check, M1 risks (#25) | Proposed |
+| [DR-0001](0001-licence-review-m0.md) | M0 licence review: train-graph component, Grafana, DEM/OSM, DISPLIB (#23) | Accepted |
+| [DR-0002](0002-m0-exit-review.md) | M0 exit review: criteria evidence, DSC-10 decision, PR re-check, M1 carry-over (#25) | Accepted |

@@ -5,7 +5,7 @@
 | Issue | #23 (M0-23) |
 | Spec references | REC-19, REC-10, C-07, NFR-LIC-01…06, FR-DATA-05, OD-16, OD-17, A-07, RK-07 |
 | Date | 2026-11-03 |
-| Status | **Proposed.** The project owner decides in the PR review. **Merging the PR accepts the recommendations below.** Requesting changes on §2 selects the alternative posture or the fallback chart |
+| Status | **Accepted** (PR #30 merged 2026-11-04). The project owner decided in the PR review; merging accepted the recommendations below |
 | Supersedes | n/a |
 
 > This is an engineering licence review, not legal advice. Every licence fact cited below was
