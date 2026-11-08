@@ -33,7 +33,7 @@ import itertools
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 import yaml
@@ -50,6 +50,9 @@ LOCAL = "local:"
 SECTION_DIVISION = "WAT"
 MINUTES_PER_HOUR = 60
 END_OF_DAY = "24:00"
+WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")  # Monday-first, as date.weekday()
+DAYS_PER_WEEK = len(WEEKDAYS)
+Weekday = Literal["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 def _minutes(hhmm: str) -> int:
@@ -61,17 +64,56 @@ def _minutes(hhmm: str) -> int:
 
 
 class Window(BaseModel):
+    """An accepting interval of the day, optionally on some weekdays and within a date range.
+
+    ``weekdays`` (empty = every day) and ``valid_from`` / ``valid_to`` (inclusive, either may be omitted)
+    say on which days the window applies.
+    """
+
     start: str
     end: str
+    weekdays: list[Weekday] = Field(default_factory=list)
+    valid_from: dt.date | None = None
+    valid_to: dt.date | None = None
 
     @model_validator(mode="after")
     def _ordered(self) -> Window:
         if _minutes(self.end) <= _minutes(self.start):
             raise ValueError(f"window {self.start}-{self.end}: end must be after start")
+        if self.valid_from and self.valid_to and self.valid_to < self.valid_from:
+            raise ValueError(f"window {self.start}-{self.end}: valid_to is before valid_from")
+        if len(set(self.weekdays)) != len(self.weekdays):
+            raise ValueError(f"window {self.start}-{self.end}: repeated weekday")
         return self
 
     def contains(self, minute_of_day: int) -> bool:
         return _minutes(self.start) <= minute_of_day < _minutes(self.end)
+
+    def applies_on(self, day: dt.date) -> bool:
+        return (
+            (not self.weekdays or WEEKDAYS[day.weekday()] in self.weekdays)
+            and (self.valid_from is None or day >= self.valid_from)
+            and (self.valid_to is None or day <= self.valid_to)
+        )
+
+    def overlaps(self, other: Window) -> bool:
+        """True if some day, and some minute of that day, is covered by both windows."""
+        if _minutes(self.start) >= _minutes(other.end) or _minutes(other.start) >= _minutes(self.end):
+            return False
+        starts = [d for d in (self.valid_from, other.valid_from) if d]
+        ends = [d for d in (self.valid_to, other.valid_to) if d]
+        first = (
+            max(starts) if starts else (min(ends) - dt.timedelta(days=DAYS_PER_WEEK - 1) if ends else None)
+        )
+        probe = first or dt.date.min + dt.timedelta(days=DAYS_PER_WEEK)
+        days = (probe + dt.timedelta(days=i) for i in range(DAYS_PER_WEEK))
+        return any(self.applies_on(d) and other.applies_on(d) for d in days)
+
+
+def _describe(w: Window) -> str:
+    days = f" {'/'.join(w.weekdays)}" if w.weekdays else ""
+    dates = f" {w.valid_from or ''}..{w.valid_to or ''}" if w.valid_from or w.valid_to else ""
+    return f"{w.start}-{w.end}{days}{dates}"
 
 
 class Boundary(BaseModel):
@@ -102,10 +144,9 @@ class BoundaryConfig(BaseModel):
         for bid, windows in self.acceptance_windows.items():
             if bid not in self.boundaries:
                 problems.append(f"acceptance window for unknown boundary {bid}")
-            ordered = sorted(windows, key=lambda w: _minutes(w.start))
-            for w1, w2 in itertools.pairwise(ordered):
-                if _minutes(w2.start) < _minutes(w1.end):
-                    problems.append(f"{bid}: windows {w1.start}-{w1.end} and {w2.start}-{w2.end} overlap")
+            for w1, w2 in itertools.combinations(windows, 2):
+                if w1.overlaps(w2):
+                    problems.append(f"{bid}: windows {_describe(w1)} and {_describe(w2)} overlap")
         problems += [
             f"gap_fill {end}/{d}: unknown boundary {bid}"
             for end, m in self.gap_fill.items()
@@ -116,8 +157,20 @@ class BoundaryConfig(BaseModel):
             raise ValueError("; ".join(problems))
         return self
 
-    def is_open(self, boundary: str, when: dt.time) -> bool:
-        windows = self.acceptance_windows.get(boundary, [])
+    def is_open(self, boundary: str, when: dt.time | dt.datetime, day: dt.date | None = None) -> bool:
+        """Does ``boundary`` accept trains at ``when``?
+
+        Open if no window applies on that day (the default), or if an applying window contains the time.
+        A time without a date (``day`` omitted) can only meet windows that have no weekday or date limit.
+        """
+        if isinstance(when, dt.datetime):
+            day, when = when.date(), when.time()
+        windows = [
+            w
+            for w in self.acceptance_windows.get(boundary, [])
+            if (day is None and not w.weekdays and not w.valid_from and not w.valid_to)
+            or (day is not None and w.applies_on(day))
+        ]
         minute = when.hour * MINUTES_PER_HOUR + when.minute
         return not windows or any(w.contains(minute) for w in windows)
 

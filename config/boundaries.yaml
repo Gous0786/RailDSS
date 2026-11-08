@@ -9,9 +9,20 @@
 #   default:    used for an unknown neighbour at this station (at most one per station)
 # Flows that start or end inside the section are "local:<station>" (sidings, goods sheds).
 #
-# acceptance_windows: daily "HH:MM" intervals when a boundary accepts trains. An empty list or a
-# missing boundary means always open (default). Windows may not overlap within a boundary;
-# end > start (a window ending at midnight is written "24:00").
+# acceptance_windows: "HH:MM" intervals when a boundary accepts trains (end > start; a window ending at
+# midnight is written "24:00"). A window may be limited to some days:
+#   weekdays:   [Mon .. Sun], Monday-first; omitted = every day
+#   valid_from / valid_to:  inclusive ISO dates; either may be omitted
+# On a day where no window applies, the boundary is open (the default; an empty list or a missing
+# boundary is always open). On a day where some window applies, the boundary accepts only inside those
+# windows. So a closure is written as the accepting windows around it. Windows of one boundary may not
+# overlap: same minutes, a shared weekday and a shared date.
+#
+# Example (closed 02:00-04:00 on Sundays in August 2025; open at every other time):
+#   acceptance_windows:
+#     KTV-VSKP:
+#       - {start: "00:00", end: "02:00", weekdays: [Sun], valid_from: 2025-08-01, valid_to: 2025-08-31}
+#       - {start: "04:00", end: "24:00", weekdays: [Sun], valid_from: 2025-08-01, valid_to: 2025-08-31}
 
 boundaries:
   KTV-VSKP:
