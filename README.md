@@ -180,6 +180,10 @@ uv run python -m raildss_twin run --speed 30 --control               # then type
 The trace hash is a SHA-256 over the emitted events in order; the same plans and seed give the same hash.
 Perturbations, the observation model, the injector and station-master agents are M1.
 
+`python -m raildss_twin displib --from-h 0 --to-h 2` converts a window of the day into the solver-facing,
+DISPLIB-style IR (operations, resources, release times, delay objective); see `docs/twin/displib-ir.md`.
+No DISPLIB instance or verifier is used or committed (licence unstated).
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under
