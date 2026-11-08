@@ -161,6 +161,25 @@ uv run raildss network show KTV-PSA-2025-08         # version stamps and record 
 uv run raildss network load KTV-PSA-2025-08 --db-url postgresql://...   # PostgreSQL + PostGIS
 ```
 
+## Twin skeleton: one real day (issue #20)
+
+`python -m raildss_twin run` simulates one day on the published network under policy BL-0 (booked order,
+first come first served, nearest free permitted line). A SimPy meso model: COA block lines on VZM-PSA
+and synthetic sub-blocks on KTV-VZM are unit resources, station lines too, reception and despatch only
+along Connections edges, running times from the calibration of issue #16, dwell from the WTT. The input
+is the WTT for a date plus the freight `DayInstance` of that day. It emits `gt.*` events (evaluation
+only) and reports deadlocks with their location instead of hiding them.
+
+```bash
+uv run python -m raildss_twin run --date 2025-08-20                  # headless, about 20 s
+uv run python -m raildss_twin run --date 2025-08-20 --seed 7 --trace-out trace.jsonl
+uv run python -m raildss_twin run --speed 60 --until-h 1 --kafka     # x60 clock, stream gt.* to Kafka
+uv run python -m raildss_twin run --speed 30 --control               # then type: pause | resume | speed 60
+```
+
+The trace hash is a SHA-256 over the emitted events in order; the same plans and seed give the same hash.
+Perturbations, the observation model, the injector and station-master agents are M1.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under

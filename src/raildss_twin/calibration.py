@@ -30,6 +30,7 @@ import itertools
 import json
 import statistics
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -44,7 +45,7 @@ from raildss_etl.speeds import Speeds, Stage4Report
 from raildss_etl.timetable import Timetable
 from raildss_etl.topology import Topology
 from raildss_params import Register, load
-from raildss_schema.entities import Gradient
+from raildss_schema.entities import BlockSection, Gradient, OperationalPoint, SpeedProfile
 from raildss_twin.rolling_stock import ConsistTemplate, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
 
@@ -115,14 +116,45 @@ class Network:
     def __init__(
         self, topology: Topology, speeds: Speeds, speeds_report: Stage4Report, gradients: list[Gradient]
     ) -> None:
-        ops = sorted(topology.operational_points, key=lambda o: o.km)
+        psr = [(p.id, p.direction, p.from_km_hwh, p.to_km_hwh) for p in speeds_report.placements]
+        self._build(
+            topology.operational_points, topology.block_sections, speeds.speed_profiles, psr, gradients
+        )
+
+    @classmethod
+    def from_entities(
+        cls,
+        operational_points: Sequence[OperationalPoint],
+        block_sections: Sequence[BlockSection],
+        speed_profiles: Sequence[SpeedProfile],
+        gradients: Sequence[Gradient],
+    ) -> Network:
+        """Build from published entities. A PSR profile's locations carry the HWH chainage."""
+        psr = [
+            (p.id, p.direction or "DN", p.location_from.km or 0.0, p.location_to.km or 0.0)
+            for p in speed_profiles
+            if p.kind == "PSR"
+        ]
+        net = cls.__new__(cls)
+        net._build(operational_points, block_sections, speed_profiles, psr, gradients)
+        return net
+
+    def _build(
+        self,
+        operational_points: Sequence[OperationalPoint],
+        block_sections: Sequence[BlockSection],
+        speed_profiles: Sequence[SpeedProfile],
+        psr_places: Sequence[tuple[str, str, float, float]],
+        gradients: Sequence[Gradient],
+    ) -> None:
+        ops = sorted(operational_points, key=lambda o: o.km)
         self.km = {o.code: o.km for o in ops}
         hwh = np.array([o.km_ref_hwh for o in ops], dtype=float)
         sec = np.array([o.km for o in ops])
-        coa = [b for b in topology.block_sections if b.level == "coa"]
+        coa = [b for b in block_sections if b.level == "coa"]
         dn = {b.id for b in coa if b.direction == "DN"}
         grads = sorted((g for g in gradients if g.block_section_id in dn), key=lambda g: g.from_km)
-        profiles = {s.id: s for s in speeds.speed_profiles}
+        profiles = {s.id: s for s in speed_profiles}
         self.tracks: dict[tuple[str, str], Track] = {}
         for direction in ("DN", "UP"):
             line = [
@@ -136,11 +168,11 @@ class Network:
             ]
             for kind in ("passenger", "goods"):
                 psr = []
-                for p in speeds_report.placements:
-                    if p.direction != direction:
+                for pid, pdir, from_hwh, to_hwh in psr_places:
+                    if pdir != direction:
                         continue
-                    a, b = sorted(float(np.interp(-h, -hwh, sec)) for h in (p.from_km_hwh, p.to_km_hwh))
-                    prof = profiles[p.id]
+                    a, b = sorted(float(np.interp(-h, -hwh, sec)) for h in (from_hwh, to_hwh))
+                    prof = profiles[pid]
                     psr.append(
                         Restriction(
                             a, b, prof.vmax_passenger_kmh if kind == "passenger" else prof.vmax_goods_kmh
