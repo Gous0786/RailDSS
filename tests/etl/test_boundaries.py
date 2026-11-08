@@ -14,6 +14,7 @@ from raildss_etl.boundaries import (
     BoundaryConfig,
     BoundaryReport,
     Flow,
+    Window,
     build_boundaries,
     freight_day_mismatches,
     load_config,
@@ -161,3 +162,139 @@ def test_division_check_fails_on_inconsistent_log(built: Built) -> None:
     bad.loc[bad["LoadId"] == local_in, "From Division"] = "KUR"
     bad.loc[bad["LoadId"] == local_out, "Division To"] = "KUR"
     assert local_division_violations(freight, bad) == {"entry": 1, "exit": 1}
+
+
+# ------------------------------------------------------ weekday and date-range windows (DR-0002 F11)
+
+AUGUST_SUNDAYS = {"weekdays": ["Sun"], "valid_from": "2025-08-01", "valid_to": "2025-08-31"}
+CLOSURE = {
+    "A-X": [
+        {"start": "00:00", "end": "02:00", **AUGUST_SUNDAYS},
+        {"start": "04:00", "end": "24:00", **AUGUST_SUNDAYS},
+    ]
+}
+
+
+def test_a_sunday_closure_in_august_can_be_expressed_and_validates() -> None:
+    """Closed 02:00-04:00 on Sundays in August; open at every other time."""
+    cfg = BoundaryConfig.model_validate(_cfg(acceptance_windows=CLOSURE))
+    sunday, monday = dt.date(2025, 8, 3), dt.date(2025, 8, 4)
+    assert not cfg.is_open("A-X", dt.datetime.combine(sunday, dt.time(3, 0)))
+    assert not cfg.is_open("A-X", dt.time(2, 0), day=sunday)
+    assert cfg.is_open("A-X", dt.time(1, 59), day=sunday) and cfg.is_open("A-X", dt.time(4, 0), day=sunday)
+    assert cfg.is_open("A-X", dt.datetime.combine(monday, dt.time(3, 0)))  # not a Sunday
+    assert cfg.is_open(
+        "A-X", dt.datetime.combine(dt.date(2025, 9, 7), dt.time(3, 0))
+    )  # a Sunday in September
+    assert cfg.is_open("A-X", dt.datetime.combine(dt.date(2025, 7, 27), dt.time(3, 0)))  # a Sunday in July
+
+
+def test_a_time_without_a_date_only_meets_unrestricted_windows() -> None:
+    cfg = BoundaryConfig.model_validate(_cfg(acceptance_windows=CLOSURE))
+    assert cfg.is_open("A-X", dt.time(3, 0))
+    plain = BoundaryConfig.model_validate(
+        _cfg(acceptance_windows={"A-X": [{"start": "06:00", "end": "08:00"}]})
+    )
+    assert not plain.is_open("A-X", dt.time(9, 0))
+
+
+def test_valid_dates_are_inclusive_and_weekdays_are_monday_first() -> None:
+    w = Window(
+        start="00:00",
+        end="24:00",
+        weekdays=["Mon"],
+        valid_from=dt.date(2025, 8, 4),
+        valid_to=dt.date(2025, 8, 11),
+    )
+    assert w.applies_on(dt.date(2025, 8, 4)) and w.applies_on(dt.date(2025, 8, 11))  # both Mondays, both ends
+    assert not w.applies_on(dt.date(2025, 8, 18)) and not w.applies_on(dt.date(2025, 8, 5))
+    assert Window(start="00:00", end="24:00").applies_on(dt.date(2030, 1, 1))  # no limits: every day
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "overlap"),
+    [
+        ({"start": "06:00", "end": "08:00"}, {"start": "07:30", "end": "09:00"}, True),
+        ({"start": "06:00", "end": "08:00"}, {"start": "08:00", "end": "09:00"}, False),  # adjacent
+        (
+            {"start": "06:00", "end": "08:00", "weekdays": ["Sun"]},
+            {"start": "07:00", "end": "09:00", "weekdays": ["Mon"]},
+            False,
+        ),
+        (
+            {"start": "06:00", "end": "08:00", "weekdays": ["Sun", "Mon"]},
+            {"start": "07:00", "end": "09:00", "weekdays": ["Mon"]},
+            True,
+        ),
+        ({"start": "06:00", "end": "08:00", "weekdays": ["Sun"]}, {"start": "07:00", "end": "09:00"}, True),
+        (
+            {"start": "06:00", "end": "08:00", "valid_to": "2025-07-31"},
+            {"start": "07:00", "end": "09:00", "valid_from": "2025-08-01"},
+            False,
+        ),
+        (
+            {"start": "06:00", "end": "08:00", "valid_to": "2025-08-01"},
+            {"start": "07:00", "end": "09:00", "valid_from": "2025-08-01"},
+            True,
+        ),
+        # date ranges meet, weekdays differ on every shared day
+        (
+            {
+                "start": "06:00",
+                "end": "08:00",
+                "weekdays": ["Mon"],
+                "valid_from": "2025-08-04",
+                "valid_to": "2025-08-09",
+            },
+            {
+                "start": "06:00",
+                "end": "08:00",
+                "weekdays": ["Tue"],
+                "valid_from": "2025-08-04",
+                "valid_to": "2025-08-09",
+            },
+            False,
+        ),
+        # the shared weekday (Sun) falls outside the shared dates (4-5 Aug)
+        (
+            {"start": "06:00", "end": "08:00", "weekdays": ["Sun"], "valid_to": "2025-08-05"},
+            {"start": "06:00", "end": "08:00", "weekdays": ["Sun", "Tue"], "valid_from": "2025-08-04"},
+            False,
+        ),
+        # a shared Sunday inside the shared dates
+        (
+            {"start": "06:00", "end": "08:00", "weekdays": ["Sun"], "valid_to": "2025-08-05"},
+            {"start": "06:00", "end": "08:00", "weekdays": ["Sun", "Tue"], "valid_from": "2025-08-01"},
+            True,
+        ),
+    ],
+)
+def test_overlap_considers_minutes_weekdays_and_dates(
+    a: dict[str, Any], b: dict[str, Any], overlap: bool
+) -> None:
+    wa, wb = Window.model_validate(a), Window.model_validate(b)
+    assert wa.overlaps(wb) is overlap and wb.overlaps(wa) is overlap
+    cfg = _cfg(acceptance_windows={"A-X": [a, b]})
+    if overlap:
+        with pytest.raises(ValidationError, match="overlap"):
+            BoundaryConfig.model_validate(cfg)
+    else:
+        BoundaryConfig.model_validate(cfg)
+
+
+@pytest.mark.parametrize(
+    "window",
+    [
+        {"start": "00:00", "end": "24:00", "weekdays": ["Funday"]},
+        {"start": "00:00", "end": "24:00", "weekdays": ["Sun", "Sun"]},
+        {"start": "00:00", "end": "24:00", "valid_from": "2025-08-31", "valid_to": "2025-08-01"},
+        {"start": "00:00", "end": "24:00", "valid_from": "not a date"},
+    ],
+)
+def test_bad_weekdays_or_dates_are_rejected(window: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        BoundaryConfig.model_validate(_cfg(acceptance_windows={"A-X": [window]}))
+
+
+def test_the_committed_config_still_loads_with_no_windows() -> None:
+    assert load_config().acceptance_windows == {}
