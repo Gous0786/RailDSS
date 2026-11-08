@@ -217,3 +217,103 @@ def test_clock_pause_holds_the_simulation() -> None:
     start = time.monotonic()
     env.run(until=5)
     assert time.monotonic() - start >= 0.35
+
+
+# ---------------------------------------------------------------- reversible line: same-instant races
+
+
+def _head_ons(sim: Sim, directions: dict[str, str], labels: set[str]) -> list[str]:
+    """Moments at which trains of both directions hold sub-blocks of the one reversible line."""
+    held: dict[str, str] = {}
+    problems: list[str] = []
+    for time_s, label, train, occupied in sim.occupancy_log:
+        if label not in labels:
+            continue
+        if occupied:
+            held[train] = directions[train]
+            if len(set(held.values())) > 1:
+                problems.append(f"{sorted(held)} at {time_s:.0f} s")
+        else:
+            held.pop(train, None)
+    return problems
+
+
+def _mid_scenario(
+    world: run.World, script: list[tuple[str, str, float, float]]
+) -> tuple[Sim, dict[str, float]]:
+    """Trains ``(name, direction, request time, hold time)``; DN enters at sub-block #1, UP at #9."""
+    sim = _toy_sim(world)
+    key = pair_key("KUK", "VZM") + "/MID"
+    granted: dict[str, float] = {}
+    directions = {name: d for name, d, _, _ in script}
+    sim.trains = [_train(name) for name, *_ in script]
+
+    def proc(t: Any, d: str, at: float, hold: float) -> Any:
+        yield sim.env.timeout(at)
+        label = "SB:a#1" if d == "DN" else "SB:a#9"
+        yield from sim.acquire(t, [Option(label, 1, key, d)])
+        granted[t.plan.run_id] = sim.env.now
+        yield sim.env.timeout(hold)
+        sim.release(t, label)
+
+    for t, (_, d, at, hold) in zip(sim.trains, script, strict=True):
+        sim.env.process(proc(t, d, at, hold))
+    sim.env.run(until=500)
+    sim._directions = directions  # type: ignore[attr-defined]
+    return sim, granted
+
+
+@pytest.mark.parametrize("order", [("DN", "UP"), ("UP", "DN")])
+def test_opposing_trains_at_the_same_instant_do_not_both_enter_the_reversible_line(
+    world: run.World, order: tuple[str, str]
+) -> None:
+    """Review of PR #46: the gate was written only after a train resumed, so two trains asking in the same
+    instant, for different sub-blocks of the one line, both got in."""
+    first, second = order
+    sim, granted = _mid_scenario(world, [("T1", first, 0.0, 30.0), ("T2", second, 0.0, 30.0)])
+    labels = {"SB:a#1", "SB:a#9"}
+    assert _head_ons(sim, {"T1": first, "T2": second}, labels) == []
+    assert granted == {"T1": 0.0, "T2": 30.0}
+
+
+def test_a_queued_train_keeps_the_line_from_oncoming_traffic_when_the_last_user_leaves(
+    world: run.World,
+) -> None:
+    """X (DN) holds #1 until 10 s. A (DN) queues for #1. At 10 s, as X leaves and A is granted, B (UP) asks
+    for the far sub-block in the same instant: it must wait for A, not slip in behind X."""
+    sim, granted = _mid_scenario(
+        world, [("X", "DN", 0.0, 10.0), ("A", "DN", 1.0, 20.0), ("B", "UP", 10.0, 5.0)]
+    )
+    assert _head_ons(sim, {"X": "DN", "A": "DN", "B": "UP"}, {"SB:a#1", "SB:a#9"}) == []
+    assert granted == {"X": 0.0, "A": 10.0, "B": 30.0}
+    assert sim.gates == {} and all(not t.claims for t in sim.trains)
+
+
+def test_same_direction_trains_still_follow_each_other_on_the_reversible_line(world: run.World) -> None:
+    sim, granted = _mid_scenario(world, [("T1", "DN", 0.0, 30.0), ("T2", "DN", 0.0, 5.0)])
+    assert granted == {"T1": 0.0, "T2": 30.0}  # one sub-block holds one train; the gate does not add a wait
+    assert sim.gates == {}
+
+
+def test_a_train_waiting_only_for_oncoming_traffic_is_not_reported_as_a_deadlock(world: run.World) -> None:
+    sim = _toy_sim(world)
+    key = pair_key("KUK", "VZM") + "/MID"
+    t1, t2 = _train("DN"), _train("UP")
+    sim.trains = [t1, t2]
+
+    def down() -> Any:
+        yield from sim.acquire(t1, [Option("SB:a#1", 1, key, "DN")])
+        yield sim.env.timeout(100)
+        sim.release(t1, "SB:a#1")
+
+    def up() -> Any:
+        yield from sim.acquire(t2, [Option("SB:a#9", 1, key, "UP")])
+
+    sim.env.process(down())
+    sim.env.process(up())
+    sim.env.run(until=50)
+    sim.check_deadlock()
+    assert sim.deadlocks == [] and t2.waiting_gates == [key]
+    assert sim.stuck_info(t2, "x").blocked_by == ["DN"]
+    sim.env.run(until=200)
+    assert "SB:a#9" in t2.held

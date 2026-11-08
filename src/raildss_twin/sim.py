@@ -101,6 +101,10 @@ class Train:
     block: str | None = None
     held: dict[str, Any] = field(default_factory=dict)  # resource label -> request
     gated: dict[str, str] = field(default_factory=dict)  # resource label -> reversible line it belongs to
+    claims: dict[str, int] = field(default_factory=dict)  # reversible line -> claims (held or requested)
+    waiting_gates: list[str] = field(
+        default_factory=list
+    )  # reversible lines it waits to be free of oncoming traffic
     waiting: list[tuple[str, simpy.Resource]] | None = None
     segment: tuple[float, float, float, float] | None = None  # t0, t1, km0, km1
     km: float = 0.0
@@ -218,9 +222,7 @@ class Sim:
         label = opt.label
         t.held[label] = req
         if opt.gate:
-            state = self.gates.setdefault(opt.gate, (opt.direction, set()))
-            state[1].add(t.plan.run_id)
-            t.gated[label] = opt.gate
+            t.gated[label] = opt.gate  # the gate was claimed when the request was made
         self.owner[req] = t
         self.occupancy_log.append((self.env.now, label, t.plan.run_id, True))
         self.emit("gt.occupancy", EventType.TDS_OCCUPANCY, t, {"tds_id": label, "occupied": True})
@@ -233,14 +235,7 @@ class Sim:
         self.resources[label].release(req)
         gate = t.gated.pop(label, None)
         if gate:
-            users = self.gates[gate][1]
-            if not any(g == gate for g in t.gated.values()):
-                users.discard(t.plan.run_id)
-            if not users:
-                del self.gates[gate]
-                ev = self._gate_events.pop(gate, None)
-                if ev is not None and not ev.triggered:
-                    ev.succeed()
+            self._unclaim(t, gate)
         self.occupancy_log.append((self.env.now, label, t.plan.run_id, False))
         self.emit("gt.occupancy", EventType.TDS_OCCUPANCY, t, {"tds_id": label, "occupied": False})
 
@@ -262,6 +257,30 @@ class Sim:
     def clearing_s(self, t: Train) -> float:
         return (t.plan.template.length_m + self.adequate_m) / self.clearing_mps
 
+    def _claim(self, t: Train, opt: Option) -> None:
+        """Reserve the direction of a reversible line. Call in the same step as the gate check and request,
+        so a train at the same instant sees the claim; the check itself is :meth:`gate_ok`."""
+        if not opt.gate:
+            return
+        assert self.gate_ok(opt)
+        _, users = self.gates.setdefault(opt.gate, (opt.direction, set()))
+        users.add(t.plan.run_id)
+        t.claims[opt.gate] = t.claims.get(opt.gate, 0) + 1
+
+    def _unclaim(self, t: Train, gate: str) -> None:
+        left = t.claims[gate] - 1
+        if left:
+            t.claims[gate] = left
+            return
+        del t.claims[gate]
+        users = self.gates[gate][1]
+        users.discard(t.plan.run_id)
+        if not users:
+            del self.gates[gate]
+            ev = self._gate_events.pop(gate, None)
+            if ev is not None and not ev.triggered:
+                ev.succeed()
+
     def gate_ok(self, opt: Option) -> bool:
         """A reversible line (MID) may be entered only if it is empty or runs the same way."""
         if not opt.gate:
@@ -276,34 +295,48 @@ class Sim:
         return ev
 
     def acquire(self, t: Train, options: list[Option]) -> Proc:
-        """BL-0: take the first free permitted option, else wait for any. Returns its index."""
+        """BL-0: take the first free permitted option, else wait for any. Returns its index.
+
+        The direction of a reversible line is claimed in the same step as the check and the request, never
+        after the process resumes, so two trains at the same instant cannot both enter it in opposite
+        directions. A claim that is not used (cancelled or surplus request) is given back.
+        """
         previous = t.status
         while True:
             for i, opt in enumerate(options):
                 r = self.resource(opt.label, opt.capacity)
                 if r.count < r.capacity and self.gate_ok(opt):
+                    self._claim(t, opt)
                     req = r.request()
                     yield req
                     self._granted(t, opt, req)
-                    t.waiting, t.status = None, previous
+                    t.waiting, t.waiting_gates, t.status = None, [], previous
                     return i
             t.stood = True
             t.status = "waiting"
             eligible = [(i, o) for i, o in enumerate(options) if self.gate_ok(o)]
+            blocked = [o for o in options if not self.gate_ok(o)]
             t.waiting = [(o.label, self.resource(o.label, o.capacity)) for _, o in eligible]
-            requests = [self.resource(o.label, o.capacity).request() for _, o in eligible]
-            wakers = [self.gate_event(o.gate) for o in options if o.gate and not self.gate_ok(o)]
+            t.waiting_gates = sorted({o.gate for o in blocked})
+            requests = []
+            for _, o in eligible:
+                self._claim(t, o)
+                requests.append(self.resource(o.label, o.capacity).request())
+            wakers = [self.gate_event(o.gate) for o in blocked]
             yield simpy.AnyOf(self.env, [*requests, *wakers])
             granted = [k for k, rq in enumerate(requests) if rq.triggered]
             keep = granted[0] if granted else None
             for k, rq in enumerate(requests):
                 if k == keep:
                     continue
+                other = eligible[k][1]
                 if rq.triggered:
-                    self.resource(eligible[k][1].label, eligible[k][1].capacity).release(rq)
+                    self.resource(other.label, other.capacity).release(rq)
                 else:
                     rq.cancel()
-            t.waiting = None
+                if other.gate:
+                    self._unclaim(t, other.gate)
+            t.waiting, t.waiting_gates = None, []
             if keep is not None:
                 i, opt = eligible[keep]
                 self._granted(t, opt, requests[keep])
@@ -562,34 +595,45 @@ class Sim:
                     return
             yield self.env.timeout(self.state_period)
 
+    def _can_proceed(self, t: Train, stuck: dict[str, Train]) -> bool:
+        """True if something ``t`` waits for is free, or held by a train that is not itself stuck."""
+        for _, r in t.waiting or []:
+            holders = [self.owner.get(req) for req in r.users]
+            if r.count < r.capacity or any(h is None or h.plan.run_id not in stuck for h in holders):
+                return True
+        for gate in t.waiting_gates:
+            state = self.gates.get(gate)
+            if state is None or any(u not in stuck for u in state[1] if u != t.plan.run_id):
+                return True
+        return False
+
     def deadlocked(self, active: list[Train]) -> list[Train]:
-        """Waiting trains whose every wanted resource is full and held only by such trains."""
-        w = {id(t): t for t in active if t.waiting is not None}
+        """Waiting trains whose every wanted resource (or oncoming-free line) is held only by such trains."""
+        w = {t.plan.run_id: t for t in active if t.waiting is not None}
         changed = True
         while changed:
             changed = False
             for key, t in list(w.items()):
-                assert t.waiting is not None
-                for _, r in t.waiting:
-                    holders = [self.owner.get(req) for req in r.users]
-                    if r.count < r.capacity or any(h is None or id(h) not in w for h in holders):
-                        del w[key]
-                        changed = True
-                        break
+                if self._can_proceed(t, w):
+                    del w[key]
+                    changed = True
         return list(w.values())
 
     def stuck_info(self, t: Train, reason: str) -> StuckTrain:
         waiting = t.waiting
-        blocked_by = sorted(
-            {self.owner[req].plan.run_id for _, r in (waiting or []) for req in r.users if req in self.owner}
-        )
+        blocked_by = {
+            self.owner[req].plan.run_id for _, r in (waiting or []) for req in r.users if req in self.owner
+        }
+        for gate in t.waiting_gates:
+            blocked_by |= self.gates.get(gate, ("", set()))[1] - {t.plan.run_id}
+        wanted = [lab for lab, _ in waiting or []] + [f"{g} (clear of oncoming)" for g in t.waiting_gates]
         return StuckTrain(
             run_id=t.plan.run_id,
             kind=t.plan.kind,
             location=f"{t.block} (towards {t.op})" if t.block else t.op,
-            waiting_for=" or ".join(lab for lab, _ in waiting) if waiting else None,
+            waiting_for=" or ".join(wanted) if wanted else None,
             held=sorted(t.held),
-            blocked_by=blocked_by,
+            blocked_by=sorted(blocked_by),
             reason=reason,
         )
 
