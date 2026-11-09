@@ -120,3 +120,5 @@ src/raildss_twin/__main__.py: 3  # word position in a console command, not a rul
 src/raildss_twin/__main__.py: 4  # word position in a console command, not a rule value
 src/raildss_twin/__main__.py: 6  # word count of a console order command, not a rule value
 src/raildss_twin/injector.py: 2  # midpoint of a block (halves), not a rule value
+src/raildss_twin/perturb.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_twin/perturb.py: 100  # percent to fraction (unit conversion), not a rule value

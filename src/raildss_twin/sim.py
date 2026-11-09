@@ -43,6 +43,7 @@ from raildss_common.envelope import EventEnvelope, EventType
 from raildss_params import Register
 from raildss_schema.entities import StationLine
 from raildss_twin.layout import BlockLine, Layout
+from raildss_twin.perturb import CAUSE_ENTRY, Perturbations
 from raildss_twin.plans import SECONDS_PER_DAY, Node, Plan, Timing
 
 SOURCE = "SIM.TWIN"
@@ -212,6 +213,7 @@ class Sim:
         until_s: float | None = None,
         keep_events: bool = False,
         directives: Directives | None = None,
+        perturb: bool = False,
     ) -> None:
         self.register = register
         cfg = register.value("twin.sim")
@@ -225,6 +227,8 @@ class Sim:
         self.layout, self.timing = layout, timing
         self.env = env or simpy.Environment()
         self.origin, self.day, self.scenario_id, self.seed = origin, day, scenario_id, seed
+        # FR-TWIN-11: seeded entry delays and run-time / dwell noise; off gives the nominal baseline.
+        self.pert = Perturbations(register, seed) if perturb else None
         self.sink = sink
         self.trains = [Train(p) for p in plans]
         self.resources: dict[str, simpy.PriorityResource] = {}
@@ -513,9 +517,28 @@ class Sim:
 
     def run_train(self, t: Train) -> Proc:
         plan, layout = t.plan, self.layout
-        yield self.env.timeout(max(0.0, plan.entry_s - self.env.now))
+        entry_delay = 0.0
+        if self.pert is not None and plan.timetabled and plan.entry_s >= 0:
+            entry_delay = self.pert.entry_delay_s(plan.kind, plan.category, plan.run_id)
+        yield self.env.timeout(max(0.0, plan.entry_s + entry_delay - self.env.now))
         self.pending -= 1
         t.entered, t.status = True, "running"
+        if entry_delay:
+            self.emit(
+                "gt.delay",
+                EventType.DELAY_RECORD,
+                t,
+                {
+                    "station": plan.nodes[0].op,
+                    "kind": "entry",
+                    "delay_s": round(entry_delay, 1),
+                    "primary": True,
+                    "cause_code": CAUSE_ENTRY,
+                    "root_incident_id": None,
+                },
+                self.km_of(plan.nodes[0].op),
+                plan.nodes[0].op,
+            )
         idx = [i for i, n in enumerate(plan.nodes) if not layout.ops[n.op].is_halt]
         # A train booked before the start of the day is already running: it resumes inside the block it is
         # on at the start, on the booked plan, instead of entering at a station.
@@ -573,7 +596,9 @@ class Sim:
                 if node.stop:
                     t.status = "dwelling"
                     t.stood = True
-                    yield self.env.timeout(max(self.min_dwell, node.dep - arrived, 0.0))
+                    yield self.env.timeout(
+                        self._dwell(t, node.op, max(self.min_dwell, node.dep - arrived, 0.0))
+                    )
                     t.status = "running"
                 hold = self.directives.holds.get((plan.run_id, node.op))
                 if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)
@@ -662,6 +687,8 @@ class Sim:
         """Calibrated running time. A booked train does not pass a point before its booked time: where the
         timetable is padded it runs to time (a stop is simply reached early and waits for its departure)."""
         span = self.timing.leg(t.plan, x.op, y.op, start_stopped, end_stopped)
+        if self.pert is not None:
+            span *= self.pert.leg_factor(t.plan.kind, t.plan.run_id, x.op, y.op)
         if t.plan.timetabled and not y.stop:
             span = max(span, y.arr - self.env.now)
         return self.incident_span(t, x, y, span)
@@ -762,7 +789,7 @@ class Sim:
                 if plan.timetabled:
                     self._delay(t, y, "arrival", arrived - y.arr)
                 t.status = "dwelling"
-                yield self.env.timeout(max(self.min_dwell, y.dep - arrived, 0.0))
+                yield self.env.timeout(self._dwell(t, y.op, max(self.min_dwell, y.dep - arrived, 0.0)))
                 t.status = "running"
                 if plan.timetabled:
                     self._delay(t, y, "departure", self.env.now - y.dep)
@@ -772,6 +799,9 @@ class Sim:
         sid = self.layout.entry_signal(line.block_id, line.line_id, int(key)) if key.isdigit() else None
         if sid:
             self.emit("gt.signal", EventType.SIGNAL_ASPECT, t, {"signal_id": sid, "aspect": "DANGER"})
+
+    def _dwell(self, t: Train, op: str, base_s: float) -> float:
+        return base_s if self.pert is None else self.pert.dwell_s(base_s, t.plan.run_id, op)
 
     def _delay(self, t: Train, node: Node, kind: str, seconds: float) -> None:
         self.emit(

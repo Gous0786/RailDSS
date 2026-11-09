@@ -171,6 +171,7 @@ def _run(args: argparse.Namespace) -> int:
         until_s=until,
         observers=observers,
         setup=setup,
+        perturb=args.perturb,
     )
     if producer is not None:
         producer.flush()
@@ -246,6 +247,9 @@ def main(argv: list[str] | None = None) -> int:
     p_run = sub.add_parser("run", help="simulate one real day under BL-0")
     p_run.add_argument("--date", default="2025-08-20", help="WTT date and freight day (default 2025-08-20)")
     p_run.add_argument("--seed", type=int, default=None)
+    p_run.add_argument(
+        "--perturb", action="store_true", help="seeded entry delays and run-time / dwell noise (FR-TWIN-11)"
+    )
     p_run.add_argument("--speed", type=float, default=None, help="clock multiple 1..60; default headless")
     p_run.add_argument("--until-h", type=float, default=None, help="stop after this many simulated hours")
     p_run.add_argument("--kafka", action="store_true", help="stream gt.* and obs.* events to Kafka")

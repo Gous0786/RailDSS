@@ -71,6 +71,7 @@ def run_day(
     observers: Sequence[Observer] = (),
     setup: Callable[[Sim], object] | None = None,
     directives: Directives | None = None,
+    perturb: bool = False,
 ) -> tuple[RunReport, Sim]:
     reg = world.register
     seed = int(reg.value("twin.sim")["default_seed"]) if seed is None else seed
@@ -103,6 +104,7 @@ def run_day(
         until_s=until_s,
         keep_events=keep_events,
         directives=directives,
+        perturb=perturb,
     )
     for o in observers:
         o.attach(sim, sink)
