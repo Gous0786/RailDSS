@@ -11,6 +11,9 @@ Input is a stream of :class:`EventEnvelope` (``gt.*``):
 * ``ROUTE_SET`` with ``mode: send`` and the ``block`` / ``block_line`` the train is despatched on;
 * ``DELAY_RECORD`` with ``kind: departure`` at a booked stop.
 
+The stream may merge several sources; events are applied in ``(event_time, source, seq)`` order,
+because ``seq`` is only a per-source counter.
+
 Train attributes the trace does not carry (kind, length, traction, booked departures) come from
 ``trains``, keyed by the trace's ``train_run_id``.
 """
@@ -150,7 +153,9 @@ def plan_from_trace(
     register = register or load()
     standing = float(register.value("ver.standing_min_s"))
     builders: dict[str, _Builder] = {}
-    for ev in sorted(events, key=lambda e: e.seq):
+    # ``seq`` is per source (DQ-03): a trace merged from several feeds is ordered by time first; source
+    # and seq keep a total, stable order for records of the same instant.
+    for ev in sorted(events, key=lambda e: (e.event_time, e.source, e.seq)):
         rid = ev.train_run_id
         if rid is None or rid not in trains:
             continue
