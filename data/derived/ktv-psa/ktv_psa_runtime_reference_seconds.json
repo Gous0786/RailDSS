@@ -1,0 +1,820 @@
+{
+ "runs": [
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "ALM-KPL",
+   "from_op": "ALM",
+   "to_op": "KPL",
+   "cap_kmh": 55.0,
+   "seconds": 605
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "ALM-KPL",
+   "from_op": "ALM",
+   "to_op": "KPL",
+   "cap_kmh": 60.0,
+   "seconds": 554
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "ALM-KPL",
+   "from_op": "ALM",
+   "to_op": "KPL",
+   "cap_kmh": 130.0,
+   "seconds": 257
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "ALM-KUK",
+   "from_op": "ALM",
+   "to_op": "KUK",
+   "cap_kmh": 55.0,
+   "seconds": 465
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "ALM-KUK",
+   "from_op": "ALM",
+   "to_op": "KUK",
+   "cap_kmh": 60.0,
+   "seconds": 427
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "ALM-KUK",
+   "from_op": "ALM",
+   "to_op": "KUK",
+   "cap_kmh": 130.0,
+   "seconds": 197
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "CHE-DUSI",
+   "from_op": "CHE",
+   "to_op": "DUSI",
+   "cap_kmh": 55.0,
+   "seconds": 423
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "CHE-DUSI",
+   "from_op": "CHE",
+   "to_op": "DUSI",
+   "cap_kmh": 60.0,
+   "seconds": 388
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "CHE-DUSI",
+   "from_op": "CHE",
+   "to_op": "DUSI",
+   "cap_kmh": 130.0,
+   "seconds": 179
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "CHE-ULM",
+   "from_op": "CHE",
+   "to_op": "ULM",
+   "cap_kmh": 55.0,
+   "seconds": 657
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "CHE-ULM",
+   "from_op": "CHE",
+   "to_op": "ULM",
+   "cap_kmh": 60.0,
+   "seconds": 602
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "CHE-ULM",
+   "from_op": "CHE",
+   "to_op": "ULM",
+   "cap_kmh": 130.0,
+   "seconds": 278
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "CPP-GVI",
+   "from_op": "CPP",
+   "to_op": "GVI",
+   "cap_kmh": 55.0,
+   "seconds": 430
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "CPP-GVI",
+   "from_op": "CPP",
+   "to_op": "GVI",
+   "cap_kmh": 60.0,
+   "seconds": 394
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "CPP-GVI",
+   "from_op": "CPP",
+   "to_op": "GVI",
+   "cap_kmh": 130.0,
+   "seconds": 185
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "CPP-SGDM",
+   "from_op": "CPP",
+   "to_op": "SGDM",
+   "cap_kmh": 55.0,
+   "seconds": 869
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "CPP-SGDM",
+   "from_op": "CPP",
+   "to_op": "SGDM",
+   "cap_kmh": 60.0,
+   "seconds": 796
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "CPP-SGDM",
+   "from_op": "CPP",
+   "to_op": "SGDM",
+   "cap_kmh": 130.0,
+   "seconds": 434
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "DUSI-CHE",
+   "from_op": "DUSI",
+   "to_op": "CHE",
+   "cap_kmh": 55.0,
+   "seconds": 423
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "DUSI-CHE",
+   "from_op": "DUSI",
+   "to_op": "CHE",
+   "cap_kmh": 60.0,
+   "seconds": 388
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "DUSI-CHE",
+   "from_op": "DUSI",
+   "to_op": "CHE",
+   "cap_kmh": 130.0,
+   "seconds": 235
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "DUSI-PDU",
+   "from_op": "DUSI",
+   "to_op": "PDU",
+   "cap_kmh": 55.0,
+   "seconds": 577
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "DUSI-PDU",
+   "from_op": "DUSI",
+   "to_op": "PDU",
+   "cap_kmh": 60.0,
+   "seconds": 529
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "DUSI-PDU",
+   "from_op": "DUSI",
+   "to_op": "PDU",
+   "cap_kmh": 130.0,
+   "seconds": 244
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "GVI-CPP",
+   "from_op": "GVI",
+   "to_op": "CPP",
+   "cap_kmh": 55.0,
+   "seconds": 430
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "GVI-CPP",
+   "from_op": "GVI",
+   "to_op": "CPP",
+   "cap_kmh": 60.0,
+   "seconds": 394
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "GVI-CPP",
+   "from_op": "GVI",
+   "to_op": "CPP",
+   "cap_kmh": 130.0,
+   "seconds": 183
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "GVI-NML",
+   "from_op": "GVI",
+   "to_op": "NML",
+   "cap_kmh": 55.0,
+   "seconds": 807
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "GVI-NML",
+   "from_op": "GVI",
+   "to_op": "NML",
+   "cap_kmh": 60.0,
+   "seconds": 740
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "GVI-NML",
+   "from_op": "GVI",
+   "to_op": "NML",
+   "cap_kmh": 130.0,
+   "seconds": 341
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KBM-NWP",
+   "from_op": "KBM",
+   "to_op": "NWP",
+   "cap_kmh": 55.0,
+   "seconds": 911
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KBM-NWP",
+   "from_op": "KBM",
+   "to_op": "NWP",
+   "cap_kmh": 60.0,
+   "seconds": 835
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KBM-NWP",
+   "from_op": "KBM",
+   "to_op": "NWP",
+   "cap_kmh": 130.0,
+   "seconds": 456
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KBM-TIU",
+   "from_op": "KBM",
+   "to_op": "TIU",
+   "cap_kmh": 55.0,
+   "seconds": 898
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KBM-TIU",
+   "from_op": "KBM",
+   "to_op": "TIU",
+   "cap_kmh": 60.0,
+   "seconds": 823
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KBM-TIU",
+   "from_op": "KBM",
+   "to_op": "TIU",
+   "cap_kmh": 130.0,
+   "seconds": 449
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KPL-ALM",
+   "from_op": "KPL",
+   "to_op": "ALM",
+   "cap_kmh": 55.0,
+   "seconds": 604
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KPL-ALM",
+   "from_op": "KPL",
+   "to_op": "ALM",
+   "cap_kmh": 60.0,
+   "seconds": 554
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KPL-ALM",
+   "from_op": "KPL",
+   "to_op": "ALM",
+   "cap_kmh": 130.0,
+   "seconds": 256
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KPL-KTV",
+   "from_op": "KPL",
+   "to_op": "KTV",
+   "cap_kmh": 55.0,
+   "seconds": 507
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KPL-KTV",
+   "from_op": "KPL",
+   "to_op": "KTV",
+   "cap_kmh": 60.0,
+   "seconds": 464
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KPL-KTV",
+   "from_op": "KPL",
+   "to_op": "KTV",
+   "cap_kmh": 130.0,
+   "seconds": 220
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KTV-KPL",
+   "from_op": "KTV",
+   "to_op": "KPL",
+   "cap_kmh": 55.0,
+   "seconds": 507
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KTV-KPL",
+   "from_op": "KTV",
+   "to_op": "KPL",
+   "cap_kmh": 60.0,
+   "seconds": 464
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KTV-KPL",
+   "from_op": "KTV",
+   "to_op": "KPL",
+   "cap_kmh": 130.0,
+   "seconds": 215
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KUK-ALM",
+   "from_op": "KUK",
+   "to_op": "ALM",
+   "cap_kmh": 55.0,
+   "seconds": 465
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KUK-ALM",
+   "from_op": "KUK",
+   "to_op": "ALM",
+   "cap_kmh": 60.0,
+   "seconds": 427
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KUK-ALM",
+   "from_op": "KUK",
+   "to_op": "ALM",
+   "cap_kmh": 130.0,
+   "seconds": 197
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "KUK-VZM",
+   "from_op": "KUK",
+   "to_op": "VZM",
+   "cap_kmh": 55.0,
+   "seconds": 697
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "KUK-VZM",
+   "from_op": "KUK",
+   "to_op": "VZM",
+   "cap_kmh": 60.0,
+   "seconds": 639
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "KUK-VZM",
+   "from_op": "KUK",
+   "to_op": "VZM",
+   "cap_kmh": 130.0,
+   "seconds": 295
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "NML-GVI",
+   "from_op": "NML",
+   "to_op": "GVI",
+   "cap_kmh": 55.0,
+   "seconds": 807
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "NML-GVI",
+   "from_op": "NML",
+   "to_op": "GVI",
+   "cap_kmh": 60.0,
+   "seconds": 740
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "NML-GVI",
+   "from_op": "NML",
+   "to_op": "GVI",
+   "cap_kmh": 130.0,
+   "seconds": 342
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "NML-VZM",
+   "from_op": "NML",
+   "to_op": "VZM",
+   "cap_kmh": 55.0,
+   "seconds": 768
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "NML-VZM",
+   "from_op": "NML",
+   "to_op": "VZM",
+   "cap_kmh": 60.0,
+   "seconds": 704
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "NML-VZM",
+   "from_op": "NML",
+   "to_op": "VZM",
+   "cap_kmh": 130.0,
+   "seconds": 371
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "NWP-KBM",
+   "from_op": "NWP",
+   "to_op": "KBM",
+   "cap_kmh": 55.0,
+   "seconds": 911
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "NWP-KBM",
+   "from_op": "NWP",
+   "to_op": "KBM",
+   "cap_kmh": 60.0,
+   "seconds": 835
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "NWP-KBM",
+   "from_op": "NWP",
+   "to_op": "KBM",
+   "cap_kmh": 130.0,
+   "seconds": 456
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "NWP-PUN",
+   "from_op": "NWP",
+   "to_op": "PUN",
+   "cap_kmh": 55.0,
+   "seconds": 867
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "NWP-PUN",
+   "from_op": "NWP",
+   "to_op": "PUN",
+   "cap_kmh": 60.0,
+   "seconds": 794
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "NWP-PUN",
+   "from_op": "NWP",
+   "to_op": "PUN",
+   "cap_kmh": 130.0,
+   "seconds": 433
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "PDU-DUSI",
+   "from_op": "PDU",
+   "to_op": "DUSI",
+   "cap_kmh": 55.0,
+   "seconds": 577
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "PDU-DUSI",
+   "from_op": "PDU",
+   "to_op": "DUSI",
+   "cap_kmh": 60.0,
+   "seconds": 529
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "PDU-DUSI",
+   "from_op": "PDU",
+   "to_op": "DUSI",
+   "cap_kmh": 130.0,
+   "seconds": 307
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "PDU-SGDM",
+   "from_op": "PDU",
+   "to_op": "SGDM",
+   "cap_kmh": 55.0,
+   "seconds": 659
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "PDU-SGDM",
+   "from_op": "PDU",
+   "to_op": "SGDM",
+   "cap_kmh": 60.0,
+   "seconds": 604
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "PDU-SGDM",
+   "from_op": "PDU",
+   "to_op": "SGDM",
+   "cap_kmh": 130.0,
+   "seconds": 280
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "PSA-PUN",
+   "from_op": "PSA",
+   "to_op": "PUN",
+   "cap_kmh": 55.0,
+   "seconds": 804
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "PSA-PUN",
+   "from_op": "PSA",
+   "to_op": "PUN",
+   "cap_kmh": 60.0,
+   "seconds": 737
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "PSA-PUN",
+   "from_op": "PSA",
+   "to_op": "PUN",
+   "cap_kmh": 130.0,
+   "seconds": 341
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "PUN-NWP",
+   "from_op": "PUN",
+   "to_op": "NWP",
+   "cap_kmh": 55.0,
+   "seconds": 867
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "PUN-NWP",
+   "from_op": "PUN",
+   "to_op": "NWP",
+   "cap_kmh": 60.0,
+   "seconds": 794
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "PUN-NWP",
+   "from_op": "PUN",
+   "to_op": "NWP",
+   "cap_kmh": 130.0,
+   "seconds": 433
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "PUN-PSA",
+   "from_op": "PUN",
+   "to_op": "PSA",
+   "cap_kmh": 55.0,
+   "seconds": 804
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "PUN-PSA",
+   "from_op": "PUN",
+   "to_op": "PSA",
+   "cap_kmh": 60.0,
+   "seconds": 737
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "PUN-PSA",
+   "from_op": "PUN",
+   "to_op": "PSA",
+   "cap_kmh": 130.0,
+   "seconds": 344
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "SGDM-CPP",
+   "from_op": "SGDM",
+   "to_op": "CPP",
+   "cap_kmh": 55.0,
+   "seconds": 869
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "SGDM-CPP",
+   "from_op": "SGDM",
+   "to_op": "CPP",
+   "cap_kmh": 60.0,
+   "seconds": 796
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "SGDM-CPP",
+   "from_op": "SGDM",
+   "to_op": "CPP",
+   "cap_kmh": 130.0,
+   "seconds": 434
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "SGDM-PDU",
+   "from_op": "SGDM",
+   "to_op": "PDU",
+   "cap_kmh": 55.0,
+   "seconds": 659
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "SGDM-PDU",
+   "from_op": "SGDM",
+   "to_op": "PDU",
+   "cap_kmh": 60.0,
+   "seconds": 604
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "SGDM-PDU",
+   "from_op": "SGDM",
+   "to_op": "PDU",
+   "cap_kmh": 130.0,
+   "seconds": 283
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "TIU-KBM",
+   "from_op": "TIU",
+   "to_op": "KBM",
+   "cap_kmh": 55.0,
+   "seconds": 898
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "TIU-KBM",
+   "from_op": "TIU",
+   "to_op": "KBM",
+   "cap_kmh": 60.0,
+   "seconds": 823
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "TIU-KBM",
+   "from_op": "TIU",
+   "to_op": "KBM",
+   "cap_kmh": 130.0,
+   "seconds": 449
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "TIU-ULM",
+   "from_op": "TIU",
+   "to_op": "ULM",
+   "cap_kmh": 55.0,
+   "seconds": 630
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "TIU-ULM",
+   "from_op": "TIU",
+   "to_op": "ULM",
+   "cap_kmh": 60.0,
+   "seconds": 578
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "TIU-ULM",
+   "from_op": "TIU",
+   "to_op": "ULM",
+   "cap_kmh": 130.0,
+   "seconds": 317
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "ULM-CHE",
+   "from_op": "ULM",
+   "to_op": "CHE",
+   "cap_kmh": 55.0,
+   "seconds": 657
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "ULM-CHE",
+   "from_op": "ULM",
+   "to_op": "CHE",
+   "cap_kmh": 60.0,
+   "seconds": 602
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "ULM-CHE",
+   "from_op": "ULM",
+   "to_op": "CHE",
+   "cap_kmh": 130.0,
+   "seconds": 278
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "ULM-TIU",
+   "from_op": "ULM",
+   "to_op": "TIU",
+   "cap_kmh": 55.0,
+   "seconds": 630
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "ULM-TIU",
+   "from_op": "ULM",
+   "to_op": "TIU",
+   "cap_kmh": 60.0,
+   "seconds": 578
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "ULM-TIU",
+   "from_op": "ULM",
+   "to_op": "TIU",
+   "cap_kmh": 130.0,
+   "seconds": 341
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "VZM-KUK",
+   "from_op": "VZM",
+   "to_op": "KUK",
+   "cap_kmh": 55.0,
+   "seconds": 697
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "VZM-KUK",
+   "from_op": "VZM",
+   "to_op": "KUK",
+   "cap_kmh": 60.0,
+   "seconds": 639
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "VZM-KUK",
+   "from_op": "VZM",
+   "to_op": "KUK",
+   "cap_kmh": 130.0,
+   "seconds": 295
+  },
+  {
+   "consist": "FRT-BOXN-L",
+   "block": "VZM-NML",
+   "from_op": "VZM",
+   "to_op": "NML",
+   "cap_kmh": 55.0,
+   "seconds": 1012
+  },
+  {
+   "consist": "FRT-BOXN-E",
+   "block": "VZM-NML",
+   "from_op": "VZM",
+   "to_op": "NML",
+   "cap_kmh": 60.0,
+   "seconds": 939
+  },
+  {
+   "consist": "PAX-WAP7-22C",
+   "block": "VZM-NML",
+   "from_op": "VZM",
+   "to_op": "NML",
+   "cap_kmh": 130.0,
+   "seconds": 665
+  }
+ ]
+}

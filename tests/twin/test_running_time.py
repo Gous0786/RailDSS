@@ -7,7 +7,16 @@ import json
 import pytest
 
 from raildss_etl.publish import PUBLISHED_DIR, read_export
-from raildss_twin.calibration import CALIBRATION_FILE, CalibrationReport, Network, run
+from raildss_params import load
+from raildss_twin.calibration import (
+    CALIBRATION_FILE,
+    CalibrationReport,
+    Network,
+    Runner,
+    check_reference,
+    read_reference,
+    run,
+)
 from raildss_twin.rolling_stock import KMH_PER_MPS, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
 
@@ -119,6 +128,31 @@ def test_pass_through_never_slower_and_reproducible(report: CalibrationReport) -
     assert report.pass_slower_than_stop == []
     assert report.reproducible
     assert report.ok
+
+
+def test_reference_check_fails_when_the_physics_changes(report: CalibrationReport) -> None:
+    recorded = read_reference()
+    assert report.reference_runs == len(recorded) > 0 and report.reference_mismatches == []
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    net = Network.from_entities(
+        tables["operational_point"],  # type: ignore[arg-type]
+        tables["block_section"],  # type: ignore[arg-type]
+        tables["speed_profile"],  # type: ignore[arg-type]
+        tables["gradient"],  # type: ignore[arg-type]
+        tables["block_section_line"],  # type: ignore[arg-type]
+    )
+    stock = RollingStock(load(), tables["operational_point"][0].network_version)
+    cfg = load().value("runtime.calibration")
+    templates = [
+        stock.freight(str(cfg["freight_reference_wagon"]), True),
+        stock.freight(str(cfg["freight_reference_wagon"]), False),
+        stock.passenger(int(cfg["passenger_coaches_default"])),
+    ]
+    runner = Runner(net, load())
+    assert check_reference(runner, templates, recorded) == []
+    perturbed = Runner(net, load())  # fresh: a runner memoises its runs
+    perturbed.rot = {k: v * 1.5 for k, v in perturbed.rot.items()}  # perturb the rotational mass factor
+    assert len(check_reference(perturbed, templates, recorded)) > 0
 
 
 def test_passenger_spans_reported_for_sme_review(report: CalibrationReport) -> None:

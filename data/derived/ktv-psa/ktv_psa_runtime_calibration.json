@@ -97,6 +97,8 @@
   "pass_slower_than_stop": [],
   "passenger_cap_kmh": 130.0,
   "passenger_target_met": false,
+  "reference_mismatches": [],
+  "reference_runs": 102,
   "reproducible": true,
   "spans_padded": 116,
   "spans_physics_within": 3,

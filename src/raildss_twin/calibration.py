@@ -50,6 +50,8 @@ from raildss_twin.rolling_stock import ConsistTemplate, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
 
 CALIBRATION_FILE = OUT_DIR / "ktv_psa_runtime_calibration.json"
+REFERENCE_FILE = OUT_DIR / "ktv_psa_runtime_reference_seconds.json"
+REFERENCE_TOLERANCE_S = 1  # a recorded run may differ by rounding only (DSC-10: reproducible to 1 s)
 WORST = 10
 
 
@@ -80,7 +82,9 @@ class CalibrationReport(BaseModel):
     spans_share: float
     spans_within_all: int
     pass_slower_than_stop: list[str]
-    reproducible: bool
+    reference_runs: int  # recorded expected-seconds runs the physics is checked against
+    reference_mismatches: list[str]  # runs whose seconds moved; empty when the physics is unchanged
+    reproducible: bool  # recorded runs exist and all reproduce within REFERENCE_TOLERANCE_S
     worst_blocks: list[Residual]
     worst_spans: list[Residual]
 
@@ -419,6 +423,63 @@ def _passenger(
 # ---------------------------------------------------------------- checks and report
 
 
+class ReferenceRun(BaseModel):
+    consist: str
+    block: str
+    from_op: str
+    to_op: str
+    cap_kmh: float
+    seconds: int
+
+
+def reference_runs(
+    runner: Runner, topology: Topology, templates: list[ConsistTemplate], caps: list[float]
+) -> list[ReferenceRun]:
+    """Pass-through times of every COA block for each template at its cap: the recorded fixture."""
+    return [
+        ReferenceRun(
+            consist=tpl.consist.id,
+            block=b.id,
+            from_op=b.from_op,
+            to_op=b.to_op,
+            cap_kmh=cap,
+            seconds=runner.time(tpl, b.from_op, b.to_op, False, False, cap),
+        )
+        for b in topology.block_sections
+        if b.level == "coa"
+        for tpl, cap in zip(templates, caps, strict=True)
+    ]
+
+
+def check_reference(
+    runner: Runner, templates: list[ConsistTemplate], recorded: Sequence[ReferenceRun]
+) -> list[str]:
+    """Runs whose seconds differ from the recorded fixture by more than the tolerance (none if the
+    physics is unchanged). A consist missing from ``templates`` is reported as a mismatch."""
+    by_id = {t.consist.id: t for t in templates}
+    bad = []
+    for r in recorded:
+        tpl = by_id.get(r.consist)
+        if tpl is None:
+            bad.append(f"{r.block} {r.consist}: consist not in the reference templates")
+            continue
+        now = runner.time(tpl, r.from_op, r.to_op, False, False, r.cap_kmh)
+        if abs(now - r.seconds) > REFERENCE_TOLERANCE_S:
+            bad.append(f"{r.block} {r.consist}: {now} s, recorded {r.seconds} s")
+    return bad
+
+
+def read_reference(path: Path = REFERENCE_FILE) -> list[ReferenceRun]:
+    if not path.exists():
+        return []
+    return [ReferenceRun.model_validate(x) for x in json.loads(path.read_text(encoding="utf-8"))["runs"]]
+
+
+def write_reference(runs: Sequence[ReferenceRun], path: Path = REFERENCE_FILE) -> None:
+    payload = {"runs": [r.model_dump() for r in runs]}
+    path.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8", newline="\n")
+
+
 def pass_vs_stop(
     runner: Runner, topology: Topology, templates: list[ConsistTemplate], caps: list[float]
 ) -> list[str]:
@@ -443,6 +504,7 @@ def calibrate(
     timetable: Timetable,
     register: Register | None = None,
     gradients: list[Gradient] | None = None,
+    record_reference: bool = False,
 ) -> tuple[Calibration, CalibrationReport]:
     reg = register or load()
     cfg = reg.value("runtime.calibration")
@@ -462,14 +524,13 @@ def calibrate(
     ]
     bad = pass_vs_stop(runner, topology, templates, [f_caps["loaded"], f_caps["empty"], p_cap])
 
-    # Reproducibility: a fresh runner (no cache) gives the same seconds.
-    probe = Runner(network, reg)
-    first = f_rows[0]
-    a, c = first.ref.split("-")
-    reproducible = (
-        probe.time(templates[0 if first.kind == "loaded" else 1], a, c, False, False, f_caps[first.kind])
-        == first.physics_s
-    )
+    # Reproducibility: the physics reproduces the recorded expected seconds (fixture), so a change to
+    # any constant, curve or gradient that moves a run shows up here.
+    caps = [f_caps["loaded"], f_caps["empty"], p_cap]
+    if record_reference:
+        write_reference(reference_runs(runner, topology, templates, caps))
+    recorded = read_reference()
+    mismatches = check_reference(Runner(network, reg), templates, recorded)
 
     f_within = sum(r.within for r in f_rows)
     s_within = sum(r.within for r in p_rows)
@@ -490,7 +551,9 @@ def calibrate(
         freight_target_met=bool(f_rows) and f_within / len(f_rows) >= float(cfg["freight_share"]),
         passenger_target_met=bool(p_rows) and s_within / len(p_rows) >= float(cfg["span_share"]),
         pass_slower_than_stop=bad,
-        reproducible=reproducible,
+        reference_runs=len(recorded),
+        reference_mismatches=mismatches[:WORST],
+        reproducible=bool(recorded) and not mismatches,
         worst_blocks=sorted(f_rows, key=lambda r: -abs(r.residual))[:WORST],
         worst_spans=sorted(p_rows, key=lambda r: -abs(r.residual))[:WORST],
     )
@@ -539,7 +602,8 @@ def render_markdown(report: CalibrationReport) -> str:
         f"({report.spans_share:.1%}); physics alone {report.spans_physics_within}; "
         f"against every span, standard or padded: {report.spans_within_all}/{report.spans_total}.",
         f"- Pass-through slower than stop-start: {len(report.pass_slower_than_stop)} blocks. "
-        f"Reproducible to 1 s: {'yes' if report.reproducible else 'no'}.",
+        f"Physics reproduces the {report.reference_runs} recorded reference runs "
+        f"(`{REFERENCE_FILE.name}`) to {REFERENCE_TOLERANCE_S} s: {'yes' if report.reproducible else 'no'}.",
         "",
         "## Worst 10 freight blocks",
         "",
@@ -560,7 +624,9 @@ def frame(rows: list[Residual]) -> pd.DataFrame:
 REPORT_DOC = REPO / "docs" / "twin" / "runtime-calibration.md"
 
 
-def run(register: Register | None = None) -> tuple[Calibration, CalibrationReport]:
+def run(
+    register: Register | None = None, record_reference: bool = False
+) -> tuple[Calibration, CalibrationReport]:
     """Build the inputs from the KTV-PSA dataset (stages 1-6) and calibrate."""
     from raildss_etl.freight import build_freight
     from raildss_etl.load import run_stage1
@@ -574,4 +640,6 @@ def run(register: Register | None = None) -> tuple[Calibration, CalibrationRepor
     speeds, speeds_report = build_speeds(tables, topology, build_station_lines(tables)[0])
     demand = build_freight(tables, topology)[0]
     timetable = build_timetable(tables)[0]
-    return calibrate(topology, speeds, speeds_report, demand, timetable, register)
+    return calibrate(
+        topology, speeds, speeds_report, demand, timetable, register, record_reference=record_reference
+    )

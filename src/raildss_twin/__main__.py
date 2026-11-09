@@ -165,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run(args)
     if args.cmd == "displib":
         return _displib(args)
-    cal, report = calibration.run()
+    cal, report = calibration.run(record_reference=args.write)
     doc = calibration.render_markdown(report)
     if args.write:
         calibration.write(cal, report)
