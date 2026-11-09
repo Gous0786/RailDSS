@@ -38,8 +38,11 @@ def _lines(sim: Sim, day: dt.date) -> dict[str, list[list[float]]]:
     for ev in sim.events:
         if ev.event_type is not EventType.TRAIN_STATE or ev.location is None or ev.train_run_id is None:
             continue
+        km = ev.location.km
+        if km is None:
+            continue
         t = round((ev.event_time - origin).total_seconds())
-        out.setdefault(names[ev.train_run_id], []).append([t, round(ev.location.km, KM_DIGITS)])
+        out.setdefault(names[ev.train_run_id], []).append([t, round(km, KM_DIGITS)])
     return out
 
 
