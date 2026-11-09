@@ -807,6 +807,53 @@ parameters:
     status: SA
     owner: rules
     valid_from: 2026-11-03
+  - key: ver.clearing_speed_kmh
+    value: 20
+    unit: km/h
+    source: "spec §9.2 VER-BLK-02; demo assumption (issue #78)"
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: >-
+      Speed at which the verifier assumes a train's tail clears a block, so the next line clear is
+      due (train length + adequate distance) / this speed after the head is received. Kept separate
+      from twin.sim.clearing_speed_kmh so that the checker stays independent of the simulator.
+  - key: ver.time_tolerance_s
+    value: 0.01
+    unit: s
+    source: "issue #78"
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: Comparison tolerance for plan and trace times (event clocks round to microseconds).
+  - key: ver.running_time_resolution_s
+    value: 1
+    unit: s
+    source: "issue #78; running times are stated to 1 s (twin running-time model, FR-TWIN-07)"
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: >-
+      VER-LSP-01 accepts a block running time up to this much shorter than the exact minimum at the
+      line's maximum speed, because plans state running times rounded to whole seconds.
+  - key: ver.standing_min_s
+    value: 60
+    unit: s
+    source: "issue #78 (offline auditor, FR-VER-12)"
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: >-
+      In a ground-truth trace, a train that stays on a station line at least this long without a
+      booked stop counts as standing (held), so the CSR rule applies to it.
+  - key: ver.authority_actions
+    value: [pass_signal_at_danger, proceed_without_line_clear, abnormal_working]
+    unit: null
+    source: R04 §7.2 (xii); FR-VER-10
+    status: SA
+    owner: rules
+    valid_from: 2026-11-08
+    notes: Plan action kinds that only a competent authority may authorise (VER-AUT-01).
   - key: ver.g3.mc_replays
     value: 50
     unit: count
