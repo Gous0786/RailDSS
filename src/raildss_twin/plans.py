@@ -118,8 +118,18 @@ def passenger_plans(
         if not on:
             unsupported.append(Unsupported(run.run_id, "no point of the section lies on this day"))
             continue
+        # The day can cut a train inside a block, so that its first or last point of the day is a halt. Extend
+        # the path to the block station before and after (their booked times may lie before or after the day);
+        # a train that starts before the day is resumed inside its block at the start.
+        whole = sorted(tt.points_of(svc.train_id), key=lambda p: p.seq)
+        first, last = whole.index(on[0]), whole.index(on[-1])
+        while first > 0 and layout.ops[whole[first].op_code].is_halt:
+            first -= 1
+        while last < len(whole) - 1 and layout.ops[whole[last].op_code].is_halt:
+            last += 1
+        on = whole[first : last + 1]
         if layout.ops[on[0].op_code].is_halt or layout.ops[on[-1].op_code].is_halt:
-            unsupported.append(Unsupported(run.run_id, "path starts or ends at a halt"))
+            unsupported.append(Unsupported(run.run_id, "the booked path itself starts or ends at a halt"))
             continue
         # arr_s / dep_s count from the start of the origin day, so they already include the day offset.
         nodes = [Node(p.op_code, shift + p.arr_s, shift + p.dep_s, p.is_stop) for p in on]

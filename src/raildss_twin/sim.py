@@ -65,6 +65,19 @@ class StuckTrain(BaseModel):
     reason: str
 
 
+class TrainPosition(BaseModel):
+    """Where a train that is running is at one instant: on a block (``block`` set), or at a station."""
+
+    run_id: str
+    kind: str
+    status: str
+    station: str  # the station it is at, or has just left
+    block: str | None  # COA block it is on, in its direction of travel (e.g. ``KUK-VZM``)
+    towards: str | None  # the block's far station
+    km: float
+    held: list[str]  # unit resources it occupies
+
+
 class Deadlock(BaseModel):
     time_s: float
     trains: list[StuckTrain]
@@ -391,12 +404,23 @@ class Sim:
         self.pending -= 1
         t.entered, t.status = True, "running"
         idx = [i for i, n in enumerate(plan.nodes) if not layout.ops[n.op].is_halt]
+        # A train booked before the start of the day is already running: it resumes inside the block it is
+        # on at the start, on the booked plan, instead of entering at a station.
+        resume_k = self.resume_hop(plan, idx) if plan.entry_s < self.env.now else None
         incoming: BlockLine | None = None
         incoming_labels: list[str] = []
         try:
             for k, ni in enumerate(idx):
+                if resume_k is not None and k < resume_k:
+                    continue
                 node = plan.nodes[ni]
                 last = k == len(idx) - 1
+                if resume_k == k and not last:
+                    incoming = yield from self._resume_in_block(t, k, idx)
+                    incoming_labels = [lab for lab in t.held if lab.startswith(("BL:", "SB:"))]
+                    resume_k = None
+                    continue
+                resume_k = None
                 hop = None if last else (node.op, plan.nodes[idx[k + 1]].op)
                 t.op, t.block, t.segment, t.km = node.op, None, None, self.km_of(node.op)
                 # ---- reception: take a station line, then release the block it came by
@@ -472,6 +496,49 @@ class Sim:
             for label in list(t.held):
                 self.release(t, label)
 
+    def resume_hop(self, plan: Plan, idx: list[int]) -> int:
+        """The hop (index into the block stations) a train booked before now is on: the first ending ahead."""
+        for k in range(len(idx) - 1):
+            if plan.nodes[idx[k + 1]].arr > self.env.now:
+                return k
+        return len(idx) - 1
+
+    def _resume_progress(self, plan: Plan, k: int, idx: list[int]) -> float:
+        """Fraction of the block already run now, by the booked times at its two ends."""
+        a, b = plan.nodes[idx[k]], plan.nodes[idx[k + 1]]
+        span = b.arr - a.dep
+        return min(1.0, max(0.0, (self.env.now - a.dep) / span)) if span > 0 else 0.0
+
+    @staticmethod
+    def _resume_sub_block(subs: list[tuple[str, float]], progress: float) -> int:
+        length = sum(m for _, m in subs)
+        done = 0.0
+        for n, (_, metres) in enumerate(subs):
+            done += metres
+            if done > progress * length:
+                return n
+        return len(subs) - 1
+
+    def _resume_option(self, ln: BlockLine, progress: float) -> Option:
+        """What a resumed train holds: the whole line, or the sub-block at ``progress`` of the block."""
+        if ln.system == "AUTO":
+            subs = self.layout.canonical_sub_blocks(ln.block_id, ln.line_id)
+            if subs:
+                return self._option(ln, f"SB:{subs[self._resume_sub_block(subs, progress)][0]}")
+        return self._option(ln, f"BL:{ln.key}")
+
+    def _resume_in_block(self, t: Train, k: int, idx: list[int]) -> Proc:
+        """Place a train already between block stations ``k`` and ``k + 1``; run the rest of the block."""
+        plan, layout = t.plan, self.layout
+        a, b = plan.nodes[idx[k]], plan.nodes[idx[k + 1]]
+        block = layout.block_by_pair[(a.op, b.op)]
+        progress = self._resume_progress(plan, k, idx)
+        lines = layout.lines_for(block.id, layout.direction(a.op, b.op))
+        t.op, t.block, t.km = a.op, block.id, self.km_of(a.op)
+        j = yield from self.acquire(t, [self._resume_option(ln, progress) for ln in lines])
+        yield from self._traverse(t, k, idx, lines[j], resume_progress=progress)
+        return lines[j]
+
     def run_time(self, t: Train, x: Node, y: Node, start_stopped: bool, end_stopped: bool) -> float:
         """Calibrated running time. A booked train does not pass a point before its booked time: where the
         timetable is padded it runs to time (a stop is simply reached early and waits for its departure)."""
@@ -492,7 +559,9 @@ class Sim:
                 return self._option(ln, f"SB:{subs[0][0]}")
         return self._option(ln, f"BL:{ln.key}")
 
-    def _traverse(self, t: Train, k: int, idx: list[int], line: BlockLine) -> Proc:
+    def _traverse(
+        self, t: Train, k: int, idx: list[int], line: BlockLine, resume_progress: float | None = None
+    ) -> Proc:
         plan, layout = t.plan, self.layout
         a, b = plan.nodes[idx[k]], plan.nodes[idx[k + 1]]
         block = layout.blocks[line.block_id]
@@ -506,29 +575,48 @@ class Sim:
             total_s = self.run_time(t, a, b, stopped_at[0], stopped_at[-1])
             length = sum(m for _, m in subs)
             km0, km1 = self.km_of(a.op), self.km_of(b.op)
-            done_m = 0.0
-            first_label = f"SB:{subs[0][0]}"
+            start_m = 0.0 if resume_progress is None else resume_progress * length
+            first = 0 if resume_progress is None else self._resume_sub_block(subs, resume_progress)
+            done_m = 0.0  # metres at the start of the current sub-block
             for n, (key, metres) in enumerate(subs):
                 label = f"SB:{key}"
-                if n:
+                begin = max(done_m, start_m) if n == first else done_m
+                end = done_m + metres
+                done_m = end
+                if n < first:
+                    continue
+                if n > first:
                     prev = f"SB:{subs[n - 1][0]}"
                     yield from self.acquire(t, [self._option(line, label)])
                     self._signal(t, line, label)
                     self.release_later(t, [prev], self.clearing_s(t))
-                elif label == first_label:
+                else:
                     self._signal(t, line, label)
-                span = total_s * metres / length
+                span = total_s * (end - begin) / length
                 t.segment = (
                     self.env.now,
                     self.env.now + span,
-                    km0 + (km1 - km0) * done_m / length,
-                    km0 + (km1 - km0) * (done_m + metres) / length,
+                    km0 + (km1 - km0) * begin / length,
+                    km0 + (km1 - km0) * end / length,
                 )
-                done_m += metres
                 yield self.env.timeout(span)
             return
+        now0 = self.env.now
+        live = resume_progress is None  # a resumed train skips the legs it has already run
         for x, y, sx, sy in zip(route, route[1:], stopped_at, stopped_at[1:], strict=False):
-            span = self.run_time(t, x, y, sx, sy)
+            if live:
+                span = self.run_time(t, x, y, sx, sy)
+            elif y.arr <= now0:  # this leg is behind the train
+                if y is not b and y.stop and y.dep > now0:  # it is dwelling at this halt now
+                    t.op, t.segment, t.km = y.op, None, self.km_of(y.op)
+                    t.status = "dwelling"
+                    yield self.env.timeout(y.dep - now0)
+                    t.status = "running"
+                    live = True
+                continue
+            else:
+                live = True
+                span = max(0.0, y.arr - now0)  # the rest of this leg, on the booked plan
             t.segment = (self.env.now, self.env.now + span, self.km_of(x.op), self.km_of(y.op))
             yield self.env.timeout(span)
             if y is not b and y.stop:  # a halt inside the block
@@ -661,6 +749,28 @@ class Sim:
         self.env.process(horizon())
         self.env.run(until=self.stop)
         return self.report()
+
+    def positions(self) -> list[TrainPosition]:
+        """Every train that has entered and not left, placed on its current block or station line."""
+        out = []
+        for t in self.trains:
+            if not t.entered or t.status in ("done", "stuck"):
+                continue
+            km, _ = self.position(t)
+            block = self.layout.blocks.get(t.block) if t.block else None
+            out.append(
+                TrainPosition(
+                    run_id=t.plan.run_id,
+                    kind=t.plan.kind,
+                    status=t.status,
+                    station=t.op,
+                    block=block.id if block else None,
+                    towards=block.to_op if block else None,
+                    km=round(km, 3),
+                    held=sorted(t.held),
+                )
+            )
+        return out
 
     def report(self) -> RunReport:
         windowed = self.windowed and not self.deadlocks

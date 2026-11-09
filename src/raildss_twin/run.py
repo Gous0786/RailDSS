@@ -20,7 +20,7 @@ from raildss_schema.base import Stamped
 from raildss_twin.clock import Clock
 from raildss_twin.layout import Layout, build_layout
 from raildss_twin.plans import Plan, Timing, Unsupported, day_start, freight_plans, passenger_plans
-from raildss_twin.sim import RunReport, Sim, Sink
+from raildss_twin.sim import RunReport, Sim, Sink, TrainPosition
 
 DAY_INSTANCE_PREFIX = "aug25-day-"
 
@@ -92,6 +92,18 @@ def run_day(
     report.wall_s = round(time.perf_counter() - t0, 2)
     report.unsupported = [{"run_id": u.run_id, "reason": u.reason} for u in unsupported]
     return report, sim
+
+
+def state_at(
+    world: World, day: dt.date, start_s: float, *, seed: int | None = None, plans: list[Plan] | None = None
+) -> tuple[list[TrainPosition], RunReport]:
+    """Where every running train is at ``start_s`` of ``day`` (BL-0 from the start of the day).
+
+    A window that starts mid-day begins from these positions: each train that has entered and not left is
+    placed on the block, or the station, it is on.
+    """
+    report, sim = run_day(world, day, seed=seed, until_s=start_s, plans=plans)
+    return sim.positions(), report
 
 
 def summary(report: RunReport) -> dict[str, Any]:
