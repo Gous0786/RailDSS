@@ -962,9 +962,8 @@ parameters:
     value: 10
     unit: min
     source: "issue #86 (demo recommendation preview until the optimiser lands)"
-    status: DUMMY
+    status: SA
     owner: ui
-    provenance: placeholder
     valid_from: 2026-11-09
     notes: >-
       The control-chart export adds one demo recommendation, "hold a freight train at its entry for

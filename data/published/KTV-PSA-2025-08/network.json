@@ -62,7 +62,7 @@
  "mapping_version": "2026.11.1",
  "network_hash": "0ed874b012afa411e92a72a21a606a9a6ae3f8d09517c94cc343711cbfd69208",
  "network_version": "KTV-PSA-2025-08",
- "register_version": "2026.11.1+930b71a7eed9",
+ "register_version": "2026.11.1+d6217e5a34f5",
  "timetable_version": "KTV-PSA-TT-2025-08",
  "validator_errors": 0
 }
