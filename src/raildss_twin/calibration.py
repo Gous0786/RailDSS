@@ -45,7 +45,7 @@ from raildss_etl.speeds import Speeds, Stage4Report
 from raildss_etl.timetable import Timetable
 from raildss_etl.topology import Topology
 from raildss_params import Register, load
-from raildss_schema.entities import BlockSection, Gradient, OperationalPoint, SpeedProfile
+from raildss_schema.entities import BlockSection, BlockSectionLine, Gradient, OperationalPoint, SpeedProfile
 from raildss_twin.rolling_stock import ConsistTemplate, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
 
@@ -116,7 +116,10 @@ class Network:
     def __init__(
         self, topology: Topology, speeds: Speeds, speeds_report: Stage4Report, gradients: list[Gradient]
     ) -> None:
-        psr = [(p.id, p.direction, p.from_km_hwh, p.to_km_hwh) for p in speeds_report.placements]
+        psr = [
+            (p.id, p.direction, p.from_km_hwh, p.to_km_hwh, frozenset(p.lines))
+            for p in speeds_report.placements
+        ]
         self._build(
             topology.operational_points, topology.block_sections, speeds.speed_profiles, psr, gradients
         )
@@ -128,13 +131,34 @@ class Network:
         block_sections: Sequence[BlockSection],
         speed_profiles: Sequence[SpeedProfile],
         gradients: Sequence[Gradient],
+        block_section_lines: Sequence[BlockSectionLine] = (),
     ) -> Network:
-        """Build from published entities. A PSR profile's locations carry the HWH chainage."""
-        psr = [
-            (p.id, p.direction or "DN", p.location_from.km or 0.0, p.location_to.km or 0.0)
-            for p in speed_profiles
-            if p.kind == "PSR"
-        ]
+        """Build from published entities. A PSR profile's locations carry the HWH chainage.
+
+        A PSR applies to the lines its block has in the PSR's direction (as the ETL places it); a
+        profile with no such line on record keeps its ``line_id``, else applies to every line.
+        """
+        on_block: dict[tuple[str, str], set[str]] = defaultdict(set)
+        for ln in block_section_lines:
+            for d in ("DN", "UP") if ln.direction == "BOTH" else (ln.direction,):
+                on_block[(ln.block_section_id, d)].add(ln.line_id)
+        psr = []
+        for p in speed_profiles:
+            if p.kind != "PSR":
+                continue
+            direction = p.direction or "DN"
+            lines = on_block.get((p.block_section_id or "", direction)) or (
+                {p.line_id} if p.line_id else None
+            )
+            psr.append(
+                (
+                    p.id,
+                    direction,
+                    p.location_from.km or 0.0,
+                    p.location_to.km or 0.0,
+                    frozenset(lines) if lines else None,
+                )
+            )
         net = cls.__new__(cls)
         net._build(operational_points, block_sections, speed_profiles, psr, gradients)
         return net
@@ -144,7 +168,7 @@ class Network:
         operational_points: Sequence[OperationalPoint],
         block_sections: Sequence[BlockSection],
         speed_profiles: Sequence[SpeedProfile],
-        psr_places: Sequence[tuple[str, str, float, float]],
+        psr_places: Sequence[tuple[str, str, float, float, frozenset[str] | None]],
         gradients: Sequence[Gradient],
     ) -> None:
         ops = sorted(operational_points, key=lambda o: o.km)
@@ -168,14 +192,17 @@ class Network:
             ]
             for kind in ("passenger", "goods"):
                 psr = []
-                for pid, pdir, from_hwh, to_hwh in psr_places:
+                for pid, pdir, from_hwh, to_hwh, lines in psr_places:
                     if pdir != direction:
                         continue
                     a, b = sorted(float(np.interp(-h, -hwh, sec)) for h in (from_hwh, to_hwh))
                     prof = profiles[pid]
                     psr.append(
                         Restriction(
-                            a, b, prof.vmax_passenger_kmh if kind == "passenger" else prof.vmax_goods_kmh
+                            a,
+                            b,
+                            prof.vmax_passenger_kmh if kind == "passenger" else prof.vmax_goods_kmh,
+                            lines,
                         )
                     )
                 self.tracks[(direction, kind)] = Track(
@@ -184,6 +211,7 @@ class Network:
                     restrictions=psr,
                     grade_breaks=[g.from_km for g in grads],
                     grade_permille=[g.gradient_permille for g in grads],
+                    line=direction,  # the main line of the direction
                 )
 
     def direction(self, a: str, b: str) -> str:

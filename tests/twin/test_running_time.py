@@ -6,7 +6,8 @@ import json
 
 import pytest
 
-from raildss_twin.calibration import CALIBRATION_FILE, CalibrationReport, run
+from raildss_etl.publish import PUBLISHED_DIR, read_export
+from raildss_twin.calibration import CALIBRATION_FILE, CalibrationReport, Network, run
 from raildss_twin.rolling_stock import KMH_PER_MPS, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
 
@@ -53,6 +54,46 @@ def test_psr_held_until_the_rear_clears(stock: RollingStock) -> None:
     with_psr = simulate(dn, tpl, 0.0, 10.0, False, False, Driving(), STEP).time_s
     without = simulate(_flat(75.0), tpl, 0.0, 10.0, False, False, Driving(), STEP).time_s
     assert with_psr > without
+
+
+def test_psr_on_mid_does_not_slow_a_dn_main_run(stock: RollingStock) -> None:
+    tpl = stock.freight("BOXN", True)
+    line = [Restriction(0.0, 10.0, 75.0)]
+    mid_only = Restriction(5.0, 5.1, 15.0, lines=frozenset({"MID"}))
+    both = Restriction(5.0, 5.1, 15.0, lines=frozenset({"DN", "MID"}))
+
+    def run_time(track: Track) -> int:
+        return simulate(track, tpl, 0.0, 10.0, False, False, Driving(), STEP).time_s
+
+    free = run_time(_flat(75.0))
+    dn_main = Track(True, line, restrictions=[mid_only], line="DN")
+    assert dn_main.limit_at(5.05, tpl.length_m) == 75.0
+    assert run_time(dn_main) == free
+    on_mid = Track(True, line, restrictions=[mid_only], line="MID")
+    assert on_mid.limit_at(5.05, tpl.length_m) == 15.0
+    assert run_time(on_mid) > free
+    assert run_time(Track(True, line, restrictions=[both], line="DN")) > free
+    # A train with no line recorded is slowed by every restriction, as before.
+    assert Track(True, line, restrictions=[mid_only]).limit_at(5.05, tpl.length_m) == 15.0
+
+
+def test_network_applies_psr_5440_to_the_dn_line_not_to_a_line_without_it() -> None:
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    args = (tables["operational_point"], tables["block_section"], tables["speed_profile"], tables["gradient"])
+    net = Network.from_entities(*args, tables["block_section_line"])  # type: ignore[arg-type]
+    psr = {r.vmax_kmh: r for r in net.tracks[("DN", "passenger")].restrictions}[15.0]
+    assert psr.lines == frozenset({"DN", "MID"})  # 5440 on KUK-VZM: DN direction lines
+    assert net.tracks[("DN", "passenger")].line == "DN"
+    assert net.tracks[("DN", "passenger")].limit_at((psr.from_km + psr.to_km) / 2, 0.0) == 15.0
+    # With the PSR moved to MID alone the DN run is free of it.
+    only_mid = [
+        r for r in tables["block_section_line"] if not (r.block_section_id == "KUK-VZM" and r.line_id == "DN")
+    ]
+    net_mid = Network.from_entities(*args, only_mid)  # type: ignore[arg-type]
+    track = net_mid.tracks[("DN", "passenger")]
+    psr_mid = {r.vmax_kmh: r for r in track.restrictions}[15.0]
+    assert psr_mid.lines == frozenset({"MID"})
+    assert track.limit_at((psr_mid.from_km + psr_mid.to_km) / 2, 0.0) > 15.0
 
 
 def test_cruise_cap_and_reproducibility(stock: RollingStock) -> None:
