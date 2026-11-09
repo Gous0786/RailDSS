@@ -72,6 +72,7 @@ and `raildss_common.bus`. Kafka integration tests: `RAILDSS_TEST_KAFKA_BOOTSTRAP
 | `raildss_twin` | Digital twin: completion, running-time calculator, simulator | §3.3, issues #13–#16, #20 |
 | `raildss_optimiser` | Greedy dispatcher and CP-SAT (placeholder) | §8.4, M1/M2 |
 | `raildss_verifier` | Independent verification engine (placeholder). **Must not import** the optimiser, twin or ETL; enforced by import-linter | §9, NFR-MNT-02 |
+| `raildss_dss` | DSS online services. M1: DS-1 ingestion and data quality. **Must not import** the twin (it sees only `obs.*` / `ops.*`); enforced by import-linter | §4, FR-ING, issue #70 |
 
 Other folders: `tools/` (licence gate, dataset manifest), `tests/`, `data/` (see below).
 
@@ -184,6 +185,20 @@ Perturbations, the observation model, the injector and station-master agents are
 `python -m raildss_twin displib --from-h 0 --to-h 2` converts a window of the day into the solver-facing,
 DISPLIB-style IR (operations, resources, release times, delay objective); see `docs/twin/displib-ir.md`.
 No DISPLIB instance or verifier is used or committed (licence unstated).
+
+## Ingestion and data quality (issue #70)
+
+`python -m raildss_dss ingest` is DS-1. It validates every `obs.*` / `ops.*` record (invalid ones go to
+the dead-letter topic), drops duplicate `event_id`s and orders events on event time with a watermark
+per source. Events more than `ingest.late_threshold_min` behind are kept but flagged `late`. It raises
+a P4 "data stale" alert when a source misses `ingest.heartbeat_missed_limit` heartbeats, flags trains
+with no fix for `state.stale_threshold_min`, and prints per-source metrics.
+
+```bash
+uv run python -m raildss_twin run --until-h 2 --profile D2 --trace-out trace.jsonl
+uv run python -m raildss_dss ingest --trace trace.jsonl              # replay a twin trace
+uv run python -m raildss_dss ingest --kafka --speed 60               # live, as the dss principal
+```
 
 ## Licence
 

@@ -47,6 +47,7 @@ packages = [
     "src/raildss_optimiser",
     "src/raildss_verifier",
     "src/raildss_hitl",
+    "src/raildss_dss",
 ]
 
 # ---------------------------------------------------------------- ruff
@@ -72,6 +73,7 @@ packages = [
     "raildss_optimiser",
     "raildss_verifier",
     "raildss_hitl",
+    "raildss_dss",
 ]
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -114,6 +116,7 @@ root_packages = [
     "raildss_optimiser",
     "raildss_verifier",
     "raildss_hitl",
+    "raildss_dss",
 ]
 
 [[tool.importlinter.contracts]]
@@ -126,4 +129,17 @@ forbidden_modules = ["raildss_optimiser", "raildss_twin", "raildss_etl"]
 name = "Shared foundations do not depend on applications"
 type = "forbidden"
 source_modules = ["raildss_common", "raildss_schema", "raildss_params"]
-forbidden_modules = ["raildss_etl", "raildss_twin", "raildss_optimiser", "raildss_verifier", "raildss_hitl"]
+forbidden_modules = [
+    "raildss_etl",
+    "raildss_twin",
+    "raildss_optimiser",
+    "raildss_verifier",
+    "raildss_hitl",
+    "raildss_dss",
+]
+
+[[tool.importlinter.contracts]]
+name = "DSS services never import the twin: they see only obs.* / ops.* feeds (FR-TWIN-14)"
+type = "forbidden"
+source_modules = ["raildss_dss"]
+forbidden_modules = ["raildss_twin"]

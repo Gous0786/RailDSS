@@ -15,6 +15,7 @@ PACKAGES = [
     "raildss_optimiser",
     "raildss_verifier",
     "raildss_hitl",
+    "raildss_dss",
 ]
 
 
