@@ -653,6 +653,14 @@ parameters:
     status: SA
     owner: dss
     valid_from: 2026-11-03
+  - key: ingest.heartbeat_missed_limit
+    value: 3
+    unit: heartbeats
+    source: spec FR-ING-04 (default 3 heartbeats); R05 §8.3
+    status: SA
+    owner: dss
+    valid_from: 2026-11-09
+    notes: A source is stale (P4 data-quality alert) after this many heartbeat periods (obs.heartbeat_period_s) without one.
   - key: state.stale_threshold_min
     value: 2
     unit: min

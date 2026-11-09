@@ -92,3 +92,9 @@ src/raildss_etl/kpi_reference.py: 3  # rounding digits of a share, not a rule va
 src/raildss_twin/observe.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_verifier/rules/__init__.py: 3.6  # km/h per m/s (unit conversion), not a rule value
 src/raildss_verifier/rules/__init__.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/ingest.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/ingest.py: 20  # quantile cut points in 5 % steps (P50 / P95 are cut points), not a rule value
+src/raildss_dss/ingest.py: 9  # index of the 50th percentile among 19 cut points, not a rule value
+src/raildss_dss/ingest.py: 18  # index of the 95th percentile among 19 cut points, not a rule value
+src/raildss_dss/__main__.py: 20  # number of rejected records listed in the CLI report, not a rule value
+src/raildss_dss/__main__.py: 60  # CLI default idle stop (s) for --kafka, not a rule value
