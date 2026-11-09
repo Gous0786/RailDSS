@@ -12,6 +12,12 @@ A SimPy discrete-event simulation of one day on the published network ``KTV-PSA-
 * **BL-0.** Booked order, first come first served: SimPy queues are FIFO; a train takes the nearest
   free permitted line (platform, then main, then loop; the own-direction block line before MID).
   Passenger trains never leave a stop before the booked departure; freight never stops by plan.
+* **Rules enforced** (FR-TWIN-10; issues #51, #101; :data:`ENFORCED_RULES`): absolute block on VZM-PSA
+  and one train per sub-block on KTV-VZM, line clear only after the previous train has cleared plus
+  adequate distance, reception and despatch only along Connections edges, station-line capacity, the
+  direction gate of a reversible line, booked departures, and **CSR**: a train is never received on a
+  station line shorter than itself (wherever it might stand or be held), the refusal is logged in
+  :attr:`Sim.refusals` with its reason. Every station has a line that fits the longest train.
 * **Deadlocks** are detected (a set of waiting trains whose every wanted resource is held by a
   member) and reported with their location; they are never hidden.
 * **Ground truth.** Every state, occupancy, route / signal and delay record is an
@@ -78,6 +84,28 @@ class TrainPosition(BaseModel):
     held: list[str]  # unit resources it occupies
 
 
+# Rules the movement simulator enforces, by the catalogue rule that audits them (spec §9.2, FR-VER-12).
+ENFORCED_RULES: dict[str, str] = {
+    "VER-BLK-01": "one train per absolute-block line (VZM-PSA)",
+    "VER-HDW-01": "one train per automatic sub-block (KTV-VZM)",
+    "VER-BLK-02": "line clear only after the previous train has cleared plus adequate distance",
+    "VER-BLK-04": "a reversible line is entered only when empty or running the same way",
+    "VER-CON-01": "reception and despatch only along Connections edges",
+    "VER-CAP-02": "station-line capacity",
+    "VER-XNG-02": "no train is received on a station line shorter than itself (CSR)",
+    "VER-PLN-01": "no passenger departure before the booked time",
+}
+
+
+class Refusal(BaseModel):
+    time_s: float
+    run_id: str
+    station: str
+    line: int
+    rule: str
+    reason: str
+
+
 class Deadlock(BaseModel):
     time_s: float
     trains: list[StuckTrain]
@@ -94,7 +122,8 @@ class RunReport(BaseModel):
     stuck: list[StuckTrain]
     deadlocks: list[Deadlock]
     unsupported: list[dict[str, str]]
-    csr_exceeded: int
+    csr_refused: int  # station lines refused because the train is longer than their CSR
+    rules: list[str]  # catalogue ids of the rules the simulator enforces
     events: dict[str, int]
     trace_hash: str
     sim_end_s: float
@@ -182,7 +211,7 @@ class Sim:
         self.occupancy_log: list[tuple[float, str, str, bool]] = []
         self.deadlocks: list[Deadlock] = []
         self._deadlock_seen: set[frozenset[str]] = set()
-        self.csr_exceeded = 0
+        self.refusals: list[Refusal] = []
         last_plan = max((t.plan.nodes[-1].dep for t in self.trains), default=0.0)
         self.windowed = until_s is not None
         self.until_s = until_s if until_s is not None else max(last_plan, SECONDS_PER_DAY) + self.grace_s
@@ -357,6 +386,27 @@ class Sim:
                 return i
 
     # ------------------------------------------------------------------ station and block lines
+    def refuse_short_lines(self, t: Train, op: str, cands: list[StationLine]) -> list[StationLine]:
+        """VER-XNG-02: a train may stand or be held on any line it is received on, so a line whose CSR is
+        shorter than the train is refused (and the refusal logged), not just avoided at booked stops."""
+        length = t.plan.template.length_m
+        keep = []
+        for sl in cands:
+            if sl.csr_m is not None and sl.csr_m < length:
+                self.refusals.append(
+                    Refusal(
+                        time_s=self.env.now,
+                        run_id=t.plan.run_id,
+                        station=op,
+                        line=sl.line_no,
+                        rule="VER-XNG-02",
+                        reason=f"CSR {sl.csr_m:.0f} m is shorter than the train ({length:.0f} m)",
+                    )
+                )
+            else:
+                keep.append(sl)
+        return keep
+
     def station_candidates(
         self, t: Train, node: Node, incoming: BlockLine | None, hop: tuple[str, str] | None, stands: bool
     ) -> list[StationLine]:
@@ -428,14 +478,13 @@ class Sim:
                 cands = self.station_candidates(t, node, incoming, hop, stands)
                 if not cands:
                     raise NoRouteError(f"no station line at {node.op} permits the move")
-                fit = [sl for sl in cands if (sl.csr_m or float("inf")) >= plan.template.length_m]
-                ordered = (fit + [sl for sl in cands if sl not in fit]) if stands else cands
+                cands = self.refuse_short_lines(t, node.op, cands)
+                if not cands:
+                    raise NoRouteError(f"no station line at {node.op} is long enough for the train")
                 i = yield from self.acquire(
-                    t, [Option(f"SL:{node.op}/{sl.line_no}", sl.capacity_trains) for sl in ordered]
+                    t, [Option(f"SL:{node.op}/{sl.line_no}", sl.capacity_trains) for sl in cands]
                 )
-                sl = ordered[i]
-                if stands and sl not in fit:
-                    self.csr_exceeded += 1
+                sl = cands[i]
                 self.emit(
                     "gt.signal",
                     EventType.ROUTE_SET,
@@ -798,7 +847,8 @@ class Sim:
             stuck=stuck,
             deadlocks=self.deadlocks,
             unsupported=[],
-            csr_exceeded=self.csr_exceeded,
+            csr_refused=len(self.refusals),
+            rules=sorted(ENFORCED_RULES),
             events=dict(sorted(self.counts.items())),
             trace_hash=self.hash.hexdigest(),
             sim_end_s=self.env.now,
