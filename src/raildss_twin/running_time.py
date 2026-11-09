@@ -34,22 +34,32 @@ MIN_SPEED_MPS = 0.1  # floor that keeps 2 dx / (v_i + v_i+1) finite at a standin
 
 @dataclass(frozen=True)
 class Restriction:
-    """A speed restriction over [from_km, to_km] of section chainage (from_km < to_km)."""
+    """A speed restriction over [from_km, to_km] of section chainage (from_km < to_km).
+
+    ``lines`` names the lines it applies to (a PSR sits on some lines of a block, FR-TWIN-06);
+    ``None`` applies to every line.
+    """
 
     from_km: float
     to_km: float
     vmax_kmh: float
+    lines: frozenset[str] | None = None
 
 
 @dataclass
 class Track:
-    """One direction of the section. ``increasing`` is True when travel runs towards higher km."""
+    """One direction of the section. ``increasing`` is True when travel runs towards higher km.
+
+    ``line`` is the line the train runs on. A restriction with ``lines`` set slows it only if the
+    line is among them; with ``line`` unset every restriction applies.
+    """
 
     increasing: bool
     line_speed: list[Restriction]  # contiguous pieces covering the section
     restrictions: list[Restriction] = field(default_factory=list)  # PSRs (passenger or goods value)
     grade_breaks: list[float] = field(default_factory=list)  # km, sorted
     grade_permille: list[float] = field(default_factory=list)  # rising towards higher km, per piece
+    line: str | None = None
 
     def grade_at(self, km: float) -> float:
         """Gradient in permille, positive = uphill in the direction of travel."""
@@ -66,6 +76,8 @@ class Track:
                 lim = min(lim, piece.vmax_kmh)
         tail = train_length_m / M_PER_KM
         for r in self.restrictions:
+            if r.lines is not None and self.line is not None and self.line not in r.lines:
+                continue
             lo, hi = (r.from_km, r.to_km + tail) if self.increasing else (r.from_km - tail, r.to_km)
             if lo <= km <= hi:
                 lim = min(lim, r.vmax_kmh)

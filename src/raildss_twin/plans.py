@@ -76,6 +76,7 @@ class Timing:
             tables["block_section"],  # type: ignore[arg-type]
             tables["speed_profile"],  # type: ignore[arg-type]
             tables["gradient"],  # type: ignore[arg-type]
+            tables["block_section_line"],  # type: ignore[arg-type]
         )
         raw = json.loads(Path(CALIBRATION_FILE).read_text(encoding="utf-8"))
         self.calibration = Calibration.model_validate(raw["calibration"])
