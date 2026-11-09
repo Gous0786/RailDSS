@@ -2,6 +2,7 @@
 
 ``run_day`` is the entry point used by the CLI and the tests. The passenger plan is the WTT for the
 date; the freight plan is a ``DayInstance`` (default: the real freight day of the same date).
+Observers (issue #52) publish the ``obs.*`` feeds of the run to the same sink as the ground truth.
 """
 
 from __future__ import annotations
@@ -14,11 +15,13 @@ from typing import Any
 
 import simpy
 
+from raildss_common.envelope import EventEnvelope
 from raildss_etl import publish
 from raildss_params import Register, load
 from raildss_schema.base import Stamped
 from raildss_twin.clock import Clock
 from raildss_twin.layout import Layout, build_layout
+from raildss_twin.observe import Observer
 from raildss_twin.plans import Plan, Timing, Unsupported, day_start, freight_plans, passenger_plans
 from raildss_twin.sim import RunReport, Sim, Sink, TrainPosition
 
@@ -65,6 +68,7 @@ def run_day(
     keep_events: bool = False,
     plans: list[Plan] | None = None,
     scenario_id: str | None = None,
+    observers: Sequence[Observer] = (),
 ) -> tuple[RunReport, Sim]:
     reg = world.register
     seed = int(reg.value("twin.sim")["default_seed"]) if seed is None else seed
@@ -73,6 +77,16 @@ def run_day(
     if plans is None:
         plans, unsupported, inst = plans_for(world, day, day_instance)
     env: simpy.Environment = clock.environment() if clock else simpy.Environment()
+    gt_sink = sink
+    if observers:
+
+        def fan_out(topic: str, event: EventEnvelope) -> None:
+            if sink is not None:
+                sink(topic, event)
+            for o in observers:
+                o.on_ground_truth(topic, event)
+
+        gt_sink = fan_out
     sim = Sim(
         world.layout,
         world.timing,
@@ -82,13 +96,17 @@ def run_day(
         origin=day_start(day),
         scenario_id=scenario_id or f"{inst}-bl0",
         seed=seed,
-        sink=sink,
+        sink=gt_sink,
         env=env,
         until_s=until_s,
         keep_events=keep_events,
     )
+    for o in observers:
+        o.attach(sim, sink)
     t0 = time.perf_counter()
     report = sim.run()
+    for o in observers:
+        o.close()
     report.wall_s = round(time.perf_counter() - t0, 2)
     report.unsupported = [{"run_id": u.run_id, "reason": u.reason} for u in unsupported]
     return report, sim
