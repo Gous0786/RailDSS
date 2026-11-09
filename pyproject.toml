@@ -46,6 +46,7 @@ packages = [
     "src/raildss_twin",
     "src/raildss_optimiser",
     "src/raildss_verifier",
+    "src/raildss_hitl",
 ]
 
 # ---------------------------------------------------------------- ruff
@@ -70,6 +71,7 @@ packages = [
     "raildss_twin",
     "raildss_optimiser",
     "raildss_verifier",
+    "raildss_hitl",
 ]
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -111,6 +113,7 @@ root_packages = [
     "raildss_twin",
     "raildss_optimiser",
     "raildss_verifier",
+    "raildss_hitl",
 ]
 
 [[tool.importlinter.contracts]]
@@ -123,4 +126,4 @@ forbidden_modules = ["raildss_optimiser", "raildss_twin", "raildss_etl"]
 name = "Shared foundations do not depend on applications"
 type = "forbidden"
 source_modules = ["raildss_common", "raildss_schema", "raildss_params"]
-forbidden_modules = ["raildss_etl", "raildss_twin", "raildss_optimiser", "raildss_verifier"]
+forbidden_modules = ["raildss_etl", "raildss_twin", "raildss_optimiser", "raildss_verifier", "raildss_hitl"]
