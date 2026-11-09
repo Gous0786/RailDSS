@@ -5,6 +5,7 @@ The full-day tests share one run of 20 Aug 2025 (WTT for the date plus the real 
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import time
 from types import SimpleNamespace
@@ -317,3 +318,69 @@ def test_a_train_waiting_only_for_oncoming_traffic_is_not_reported_as_a_deadlock
     assert sim.stuck_info(t2, "x").blocked_by == ["DN"]
     sim.env.run(until=200)
     assert "SB:a#9" in t2.held
+
+
+# ---------------------------------------------------------------- trains running at the start (DR-0002 F10)
+
+
+def test_no_train_is_unsupported_on_any_of_the_27_days(world: run.World) -> None:
+    for d in range(1, 28):
+        _, unsupported, _ = run.plans_for(world, dt.date(2025, 8, d))
+        assert unsupported == [], (d, unsupported)
+
+
+def test_a_train_cut_by_midnight_inside_a_block_is_resumed_on_that_block(
+    world: run.World, day_run: Any
+) -> None:
+    """22501 reaches its first halt of 20 Aug after midnight: it starts the day inside the block before it."""
+    report, sim = day_run
+    train = next(t for t in sim.trains if t.plan.run_id == "22501@2025-08-19")
+    assert train.plan.entry_s < 0 and train.status == "done"
+    first_block = train.plan.nodes[0].op
+    positions, _ = run.state_at(world, DAY, 1.0)
+    pos = next(p for p in positions if p.run_id == "22501@2025-08-19")
+    assert pos.block is not None and pos.station == first_block and pos.towards != first_block
+    assert any(label.startswith("BL:") for label in pos.held)
+    assert report.completed and report.unsupported == []
+
+
+def test_a_train_resumed_in_an_automatic_block_holds_the_sub_block_it_is_on(world: run.World) -> None:
+    plans, _, _ = run.plans_for(world, DAY)
+    plan = next(
+        p for p in plans if p.kind == "passenger" and [n.op for n in p.nodes[:3]] == ["KTV", "KPL", "ALM"]
+    )
+    mid = (plan.nodes[0].dep + plan.nodes[1].arr) / 2  # halfway between KTV and KPL on the booked plan
+    shifted = dataclasses.replace(
+        plan,
+        run_id="RESUME-1",
+        entry_s=plan.entry_s - mid,
+        nodes=[dataclasses.replace(n, arr=n.arr - mid, dep=n.dep - mid) for n in plan.nodes],
+    )
+    report, sim = run.run_day(world, DAY, plans=[shifted], keep_events=True)
+    assert report.completed and report.exited == 1
+    first = next(label for _, label, train, occupied in sim.occupancy_log if occupied and train == "RESUME-1")
+    sub_block = int(first.rsplit("#", 1)[1])
+    assert first.startswith("SB:") and 1 < sub_block < 10  # mid-block: neither the first nor the last of 11
+    reached = [
+        e for e in sim.events if e.payload.get("station") == "KPL" and e.payload.get("kind") == "arrival"
+    ]
+    assert reached and abs(reached[0].payload["delay_s"]) <= 60  # on the booked plan
+
+
+def test_a_window_at_noon_places_every_running_train_on_its_block(world: run.World, day_run: Any) -> None:
+    noon = 12 * 3600.0
+    _, full = day_run
+    running = {t.plan.run_id for t in full.trains if t.plan.entry_s <= noon < (t.exit_s or 0.0)}
+    positions, report = run.state_at(world, DAY, noon)
+    assert {p.run_id for p in positions} == running and len(running) > 5
+    assert report.in_progress == len(running) and report.sim_end_s == noon
+    for p in positions:
+        assert p.station in world.layout.ops
+        if p.block is not None:
+            block = world.layout.blocks[p.block]
+            assert p.towards == block.to_op
+            assert any(label.startswith(("BL:", "SB:")) for label in p.held)
+            lo, hi = sorted((world.layout.km(block.from_op), world.layout.km(block.to_op)))
+            assert lo - 1e-6 <= p.km <= hi + 1e-6
+        else:
+            assert any(label.startswith("SL:") for label in p.held) or p.status == "waiting"
