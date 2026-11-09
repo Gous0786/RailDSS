@@ -14,7 +14,9 @@ reports any error (M0 exit criterion: 0 errors).
 * **N-05 / FR-DATA-04** every record carries the version stamps in force;
 * **N-06** primary keys are unique;
 * **N-07** the twin-completion checks of issue #13 (sub-block tiling, braking cover, route coverage)
-  and the DQ report (DQ-14..22) are clean.
+  and the DQ report (DQ-14..22) are clean;
+* **N-08 / DQ-10** coverage: every COA block has gradient records and every block-section line has
+  a speed (issue #64).
 """
 
 from __future__ import annotations
@@ -114,6 +116,21 @@ def block_attributes(tables: Tables) -> tuple[int, list[str]]:
             if not b.length_m > 0:
                 errors.append(f"{table} {name}: length {b.length_m} m")
     return checked, errors
+
+
+def coverage(tables: Tables) -> tuple[int, list[str]]:
+    """Every COA-level block has at least one gradient record and every block line a speed > 0."""
+    errors: list[str] = []
+    graded = {g.block_section_id for g in _rows(tables, "gradient")}
+    coa = [b for b in _rows(tables, "block_section") if b.level == "coa"]
+    errors += [f"block_section {b.id}: no gradient record" for b in coa if b.id not in graded]
+    lines = _rows(tables, "block_section_line")
+    errors += [
+        f"block_section_line {x.block_section_id}/{x.line_id}: no speed (vmax {x.vmax_kmh} km/h)"
+        for x in lines
+        if not x.vmax_kmh > 0
+    ]
+    return len(coa) + len(lines), errors
 
 
 def _within(a: float, b: float, tol_m: float) -> bool:
@@ -322,6 +339,9 @@ def validate(
             "FR-TWIN-04, DQ-14..22",
             len(completion_problems) + len(dq_failures),
             [*completion_problems, *dq_failures],
+        ),
+        _rule(
+            "N-08", "Every COA block has gradients and every block line a speed", "DQ-10", *coverage(tables)
         ),
     ]
     return ValidationReport(network_version=nv, timetable_version=tv, rules=rules)

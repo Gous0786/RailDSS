@@ -40,7 +40,7 @@ def test_committed_publication_is_valid_with_zero_errors(export: Any) -> None:
     meta, tables, _ = export
     assert meta["validator_errors"] == 0
     rules = tables["network_version"][0].validator_report["rules"]
-    assert [r["id"] for r in rules] == [f"N-0{n}" for n in range(1, 8)]
+    assert [r["id"] for r in rules] == [f"N-0{n}" for n in range(1, 9)]
     assert all(r["status"] == "PASS" and r["error_count"] == 0 for r in rules)
 
 
@@ -111,6 +111,20 @@ def test_validator_flags_a_block_without_a_length_or_system(export: Any) -> None
     tables["block_section"] = [bad, *tables["block_section"][1:]]
     rule = _rule(_validate(tables), "N-02")
     assert rule.status == "FAIL" and rule.error_count == 2
+
+
+def test_validator_flags_a_coa_block_without_gradients_or_a_line_without_a_speed(export: Any) -> None:
+    tables = _entities(export[1])
+    assert _rule(_validate(tables), "N-08").status == "PASS"
+    dropped = tables["gradient"][0]
+    tables["gradient"] = [g for g in tables["gradient"] if g.block_section_id != dropped.block_section_id]
+    rule = _rule(_validate(tables), "N-08")
+    assert rule.status == "FAIL" and dropped.block_section_id in rule.errors[0]
+    tables = _entities(export[1])
+    slow = tables["block_section_line"][0].model_copy(update={"vmax_kmh": 0.0})
+    tables["block_section_line"] = [slow, *tables["block_section_line"][1:]]
+    rule = _rule(_validate(tables), "N-08")
+    assert rule.status == "FAIL" and "no speed" in rule.errors[0]
 
 
 def test_validator_flags_a_broken_route(export: Any) -> None:
