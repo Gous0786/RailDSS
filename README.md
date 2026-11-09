@@ -140,6 +140,7 @@ uv run python -m raildss_etl stage1                # load & clean -> data/interi
 uv run python -m raildss_etl geo-fetch              # cache + verify the OSM and GLO-30 inputs (issue #14)
 uv run python -m raildss_etl gradients             # synthetic gradients and curves -> data/derived/ktv-psa
 uv run python -m raildss_etl dq --check              # whole ETL in memory -> DQ report; fails on drift from docs/etl/dq baseline
+uv run python -m raildss_etl kpi-reference --check  # historical freight KPIs (FR-KPI-11, BL-5) vs docs/kpi; --write to refresh
 ```
 
 Stage 1 drops spreadsheet-export columns, blank and repeated-header rows and exact duplicates, parses

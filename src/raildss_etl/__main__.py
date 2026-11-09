@@ -12,7 +12,18 @@ import argparse
 import sys
 from pathlib import Path
 
-from raildss_etl import boundaries, dq, freight, geo, gradients, speeds, stations, timetable, topology
+from raildss_etl import (
+    boundaries,
+    dq,
+    freight,
+    geo,
+    gradients,
+    kpi_reference,
+    speeds,
+    stations,
+    timetable,
+    topology,
+)
 from raildss_etl.load import DEFAULT_OUT, run_stage1
 from raildss_etl.mapping import MAPPING_DOC, REPO, check, ignored_references, load_mapping, render_markdown
 
@@ -25,6 +36,10 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("mapping-check", help="validate the mapping spec")
     p_doc = sub.add_parser("mapping-doc", help="print or write the Markdown view of the mapping")
     p_doc.add_argument("--write", action="store_true")
+    p_kpi = sub.add_parser("kpi-reference", help="historical reference KPIs from the freight log (issue #80)")
+    kpi_mode = p_kpi.add_mutually_exclusive_group(required=True)
+    kpi_mode.add_argument("--write", action="store_true", help="write docs/kpi/historical-reference-*")
+    kpi_mode.add_argument("--check", action="store_true", help="fail if the committed report differs")
     p_s1 = sub.add_parser("stage1", help="load and clean the raw CSV files")
     p_s1.add_argument("--out", type=Path, default=DEFAULT_OUT)
     p_s2 = sub.add_parser("stage2", help="build the topology (runs stage 1 in memory)")
@@ -70,6 +85,17 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(doc)
         return 0
 
+    if args.cmd == "kpi-reference":
+        reference = kpi_reference.run(mapping)
+        if args.write:
+            for path in kpi_reference.write(reference):
+                print(f"wrote {path}")
+            return 0
+        problems = kpi_reference.diff(reference)
+        for p in problems:
+            print(f"FAIL  {p} (update with `python -m raildss_etl kpi-reference --write`)")
+        print("kpi-reference:", "DIFFERS" if problems else "OK")
+        return 1 if problems else 0
     if args.cmd == "dq":
         report_dq = dq.build_report(mapping)
         for path in dq.write_report(report_dq, args.out):

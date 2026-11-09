@@ -82,3 +82,10 @@ src/raildss_twin/sim.py: 3  # decimals when rounding positions for display, not 
 src/raildss_twin/displib.py: 0.000000001  # guard against float noise just below an integer when rounding down, not a rule value
 src/raildss_twin/displib_check.py: 0.001  # tolerance (s) for float time noise when checking a schedule, not a rule value
 src/raildss_twin/__main__.py: 2  # default length (hours) of the converted window, a CLI default, not a rule value
+src/raildss_etl/kpi_reference.py: 60  # minutes per hour (unit conversion), not a rule value
+src/raildss_etl/kpi_reference.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_etl/kpi_reference.py: 0.1  # p10 quantile level of reported statistics, not a rule value
+src/raildss_etl/kpi_reference.py: 0.5  # median quantile level, not a rule value
+src/raildss_etl/kpi_reference.py: 0.9  # p90 quantile level of reported statistics, not a rule value
+src/raildss_etl/kpi_reference.py: 2  # rounding digits / a block id has two ends, not a rule value
+src/raildss_etl/kpi_reference.py: 3  # rounding digits of a share, not a rule value
