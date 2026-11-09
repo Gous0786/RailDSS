@@ -608,6 +608,44 @@ parameters:
     status: SA
     owner: twin
     valid_from: 2026-11-03
+  - key: obs.rtis_coverage
+    value: 1.0
+    unit: fraction
+    source: spec §6.4 (profile D1, RTIS on 100 % of electric locos)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-08
+    notes: Share of trains whose loco reports RTIS positions under D1 (every loco in the twin is electric).
+  - key: obs.position_dropout_rate
+    value: 0.02
+    unit: fraction
+    source: spec §6.4 (profile D1, 2 % random position dropout)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-08
+  - key: obs.position_noise_m
+    value: 0.0
+    unit: m
+    source: spec FR-TWIN-13 (configurable position noise)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-08
+    notes: Standard deviation of the Gaussian km noise on RTIS fixes. No open source for RTIS accuracy here, so off by default.
+  - key: obs.logger_coverage
+    value: 1.0
+    unit: fraction
+    source: spec FR-TWIN-13 (partial occupancy)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-08
+    notes: Share of track sections (station lines, automatic sub-blocks) that report logger occupancy under D1.
+  - key: obs.heartbeat_period_s
+    value: 10
+    unit: s
+    source: spec §7.1 (obs.heartbeat, count_10s)
+    status: SA
+    owner: twin
+    valid_from: 2026-11-08
   - key: ingest.late_threshold_min
     value: 5
     unit: min
@@ -957,7 +995,7 @@ parameters:
     notes: Dummy sign-on time before departure from the crew-change station; no open roster source.
   - key: obs.degradation_profile
     value:
-      d2: {rtis_coverage: 0.5, position_dropout: 0.05, latency_min: {low: 0, high: 5}, missing_departure: 0.02, duplicates: 0.02, out_of_order: 0.01, outage: {every_h: 4, duration_min: 10}}
+      d2: {rtis_coverage: 0.5, position_dropout: 0.05, latency_min: {low: 0, high: 5}, missing_departure: 0.02, duplicates: 0.02, out_of_order: 0.01, logger_coverage: 0.5, outage: {every_h: 4, duration_min: 10}}
       d3: {base: d1, outage_min: {low: 15, high: 30}}
     unit: null
     source: spec §6.4 (degradation profiles)
@@ -965,7 +1003,7 @@ parameters:
     owner: twin
     provenance: placeholder
     valid_from: 2026-11-03
-    notes: D0 is clean; D1 uses the DATA keys obs.* calibrated on the freight log.
+    notes: D0 is clean; D1 uses the obs.* keys (DATA from the freight log, SA otherwise). D2 logger_coverage is a placeholder.
   - key: swr.template
     value: {simultaneous_reception: false, run_through_on_loop: false, isolation_assumed: false}
     unit: null

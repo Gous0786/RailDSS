@@ -7,6 +7,8 @@ python -m raildss_twin displib --from-h 0 --to-h 2  # DISPLIB-style IR of a wind
 ``run`` is headless by default. ``--speed N`` (1 to 60) follows the wall clock at N times real time;
 ``--control`` reads ``pause``, ``resume`` and ``speed N`` from standard input while it runs.
 ``--kafka`` streams every ``gt.*`` event to Kafka as the ``twin`` principal (RAILDSS_KAFKA_* settings).
+``--profile`` (default D1, OD-24) also publishes the observed ``obs.*`` feeds degraded per that profile
+(issue #52); ``--profile none`` publishes ground truth only.
 """
 
 from __future__ import annotations
@@ -43,6 +45,7 @@ def _control(clock: object) -> None:
 def _run(args: argparse.Namespace) -> int:
     from raildss_twin import run
     from raildss_twin.clock import Clock
+    from raildss_twin.observe import Observer
 
     world = run.load_world()
     cfg = world.register.value("twin.sim")
@@ -73,14 +76,23 @@ def _run(args: argparse.Namespace) -> int:
 
     day = dt.date.fromisoformat(args.date)
     until = args.until_h * SECONDS_PER_HOUR if args.until_h else None
+    observers = [] if args.profile == "none" else [Observer(world.register, args.profile)]
     report, _ = run.run_day(
-        world, day, seed=args.seed, sink=sink if sinks else None, clock=clock, until_s=until
+        world,
+        day,
+        seed=args.seed,
+        sink=sink if sinks else None,
+        clock=clock,
+        until_s=until,
+        observers=observers,
     )
     if producer is not None:
         producer.flush()
     if trace is not None:
         trace.close()
     print(json.dumps(run.summary(report), indent=1))
+    for o in observers:
+        print(f"observed ({o.profile.name}): {json.dumps(dict(sorted(o.counts.items())))}")
     for d in report.deadlocks:
         print(f"DEADLOCK at {d.time_s:.0f} s: " + "; ".join(f"{t.run_id} at {t.location}" for t in d.trains))
     for s in report.stuck:
@@ -128,9 +140,17 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--seed", type=int, default=None)
     p_run.add_argument("--speed", type=float, default=None, help="clock multiple 1..60; default headless")
     p_run.add_argument("--until-h", type=float, default=None, help="stop after this many simulated hours")
-    p_run.add_argument("--kafka", action="store_true", help="stream gt.* events to Kafka")
+    p_run.add_argument("--kafka", action="store_true", help="stream gt.* and obs.* events to Kafka")
+    p_run.add_argument(
+        "--profile",
+        choices=["D0", "D1", "D2", "D3", "none"],
+        default="D1",
+        help="degradation profile of the obs.* feeds (default D1); none publishes ground truth only",
+    )
     p_run.add_argument("--control", action="store_true", help="read pause/resume/speed N from stdin")
-    p_run.add_argument("--trace-out", type=Path, default=None, help="write every gt.* event as JSON lines")
+    p_run.add_argument(
+        "--trace-out", type=Path, default=None, help="write every gt.* and obs.* event as JSON lines"
+    )
     p_run.add_argument("--report-out", type=Path, default=None)
     p_dl = sub.add_parser("displib", help="convert a window of a day to the DISPLIB-style IR (issue #22)")
     p_dl.add_argument("--date", default="2025-08-20")

@@ -89,3 +89,4 @@ src/raildss_etl/kpi_reference.py: 0.5  # median quantile level, not a rule value
 src/raildss_etl/kpi_reference.py: 0.9  # p90 quantile level of reported statistics, not a rule value
 src/raildss_etl/kpi_reference.py: 2  # rounding digits / a block id has two ends, not a rule value
 src/raildss_etl/kpi_reference.py: 3  # rounding digits of a share, not a rule value
+src/raildss_twin/observe.py: 60  # seconds per minute (unit conversion), not a rule value
