@@ -15,9 +15,16 @@ A network version plus a day instance (or a window of it) becomes an :class:`Ins
   ``s_next >= s + min_duration + delay``. An operation occupies each of its resources from ``s``
   until the next operation's start plus the resource's ``release_time`` (the clearing time of the
   line), or, for the last operation, until ``s + min_duration + release_time``. Occupations of one
-  resource by different trains must not overlap beyond its capacity. This is the DISPLIB
-  description as we understand it; the verifier is not used or vendored (licence unstated, A-07), so
-  the field names are to be checked against the published specification before FR-TWIN-19 (P2).
+  resource by different trains must not overlap beyond its capacity.
+  ``docs/twin/displib-crosscheck.md`` compares this with the published DISPLIB 2025 specification;
+  :meth:`Instance.to_displib` writes a document that follows it (one entry and one exit operation
+  per train, plain successor indices, ``op_delay`` objective components).
+* **Rolling windows** (issue #74). The IR is built from the plans and a :class:`Snapshot`, the part
+  of the DSS state ``S_t`` it needs: what every train occupies at the window start. A train already
+  running is **frozen** there: its graph starts at the operations it occupies, pinned to the times
+  it took them, with no alternatives behind its head (the DISPLIB way of putting a train that is
+  already in the network into an instance). ``snapshot_from_occupancy`` builds the snapshot from a
+  TDS occupancy log (the twin's ground truth, or the DSS estimate once ``S_t`` is published, #71).
 * **Objective.** Components ``coeff * max(0, start - threshold) + increment * [start > threshold]`` on
   operations: passenger arrival delay against the booked time at every stop and at the exit, and for
   freight the delay against unimpeded completion, weighted by the precedence class
@@ -30,6 +37,7 @@ down, so the instance is a relaxation by less than a second per operation.
 from __future__ import annotations
 
 import datetime as dt
+import itertools
 import math
 from collections import defaultdict
 from collections.abc import Sequence
@@ -99,6 +107,54 @@ class Component(Model):
     increment: float = 0.0
 
 
+class Occupation(Model):
+    resource: str
+    since_s: float
+
+
+class TrainState(Model):
+    run_id: str
+    occupations: list[Occupation]  # resources held at the snapshot time, in the order they were taken
+
+
+class Snapshot(Model):
+    """The part of the DSS state ``S_t`` the IR needs: what each train occupies at ``time_s``."""
+
+    network_version: str
+    time_s: float
+    trains: list[TrainState]
+    departed: list[str] = []  # trains that entered and have left the section
+
+
+def snapshot_from_occupancy(
+    log: Sequence[tuple[float, str, str, bool]], time_s: float, network_version: str
+) -> Snapshot:
+    """Occupations at ``time_s`` from a chronological ``(time, resource, run id, occupied)`` log."""
+    held: dict[str, dict[str, float]] = {}
+    for t, label, run_id, occupied in log:
+        if t > time_s:
+            break
+        if occupied:
+            held.setdefault(run_id, {})[label] = t
+        else:
+            held.setdefault(run_id, {}).pop(label, None)
+    return Snapshot(
+        network_version=network_version,
+        time_s=time_s,
+        trains=[
+            TrainState(
+                run_id=run_id,
+                occupations=[
+                    Occupation(resource=r, since_s=t) for r, t in sorted(h.items(), key=lambda x: x[1])
+                ],
+            )
+            for run_id, h in sorted(held.items())
+            if h
+        ],
+        departed=sorted(run_id for run_id, h in held.items() if not h),
+    )
+
+
 class Window(Model):
     day: dt.date
     start_s: int
@@ -134,32 +190,64 @@ class Instance(Model):
         return cls.model_validate_json(text)
 
     def to_displib(self) -> dict[str, Any]:
-        """The plain DISPLIB-structured document: ``trains`` as lists of operations, ``objective``."""
-        trains = [
-            [
+        """The instance as a DISPLIB 2025 document (``docs/twin/displib-crosscheck.md``).
+
+        Each train gets a synthetic exit operation (no resources) after its last operations, so their
+        resources are released as in this IR (a DISPLIB exit operation never releases them), and a
+        synthetic entry operation when it has alternative first operations. Successors are plain
+        indices in topological order; objective components are ``op_delay`` with integer constants.
+        """
+        if any(r.capacity != 1 for r in self.resources):
+            raise ValueError("DISPLIB resources are exclusive; a resource has capacity > 1")
+        trains: list[list[dict[str, Any]]] = []
+        shifts: list[int] = []
+        for t in self.trains:
+            preds = {s.operation for o in t.operations for s in o.successors}
+            roots = [o for o in t.operations if o.id not in preds]
+            shift = int(len(roots) > 1)
+            exit_index = shift + len(t.operations)
+            ops: list[dict[str, Any]] = []
+            if shift:
+                ops.append(
+                    {
+                        "start_lb": min(o.start_lb for o in roots),
+                        "start_ub": max(o.start_ub for o in roots),
+                        "min_duration": 0,
+                        "resources": [],
+                        "successors": [shift + o.id for o in roots],
+                    }
+                )
+            for o in t.operations:
+                if any(e.delay or e.operation <= o.id for e in o.successors):
+                    raise ValueError(f"{t.id} op {o.id}: DISPLIB successors carry no delay and point forward")
+                ops.append(
+                    {
+                        "start_lb": o.start_lb,
+                        "start_ub": o.start_ub,
+                        "min_duration": o.min_duration,
+                        "resources": [
+                            {"resource": r.resource, "release_time": r.release_time} for r in o.resources
+                        ],
+                        "successors": [shift + e.operation for e in o.successors] or [exit_index],
+                    }
+                )
+            ops.append({"min_duration": 0, "resources": [], "successors": []})
+            trains.append(ops)
+            shifts.append(shift)
+        objective = []
+        for c in self.objective:
+            if not (float(c.coeff).is_integer() and float(c.increment).is_integer()):
+                raise ValueError(f"DISPLIB objective constants are integers: {c}")
+            objective.append(
                 {
-                    "start_lb": o.start_lb,
-                    "start_ub": o.start_ub,
-                    "min_duration": o.min_duration,
-                    "resources": [
-                        {"resource": r.resource, "release_time": r.release_time} for r in o.resources
-                    ],
-                    "successors": [{"operation": s.operation, "delay": s.delay} for s in o.successors],
+                    "type": "op_delay",
+                    "train": c.train,
+                    "operation": shifts[c.train] + c.operation,
+                    "threshold": c.threshold,
+                    "coeff": int(c.coeff),
+                    "increment": int(c.increment),
                 }
-                for o in t.operations
-            ]
-            for t in self.trains
-        ]
-        objective = [
-            {
-                "train": c.train,
-                "operation": c.operation,
-                "coeff": c.coeff,
-                "threshold": c.threshold,
-                "increment": c.increment,
-            }
-            for c in self.objective
-        ]
+            )
         return {"trains": trains, "objective": objective}
 
 
@@ -354,6 +442,53 @@ def _train(
     return Train(id=plan.run_id, kind=plan.kind, category=plan.category, operations=ops), anchors
 
 
+def _freeze(
+    train: Train, anchors: list[tuple[int, float, int]], state: TrainState
+) -> tuple[Train, list[tuple[int, float, int]]]:
+    """Start ``train`` at the operations it occupies in the snapshot, pinned to when it took them."""
+    ops = {o.id: o for o in train.operations}
+    labels = [occ.resource for occ in state.occupations]
+    chain: list[int] = []
+    for first in (o for o in train.operations if o.resources[0].resource == labels[0]):
+        chain = [first.id]
+        for label in labels[1:]:
+            nxt = [
+                e.operation
+                for e in ops[chain[-1]].successors
+                if ops[e.operation].resources[0].resource == label
+            ]
+            if not nxt:
+                break
+            chain.append(nxt[0])
+        if len(chain) == len(labels):
+            break
+    if len(chain) != len(labels):
+        raise ValueError(f"{train.id}: occupations {labels} are not a path of its operations")
+    succ = {o.id: [e.operation for e in o.successors] for o in train.operations}
+    for a, c in itertools.pairwise(chain):
+        succ[a] = [c]  # no alternative behind the head
+    keep: set[int] = set()
+    todo = [chain[0]]
+    while todo:
+        i = todo.pop()
+        if i not in keep:
+            keep.add(i)
+            todo.extend(succ[i])
+    new_id = {old: n for n, old in enumerate(sorted(keep))}
+    since = {i: occ.since_s for i, occ in zip(chain, state.occupations, strict=True)}
+    frozen_ops = []
+    for old in sorted(keep):
+        update: dict[str, Any] = {
+            "id": new_id[old],
+            "successors": [Successor(operation=new_id[e]) for e in succ[old]],
+        }
+        if old in since:
+            update |= {"start_lb": fl(since[old]), "start_ub": math.ceil(since[old])}
+        frozen_ops.append(ops[old].model_copy(update=update))
+    kept = [(new_id[op], thr, k) for op, thr, k in anchors if op in new_id]
+    return train.model_copy(update={"operations": frozen_ops}), kept
+
+
 def build_instance(
     world: World,
     day: dt.date,
@@ -362,13 +497,28 @@ def build_instance(
     *,
     day_instance: str | None = None,
     plans: list[Plan] | None = None,
+    snapshot: Snapshot | None = None,
 ) -> tuple[Instance, list[Plan]]:
-    """Convert the trains entering in ``[start_s, end_s)`` of ``day``; returns the instance and the plans."""
+    """Convert the trains entering in ``[start_s, end_s)`` of ``day``; returns the instance and the plans.
+
+    With a ``snapshot`` taken at ``start_s`` (a rolling window), trains that entered earlier are
+    converted too: those still in the section are frozen at their current operations, those that
+    have not entered yet start free, and those that have left are dropped.
+    """
     reg = world.register
     chosen = plans if plans is not None else plans_for(world, day, day_instance)[0]
     inst_id = day_instance or f"aug25-day-{day.day:02d}"
     end = float("inf") if end_s is None else end_s
-    window_plans = [p for p in chosen if start_s <= p.entry_s < end]
+    if snapshot is not None and abs(snapshot.time_s - start_s) > 1:
+        raise ValueError(f"snapshot at {snapshot.time_s} s is not the window start {start_s} s")
+    running = {st.run_id: st for st in snapshot.trains} if snapshot else {}
+    departed = set(snapshot.departed) if snapshot else set()
+    window_plans = [
+        p
+        for p in chosen
+        if start_s <= p.entry_s < end
+        or (snapshot is not None and p.entry_s < start_s and p.run_id not in departed)
+    ]
     grace = float(reg.value("twin.sim")["horizon_grace_h"]) * SECONDS_PER_HOUR
     horizon = fl((end if end_s is not None else max(p.entry_s for p in chosen)) + grace)
     resources: dict[str, Resource] = {}
@@ -376,6 +526,8 @@ def build_instance(
     objective: list[Component] = []
     for plan in window_plans:
         train, anchors = _train(world, plan, horizon, resources)
+        if plan.run_id in running:
+            train, anchors = _freeze(train, anchors, running[plan.run_id])
         weight = _weight(plan, reg)
         objective += [
             Component(train=len(trains), operation=op, coeff=weight, threshold=fl(thr))

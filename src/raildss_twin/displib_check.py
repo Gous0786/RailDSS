@@ -138,10 +138,16 @@ def schedule_from_trace(
         ops = {o.id: o for o in train.operations}
         preds = _predecessors(train)
         steps = acquired.get(train.id, [])
-        roots = [o for o in train.operations if o.id not in preds and o.resources[0].resource == steps[0][0]]
-        path = [(roots[0].id, steps[0][1])]
-        current = roots[0]
-        for label, time_s in steps[1:]:
+        # a train frozen at a window start begins at an operation it took before the start
+        start, root = next(
+            (n, o)
+            for n, (label, time_s) in enumerate(steps)
+            for o in train.operations
+            if o.id not in preds and o.resources[0].resource == label and time_s >= o.start_lb
+        )
+        path = [(root.id, steps[start][1])]
+        current = root
+        for label, time_s in steps[start + 1 :]:
             current = next(
                 ops[e.operation]
                 for e in current.successors
