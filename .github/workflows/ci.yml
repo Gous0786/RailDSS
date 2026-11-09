@@ -94,6 +94,25 @@ jobs:
           head -c 1500 "$RAILDSS_TLC_DIR/HitlLifecycle.dot"; echo
           uv run pytest tests/hitl -v
 
+  web:
+    name: Web UI typecheck, tests, build and npm licence gate (issue #86)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run licences
+
   licences:
     name: Licence gate and SBOM (NFR-LIC-02)
     runs-on: ubuntu-latest
