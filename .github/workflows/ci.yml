@@ -35,6 +35,8 @@ jobs:
         run: uv run lint-imports
       - name: Parameter register lint (issue #3)
         run: uv run python -m raildss_params lint
+      - name: Rule catalogue lint (FR-VER-04, issue #78)
+        run: uv run python -m raildss_verifier lint
       - name: No literal rule values in code (issue #3)
         run: uv run python tools/lint_literals.py
       - name: Schema artefacts up to date (issue #4)

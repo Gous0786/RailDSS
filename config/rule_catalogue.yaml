@@ -1,0 +1,261 @@
+# RailDSS rule catalogue v0 (spec §9.2; FR-VER-03, FR-VER-04; OD-05; issue #78).
+#
+# One entry per rule. The predicate is a pure function in raildss_verifier.rules; it reads only the
+# register parameters it lists. Every rule cites its source: type, reference (clause text reference,
+# COA table.column or "RailDSS policy") and verification status (V | U | SA | EST).
+#
+# OD-05 (DR-0003): there is no SME rule owner; rule fidelity is per public sources. A rule whose
+# fact is unverified (verification_status: U) reports at most rules.unverified_max_severity (WARN),
+# whatever its declared severity.
+#
+# tests.positive / tests.negative name the scenarios in tests/verifier/test_mutation.py: the rule
+# passes every positive scenario and flags every negative one (mutation catch rate 100 %, §12.3).
+# The CI lint (python -m raildss_verifier lint) rejects a rule without source, tests or a known
+# predicate and parameters.
+
+catalogue_version: "0.1.0"
+spec_version: "1.6"
+
+rules:
+  - rule_id: VER-BLK-01
+    title: At most one train in an absolute-block section at any time
+    category: block
+    severity: FAIL
+    applies_to: {block_system: [ABS_absolute]}
+    predicate: python:raildss_verifier.rules.blocks.one_train_per_block
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: GSR
+      reference: "GR 8.01-8.15 Absolute Block System: no train is permitted to leave a block station unless line clear has been received from the block station in advance (R05 §3.8, IRFCA G&SR text)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base, adequate_gap_exact], negative: [blk01_two_in_section]}
+    version: 1.0.0
+
+  - rule_id: VER-BLK-02
+    title: Line clear only after the previous train cleared the section plus adequate distance
+    category: block
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.blocks.adequate_distance
+    parameters: [ver.time_tolerance_s, block.adequate_distance_m.macls, ver.clearing_speed_kmh]
+    source:
+      type: GSR
+      reference: "GR 8.01 adequate distance beyond the outermost signal (180 m MACLS/MLQ) (R05 §1.7, IRFCA G&SR text); clearing speed is a demo assumption"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base, adequate_gap_exact], negative: [blk02_inside_adequate_distance]}
+    version: 1.0.0
+    notes: The time equivalent of the adequate distance is (train length + adequate distance) / ver.clearing_speed_kmh.
+
+  - rule_id: VER-BLK-04
+    title: Single line, no opposing trains in the same block section
+    category: block
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.blocks.no_opposing_on_single_line
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: GSR
+      reference: "Absolute block on single line (R01 §2.2 K, R04 §7.2 (iii)); clause text not yet retrieved"
+      verification_status: U
+    owner: rules
+    tests: {positive: [base], negative: [blk04_opposing_on_single_line]}
+    version: 1.0.0
+
+  - rule_id: VER-HDW-01
+    title: At most one train in an automatic-signal sub-block at any time (KTV-VZM)
+    category: headway
+    severity: FAIL
+    applies_to: {block_system: [AUTO]}
+    predicate: python:raildss_verifier.rules.blocks.one_train_per_sub_block
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: DEMO_ASSUMPTION
+      reference: "Synthesised automatic-signal sub-blocks (R05 §3.8, R06 §5; signal spacing OD-32)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base], negative: [hdw01_two_in_sub_block]}
+    version: 1.0.0
+
+  - rule_id: VER-XNG-01
+    title: Crossing or precedence only at a block station with crossing facility
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.crossing_facility
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: COA_MASTER
+      reference: "STATION.MACPRCDCROSSFCLTY (R06 App. A.2); operating practice R01 §2.2 K"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [xng01_precedence_without_facility, xng01_crossing_without_facility]}
+    version: 1.0.0
+
+  - rule_id: VER-XNG-02
+    title: A train standing on a station line fits within its CSR
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.loop_fits
+    parameters: []
+    source:
+      type: COA_MASTER
+      reference: "STTNLINE.MANCSR per line (R06 §2); PSA values estimated (R06 App. C); consist length from templates"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [xng02_short_loop]}
+    version: 1.0.0
+
+  - rule_id: VER-XNG-03
+    title: The station line permits the train's direction
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.line_direction
+    parameters: []
+    source:
+      type: COA_MASTER
+      reference: "STTNLINE.MAVDRTN, cross-checked with Connections (R06 App. A.4)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [xng03_wrong_direction_line]}
+    version: 1.0.0
+
+  - rule_id: VER-CON-01
+    title: Reception and despatch only along Connections edges
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.connections
+    parameters: []
+    source:
+      type: COA_MASTER
+      reference: "Connections.MACRECVSENDFLAG (R06 App. A.4)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [con01_no_connection_edge]}
+    version: 1.0.0
+
+  - rule_id: VER-CAP-02
+    title: At most MANNUMBTRAINALLWD trains on a station line at a time
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.line_capacity
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: COA_MASTER
+      reference: "STTNLINE.MANNUMBTRAINALLWD (R06 App. A.4)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [cap02_two_on_one_line]}
+    version: 1.0.0
+
+  - rule_id: VER-LSP-01
+    title: Planned speed on a block line does not exceed its maximum speed
+    category: speed
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.blocks.line_speed
+    parameters: [ver.running_time_resolution_s]
+    source:
+      type: COA_MASTER
+      reference: "BLOCKSCTN.MANMAXSPEED per block line (R06 App. A.3-A.4)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [lsp01_too_fast]}
+    version: 1.0.0
+    notes: v0 checks the average speed over each block line (a lower bound of the peak speed); station-line speeds follow with the running-time profile.
+
+  - rule_id: VER-PLT-01
+    title: Passenger stops only on platform lines whose platform fits the train
+    category: platform
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.platform_fits
+    parameters: []
+    source:
+      type: COA_MASTER
+      reference: "Platform.MANLENGTH and STTNLINE.MACPLATFORM (R06 App. A.4); stopping practice R04 §7.2 (v) unverified"
+      verification_status: U
+    owner: rules
+    tests: {positive: [base], negative: [plt01_non_platform_line, plt01_short_platform]}
+    version: 1.0.0
+    notes: The data are V but the rule is U (platforms reach at most 620 m and many are shorter than 20-24-coach trains), so OD-05 caps it at WARN.
+
+  - rule_id: VER-PLN-01
+    title: No passenger departure before the booked time
+    category: plan
+    severity: WARN
+    predicate: python:raildss_verifier.rules.plan.early_departure
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: RAILDSS_POLICY
+      reference: "RailDSS policy: passenger trains keep booked departures (R04 §7.2 (vi))"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base], negative: [pln01_early_departure]}
+    version: 1.0.0
+
+  - rule_id: VER-MNT-01
+    title: No train through a block section during its maintenance or power block
+    category: blocks
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.blocks.maintenance_block
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: RAILDSS_POLICY
+      reference: "Block programme is a hard constraint (R04 §7.2 (viii))"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [mnt01_train_in_block]}
+    version: 1.0.0
+
+  - rule_id: VER-ELE-01
+    title: Electric-traction trains only on electrified lines and loops
+    category: data
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.stations.electrified
+    parameters: []
+    source:
+      type: COA_MASTER
+      reference: "Electrified-line flag per station line (R05 §3.1)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [ele01_non_electrified_line]}
+    version: 1.0.0
+
+  - rule_id: VER-AUT-01
+    title: No action that only a competent authority may authorise
+    category: authority
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.plan.authority
+    parameters: [ver.authority_actions]
+    source:
+      type: RAILDSS_POLICY
+      reference: "Passing a signal at danger, working without line clear and abnormal working are never generated (R04 §7.2 (xii); FR-VER-10)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base], negative: [aut01_proceed_without_line_clear]}
+    version: 1.0.0
+
+  - rule_id: VER-FRZ-01
+    title: Frozen decisions are unchanged
+    category: plan
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.plan.frozen
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: RAILDSS_POLICY
+      reference: "Decisions inside the commit window or with line clear granted are frozen (R04 §4.3)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base], negative: [frz01_frozen_line_changed]}
+    version: 1.0.0
+
+  - rule_id: VER-BUF-01
+    title: Planned separation buffer at least the warning threshold
+    category: headway
+    severity: WARN
+    predicate: python:raildss_verifier.rules.blocks.separation_buffer
+    parameters: [ver.time_tolerance_s, ver.buffer_warn_min, block.adequate_distance_m.macls, ver.clearing_speed_kmh]
+    source:
+      type: RAILDSS_POLICY
+      reference: "Warning buffer behind the previous train (R02 §4.5 example)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base], negative: [buf01_thin_buffer]}
+    version: 1.0.0
