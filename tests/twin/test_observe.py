@@ -7,6 +7,7 @@ the delivered feeds alone, against D0 (the same truth, observed cleanly) and the
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import itertools
 import statistics
@@ -192,6 +193,25 @@ def test_d3_has_one_full_outage_of_15_to_30_min(observed: dict[str, Any]) -> Non
     assert silent == []
     held = [e for t, e in o.events if t == "obs.block" and a <= seconds(e.event_time) < b]
     assert held and all(seconds(e.ingest_time) >= b for e in held)  # store and forward
+
+
+def test_held_station_events_are_not_delivered_during_an_outage() -> None:
+    """Every entry is late, so held entries are released by the next entry, also inside outages."""
+    world = run.load_world()
+    hour = 3600.0
+    profile = dataclasses.replace(
+        load_profile(world.register, "D1"),
+        name="LATE",
+        out_of_order=1.0,
+        outage_every_s=hour,
+        outage_s=(hour / 3, hour / 3),
+    )
+    o = Observer(world.register, profile, keep=True)
+    run.run_day(world, DAY, until_s=4 * hour, observers=[o])
+    station = topic(o.events, "obs.station")
+    assert o.outages and station
+    during = [e for e in station if o.in_outage(seconds(e.ingest_time))]
+    assert during == []
 
 
 def test_unknown_profile_is_rejected() -> None:

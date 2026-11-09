@@ -247,16 +247,16 @@ class Observer:
             return []
         rng = self._rng["outage"]
         every = self.profile.outage_every_s
+
+        def window(offset: float, span: float) -> tuple[float, float]:
+            # whole seconds, so an event forwarded at the end is exactly representable as an envelope time
+            duration = float(round(rng.uniform(low, high)))
+            start = float(round(offset + rng.uniform(0.0, max(0.0, span - duration))))
+            return start, start + duration
+
         if every is None:
-            duration = rng.uniform(low, high)
-            start = rng.uniform(0.0, max(0.0, SECONDS_PER_DAY - duration))
-            return [(start, start + duration)]
-        windows: list[tuple[float, float]] = []
-        for k in range(math.ceil(horizon_s / every)):
-            duration = rng.uniform(low, high)
-            start = k * every + rng.uniform(0.0, max(0.0, every - duration))
-            windows.append((start, start + duration))
-        return windows
+            return [window(0.0, SECONDS_PER_DAY)]
+        return [window(k * every, every) for k in range(math.ceil(horizon_s / every))]
 
     def in_outage(self, s: float) -> bool:
         return any(a <= s < b for a, b in self.outages)
@@ -325,8 +325,9 @@ class Observer:
         return event.model_copy(update={"ingest_time": self.sim.origin + dt.timedelta(seconds=ingest_s)})
 
     def _release(self, held: EventEnvelope, not_before_s: float) -> None:
-        """Queue a held-back station event, delivered no earlier than ``not_before_s``."""
-        at = max(not_before_s, self._ingest_of(held))
+        """Queue a held-back station event, delivered no earlier than ``not_before_s`` and never during an
+        outage (it is then forwarded when the outage ends)."""
+        at = self._after_outage(max(not_before_s, self._ingest_of(held)))
         self._push(at, TOPIC[COA], self._with_ingest(held, at))
 
     # ------------------------------------------------------------------ RTIS positions
