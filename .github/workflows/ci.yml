@@ -52,6 +52,46 @@ jobs:
       - name: Tests (incl. dataset manifest, issue #2)
         run: uv run pytest
 
+  tla:
+    name: TLA+ model check and conformance (FR-VER-13, FR-HITL-01, issue #82)
+    runs-on: ubuntu-latest
+    env:
+      TLC_VERSION: v1.7.4
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@v10.3.3  # setup-uv publishes no floating major tag after v7
+        with:
+          enable-cache: true
+      - name: Install Python 3.12 and dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+      - name: Fetch TLC
+        run: |
+          echo "RAILDSS_TLC_DIR=$RUNNER_TEMP/tlc" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/tlc"
+          curl -sSfL -o "$RUNNER_TEMP/tla2tools.jar" \
+            "https://github.com/tlaplus/tlaplus/releases/download/$TLC_VERSION/tla2tools.jar"
+      - name: Model-check every configuration (0 invariant or property violations) and dump its state graph
+        run: |
+          cd specs/tla
+          for cfg in *.cfg; do
+            name="${cfg%.cfg}"
+            echo "::group::TLC $name"
+            java -XX:+UseParallelGC -cp "$RUNNER_TEMP/tla2tools.jar" tlc2.TLC -workers auto -cleanup \
+              -config "$cfg" -dump dot,actionlabels "$RAILDSS_TLC_DIR/$name.dot" HitlLifecycle.tla
+            if [ -f "$RAILDSS_TLC_DIR/$name.dot.dot" ]; then mv "$RAILDSS_TLC_DIR/$name.dot.dot" "$RAILDSS_TLC_DIR/$name.dot"; fi
+            echo "::endgroup::"
+          done
+      - name: Conformance of the implementation with the model's state graph
+        run: |
+          head -c 1500 "$RAILDSS_TLC_DIR/HitlLifecycle.dot"; echo
+          uv run pytest tests/hitl -v
+
   licences:
     name: Licence gate and SBOM (NFR-LIC-02)
     runs-on: ubuntu-latest
