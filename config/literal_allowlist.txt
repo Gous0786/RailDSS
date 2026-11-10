@@ -103,3 +103,4 @@ src/raildss_twin/chart.py: 12  # midday hour used to pick the demo train determi
 src/raildss_twin/chart.py: 60  # seconds per minute and minutes per hour (unit conversion), not a rule value
 src/raildss_twin/calibration.py: 0.1  # p10 quantile level, the definition of the log reference, not a rule value
 src/raildss_twin/sandbox.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_verifier/gates.py: 60  # seconds per minute (unit conversion), not a rule value

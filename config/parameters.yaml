@@ -854,6 +854,24 @@ parameters:
     notes: >-
       In a ground-truth trace, a train that stays on a station line at least this long without a
       booked stop counts as standing (held), so the CSR rule applies to it.
+  - key: ver.g0.snapshot_max_age_min
+    value: 2
+    unit: min
+    source: "FR-VER-01; R05 §8.4; issue #77"
+    status: SA
+    owner: rules
+    valid_from: 2026-11-10
+    notes: >-
+      G0 rejects a plan (before solving and again before execution) whose state snapshot is older
+      than this at check time. Trains involved in the plan are judged by state.stale_threshold_min.
+  - key: ver.g1.objective_tolerance
+    value: 0.001
+    unit: objective units
+    source: "FR-VER-02; issue #77"
+    status: SA
+    owner: rules
+    valid_from: 2026-11-10
+    notes: G1 accepts a reported objective value within this of the independently recomputed one.
   - key: ver.authority_actions
     value: [pass_signal_at_danger, proceed_without_line_clear, abnormal_working]
     unit: null
