@@ -205,6 +205,13 @@ estimation (issue #71). Each train gets its resource (station or block), km, spe
 and is flagged stale (position unknown, never extrapolated) after `state.stale_threshold_min`. It prints
 the snapshot `S_t` versions and hashes; `--out snap.json` writes the last snapshot.
 
+`python -m raildss_dss predict-eval --write` trains the DS-4 process-time tables (freight P10/P50/P90
+per block, direction and loaded/empty) on the first `pred.train_days` days of the freight log. It then
+scores ETA accuracy on the held-out days against persistence and schedule baselines, at
+`pred.eval_horizons_min`, and writes `docs/dss/eta-evaluation.md` (issue #72).
+`raildss_dss.predict.Predictor` propagates ETA/ETD P50 and P90 from a state snapshot under a plan's
+orderings.
+
 ## Web UI: control chart (issue #86)
 
 A React app in `web/` shows the COA-style time-distance control chart of a twin day on KTV-PSA:

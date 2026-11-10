@@ -669,6 +669,23 @@ parameters:
     owner: dss
     valid_from: 2026-11-03
 
+  # ------------------------------------------------------------------ prediction
+  - key: pred.train_days
+    value: 20
+    unit: days
+    source: spec FR-PRED-03 (freight tables trained on <= 20 days, evaluated on the held-out days)
+    status: SA
+    owner: dss
+    valid_from: 2026-11-10
+    notes: The first days of the Aug 2025 freight log train the process-time tables; the rest are held out.
+  - key: pred.eval_horizons_min
+    value: [15, 30, 60, 120]
+    unit: min
+    source: spec FR-PRED-05 (ETA accuracy at 15/30/60/120 min)
+    status: SA
+    owner: dss
+    valid_from: 2026-11-10
+
   # ------------------------------------------------------------------ conflict detection and optimiser
   - key: cd.horizon_min
     value: 120
