@@ -148,8 +148,13 @@ def plan_from_trace(
     origin: dt.datetime,
     register: Register | None = None,
     plan_id: str = "ground-truth",
+    context: CandidatePlan | None = None,
 ) -> CandidatePlan:
-    """Rebuild the executed movements of every train in ``trains`` as a :class:`CandidatePlan`."""
+    """Rebuild the executed movements of every train in ``trains`` as a :class:`CandidatePlan`.
+
+    ``context`` carries what the trace cannot show but the rules judge against: the plan's actions,
+    maintenance blocks and frozen decisions (G3 replays a plan with them, FR-VER-05).
+    """
     register = register or load()
     standing = float(register.value("ver.standing_min_s"))
     builders: dict[str, _Builder] = {}
@@ -175,6 +180,9 @@ def plan_from_trace(
         plan_id=plan_id,
         network_version=net.version,
         trains=[b.build() for _, b in sorted(builders.items()) if b.calls],
+        actions=context.actions if context else [],
+        maintenance=context.maintenance if context else [],
+        frozen=context.frozen if context else [],
     )
 
 
@@ -186,10 +194,11 @@ def audit(
     catalogue: cat.Catalogue | None = None,
     register: Register | None = None,
     plan_id: str = "ground-truth",
+    context: CandidatePlan | None = None,
 ) -> AuditReport:
     """Run the catalogue over a ground-truth trace and count executed violations by rule."""
     register = register or load()
-    plan = plan_from_trace(events, trains, net, origin, register, plan_id)
+    plan = plan_from_trace(events, trains, net, origin, register, plan_id, context)
     report = check(plan, net, catalogue, register)
     by_rule = {r.rule_id: len(r.violations) for r in report.results if r.violations}
     return AuditReport(

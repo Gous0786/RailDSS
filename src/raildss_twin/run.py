@@ -23,7 +23,7 @@ from raildss_twin.clock import Clock
 from raildss_twin.layout import Layout, build_layout
 from raildss_twin.observe import Observer
 from raildss_twin.plans import Plan, Timing, Unsupported, day_start, freight_plans, passenger_plans
-from raildss_twin.sim import RunReport, Sim, Sink, TrainPosition
+from raildss_twin.sim import Directives, RunReport, Sim, Sink, TrainPosition
 
 DAY_INSTANCE_PREFIX = "aug25-day-"
 
@@ -69,6 +69,7 @@ def run_day(
     plans: list[Plan] | None = None,
     scenario_id: str | None = None,
     observers: Sequence[Observer] = (),
+    directives: Directives | None = None,
 ) -> tuple[RunReport, Sim]:
     reg = world.register
     seed = int(reg.value("twin.sim")["default_seed"]) if seed is None else seed
@@ -100,6 +101,7 @@ def run_day(
         env=env,
         until_s=until_s,
         keep_events=keep_events,
+        directives=directives,
     )
     for o in observers:
         o.attach(sim, sink)
