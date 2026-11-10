@@ -426,7 +426,7 @@ parameters:
       published on ops.disruptions when a scripted incident gives none.
   - key: twin.sim
     value:
-      state_period_s: 10
+      state_period_s: 30
       min_dwell_s: 30
       clearing_speed_kmh: 20
       exit_clear_s: 60
@@ -447,9 +447,12 @@ parameters:
       time a train stays on its exit line before leaving the section. horizon_grace_h: simulation continues
       this long after the last planned event, then trains still inside are reported as stuck.
       monitor_period_s: how often deadlocks are checked for. max_speed_factor: fastest clock multiple.
-      state_period_s measured on 2025-08-20 (193 trains, headless, warm): 60 s = 2.3 s wall and 24 k gt.state; 
-      10 s = 6.4 s and 143 k; 1 s = 47 s and 1.43 M (the FR-TWIN-14 target; 19x the events, too heavy to keep in memory or send to
-      Kafka for every run). Set to 10 s (issue #56); lower it for a recorded evaluation run.
+      state_period_s measured on 2025-08-20 (193 trains, headless, warm): 60 s = 6.6 s wall and 24 k gt.state; 
+      30 s = 8.7 s and 48 k; 10 s = 6.4 s and 143 k; 1 s = 47 s and 1.43 M (the FR-TWIN-14 target; 60x the events,
+      too heavy to keep in memory or send to Kafka for every run). Set to 30 s (issue #56): it is a multiple of
+      rtis.position_interval_s, so every ground-truth sample has a position fix to compare with (the DSS never
+      extrapolates; at 10 s the D0 estimator test of #71 finds 76 k samples between fixes). Use 1 s for a
+      recorded evaluation run.
   - key: runtime.model
     value: {step_m: 10, rotational_mass_factor: {passenger: 1.06, freight: 1.04}}
     unit: null
