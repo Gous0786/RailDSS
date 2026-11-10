@@ -53,6 +53,8 @@ class PlanDirectory:
     blocks: dict[tuple[str, str], str]  # (from station, to station) -> block id
     paths: dict[str, list[str]] = field(default_factory=dict)  # run token -> block stations in order
     booked: dict[tuple[str, str, str], dt.datetime] = field(default_factory=dict)  # (run, station, ARR|DEP)
+    loaded: dict[str, bool] = field(default_factory=dict)  # freight run token -> loaded
+    length_m: dict[str, float] = field(default_factory=dict)  # block id -> length
 
     @classmethod
     def from_published(
@@ -76,6 +78,8 @@ class PlanDirectory:
         ]:  # entry to exit along the section (the log's row order is not a route)
             ends = [ld.entry_point, ld.exit_point]  # type: ignore[attr-defined]
             d.paths[token(ld.load_id)] = d._block_stations(ends)  # type: ignore[attr-defined]
+            d.loaded[token(ld.load_id)] = bool(ld.loaded)  # type: ignore[attr-defined]
+        d.length_m = {b.id: float(b.length_m or 0) for b in tables["block_section"]}  # type: ignore[attr-defined]
         d._passenger(tables, ist())
         return d
 

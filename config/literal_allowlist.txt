@@ -107,3 +107,11 @@ src/raildss_verifier/gates.py: 60  # seconds per minute (unit conversion), not a
 src/raildss_dss/__main__.py: 16  # characters of the snapshot hash shown per CLI line, not a rule value
 src/raildss_dss/state.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_dss/__main__.py: 10  # CLI default snapshot interval (min) of the state replay, not a rule value
+src/raildss_dss/predict.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/predict.py: 3.6  # km/h per m/s (unit conversion), not a rule value
+src/raildss_dss/predict.py: 1000  # m per km (unit conversion), not a rule value
+src/raildss_dss/predict.py: 0.1  # P10 quantile level of the process-time tables (FR-PRED-03 definition), not a rule value
+src/raildss_dss/predict.py: 0.5  # P50 quantile level of the process-time tables, not a rule value
+src/raildss_dss/predict.py: 0.9  # P90 quantile level of the process-time tables, not a rule value
+src/raildss_dss/predict.py: 2  # column index of the P50 duration in an activity tuple, not a rule value
+src/raildss_dss/predict.py: 3  # column index of the P90 duration in an activity tuple, not a rule value

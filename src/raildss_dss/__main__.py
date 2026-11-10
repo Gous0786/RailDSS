@@ -3,6 +3,7 @@
 python -m raildss_dss ingest --trace run.jsonl     # replay a twin trace (raildss_twin run --trace-out)
 python -m raildss_dss ingest --kafka [--speed 60]  # consume obs.* / ops.* live as the ``dss`` principal
 python -m raildss_dss state --trace run.jsonl --every-min 10   # DS-3 snapshots S_t of a replayed trace
+python -m raildss_dss predict-eval [--write]                   # DS-4 ETA accuracy on held-out log days
 
 Both print the per-source data-quality metrics, the data-quality alerts and the stale trains at the end
 (``--kafka`` stops on Ctrl+C or after ``--max-idle-s`` without a record). Rejected records go to the
@@ -103,8 +104,21 @@ def main(argv: list[str] | None = None) -> int:
     p_st.add_argument("--trace", type=Path, required=True, help="twin trace file (JSON lines)")
     p_st.add_argument("--every-min", type=float, default=10.0, help="snapshot interval in minutes")
     p_st.add_argument("--out", type=Path, default=None, help="write the last snapshot as JSON")
+    p_ev = sub.add_parser("predict-eval", help="ETA accuracy on the held-out freight-log days (issue #72)")
+    p_ev.add_argument("--write", action="store_true", help="write docs/dss/eta-evaluation.md")
     args = ap.parse_args(argv)
 
+    if args.cmd == "predict-eval":
+        from raildss_dss.predict import EVAL_DOC, run_evaluation
+
+        doc = run_evaluation().render_markdown()
+        if args.write:
+            EVAL_DOC.parent.mkdir(parents=True, exist_ok=True)
+            EVAL_DOC.write_text(doc, encoding="utf-8", newline=NEWLINE)
+            print(f"wrote {EVAL_DOC}")
+        else:
+            sys.stdout.write(doc)
+        return 0
     if args.cmd == "state":
         _state(args.trace, args.every_min, args.out)
         return 0
