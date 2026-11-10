@@ -212,6 +212,11 @@ scores ETA accuracy on the held-out days against persistence and schedule baseli
 `raildss_dss.predict.Predictor` propagates ETA/ETD P50 and P90 from a state snapshot under a plan's
 orderings.
 
+`python -m raildss_dss conflicts --trace trace.jsonl --at-h 2` runs DS-5 conflict detection (issue #73)
+at a time of a replayed trace, using state, prediction and resource occupations over `cd.horizon_min`.
+It reports types 1-4, 6 and 7 with priority, lead time, the P90 near-conflict band and
+`NO_FEASIBLE_RESOLUTION`. `raildss_dss.conflicts.StabilityTracker` reports alert stability.
+
 ## Web UI: control chart (issue #86)
 
 A React app in `web/` shows the COA-style time-distance control chart of a twin day on KTV-PSA:

@@ -4,6 +4,7 @@ python -m raildss_dss ingest --trace run.jsonl     # replay a twin trace (railds
 python -m raildss_dss ingest --kafka [--speed 60]  # consume obs.* / ops.* live as the ``dss`` principal
 python -m raildss_dss state --trace run.jsonl --every-min 10   # DS-3 snapshots S_t of a replayed trace
 python -m raildss_dss predict-eval [--write]                   # DS-4 ETA accuracy on held-out log days
+python -m raildss_dss conflicts --trace run.jsonl --at-h 3     # DS-5 conflicts at a time of the trace
 
 Both print the per-source data-quality metrics, the data-quality alerts and the stale trains at the end
 (``--kafka`` stops on Ctrl+C or after ``--max-idle-s`` without a record). Rejected records go to the
@@ -22,6 +23,7 @@ from pathlib import Path
 from raildss_dss.ingest import ADAPTERS, DqAlert, Ingestor, JsonLinesTransport
 from raildss_dss.state import PlanDirectory, StateEstimator
 
+SECONDS_PER_MINUTE = 60
 NEWLINE = "\n"
 
 
@@ -65,6 +67,36 @@ def _kafka(ing: Ingestor, speed: float, max_idle_s: float) -> None:
         ing.flush()
 
 
+def _conflicts(trace: Path, at_h: float) -> None:
+    from raildss_dss.conflicts import TYPE_NAMES, Detector, occupations
+    from raildss_dss.predict import Predictor, ProcessTimes
+
+    ing = Ingestor()
+    ing.run(JsonLinesTransport(trace))
+    events = sorted(ing.released, key=lambda e: e.event_time)
+    if not events:
+        print("no events")
+        return
+    directory = PlanDirectory.from_published()
+    est = StateEstimator(directory)
+    now = events[0].event_time.replace(minute=0, second=0, microsecond=0) + dt.timedelta(hours=at_h)
+    for e in events:
+        if e.event_time <= now:
+            est.apply(e)
+    predictor = Predictor(ProcessTimes.from_log([], directory))
+    preds = predictor.predict(est, now)
+    occs = occupations(preds, est.snapshot(now), est, directory, predictor.horizon)
+    found = Detector.build(directory).detect(occs, now)
+    print(f"{now.isoformat()}: {len({o.run_id for o in occs})} trains, {len(found)} conflicts")
+    for c in found:
+        lead = c.lead_time_s / SECONDS_PER_MINUTE
+        flags = " near" if c.near else ""
+        print(
+            f"  {c.priority} type {c.type} {TYPE_NAMES[c.type]}{flags} {c.status} on {c.resource} "
+            f"at {c.time.isoformat()} (lead {lead:.0f} min): {', '.join(c.trains)}"
+        )
+
+
 def _state(trace: Path, every_min: float, out: Path | None) -> None:
     ing = Ingestor()
     ing.run(JsonLinesTransport(trace))
@@ -104,10 +136,16 @@ def main(argv: list[str] | None = None) -> int:
     p_st.add_argument("--trace", type=Path, required=True, help="twin trace file (JSON lines)")
     p_st.add_argument("--every-min", type=float, default=10.0, help="snapshot interval in minutes")
     p_st.add_argument("--out", type=Path, default=None, help="write the last snapshot as JSON")
+    p_cf = sub.add_parser("conflicts", help="DS-5 conflicts at a time of a replayed twin trace (issue #73)")
+    p_cf.add_argument("--trace", type=Path, required=True, help="twin trace file (JSON lines)")
+    p_cf.add_argument("--at-h", type=float, default=1.0, help="hours after the trace's first hour")
     p_ev = sub.add_parser("predict-eval", help="ETA accuracy on the held-out freight-log days (issue #72)")
     p_ev.add_argument("--write", action="store_true", help="write docs/dss/eta-evaluation.md")
     args = ap.parse_args(argv)
 
+    if args.cmd == "conflicts":
+        _conflicts(args.trace, args.at_h)
+        return 0
     if args.cmd == "predict-eval":
         from raildss_dss.predict import EVAL_DOC, run_evaluation
 

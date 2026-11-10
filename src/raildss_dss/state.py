@@ -103,6 +103,7 @@ class PlanDirectory:
         for p in tables["timetable_point"]:
             self._points[str(p.train_id)].append(p)
         self._train_id = {str(s.train_no): str(s.train_id) for s in tables["service"]}
+        self._class = {str(s.train_no): str(s.priority_class) for s in tables["service"]}
         self._tz = tz
 
     def path(self, run_id: str) -> list[str] | None:
@@ -121,6 +122,13 @@ class PlanDirectory:
             self.booked[(run_id, p.op_code, "DEP")] = midnight + dt.timedelta(seconds=float(p.dep_s))
         self.paths[run_id] = self._block_stations([p.op_code for p in points])
         return self.paths[run_id]
+
+    def priority_class(self, run_id: str) -> str:
+        """Policy class of a run (``policy.weights`` keys); freight loads have no timetable slot."""
+        if "@" in run_id:
+            classes: dict[str, str] = getattr(self, "_class", {})
+            return classes.get(run_id.partition("@")[0], "passenger")
+        return "freight_other"
 
     def next_block(self, run_id: str, station: str) -> str | None:
         """Block from ``station`` to the next block station of the train's path."""
