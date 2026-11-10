@@ -130,6 +130,28 @@ def _displib(args: argparse.Namespace) -> int:
     return 0
 
 
+def _chart(args: argparse.Namespace) -> int:
+    from raildss_etl.mapping import REPO
+    from raildss_twin import chart, run
+
+    world = run.load_world()
+    day = dt.date.fromisoformat(args.date)
+    data = chart.chart_data(world, day)
+    out = args.out or REPO / "web" / "public" / "data"
+    out.mkdir(parents=True, exist_ok=True)
+    nl = "\n"
+    (out / f"{day.isoformat()}.json").write_text(
+        json.dumps(data, separators=(",", ":")) + nl, encoding="utf-8", newline=nl
+    )
+    index = out / "index.json"
+    days = set(json.loads(index.read_text(encoding="utf-8"))["days"]) if index.exists() else set()
+    index.write_text(
+        json.dumps({"days": sorted(days | {day.isoformat()})}) + nl, encoding="utf-8", newline=nl
+    )
+    print(f"chart {day}: {len(data['trains'])} trains, {len(data['stations'])} stations -> {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m raildss_twin")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -159,12 +181,17 @@ def main(argv: list[str] | None = None) -> int:
     p_dl.add_argument(
         "--out", type=Path, default=None, help="directory (default data/interim/ktv-psa/displib)"
     )
+    p_ch = sub.add_parser("chart", help="export the control-chart data of a day for the web UI (issue #86)")
+    p_ch.add_argument("--date", default="2025-08-20")
+    p_ch.add_argument("--out", type=Path, default=None, help="directory (default web/public/data)")
     args = ap.parse_args(argv)
 
     if args.cmd == "run":
         return _run(args)
     if args.cmd == "displib":
         return _displib(args)
+    if args.cmd == "chart":
+        return _chart(args)
     cal, report = calibration.run(record_reference=args.write)
     doc = calibration.render_markdown(report)
     if args.write:

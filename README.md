@@ -200,6 +200,34 @@ uv run python -m raildss_dss ingest --trace trace.jsonl              # replay a 
 uv run python -m raildss_dss ingest --kafka --speed 60               # live, as the dss principal
 ```
 
+## Web UI: control chart (issue #86)
+
+A React app in `web/` shows the COA-style time-distance control chart of a twin day on KTV-PSA:
+stations and loops on the distance axis, the twin's actual train lines (solid), the WTT (faint), the
+"now" line, and a recommendation preview with a before/after toggle. Run it with one command (needs
+Node.js 20+):
+
+```bash
+npm --prefix web start          # installs, starts Vite and opens http://localhost:5173
+```
+
+The chart reads `web/public/data/<day>.json`, which comes from a twin replay. The data for 2025-08-20
+is committed. Export another day with:
+
+```bash
+uv run python -m raildss_twin chart --date 2025-08-12
+```
+
+It is keyboard-first: press `?` for the shortcuts. `P` opens the recommendation, `1`/`2`/`3` selects an
+option, `V` toggles preview off / before / after, `A` accepts, `M` modifies (sandbox), `R` rejects
+with a reason, and `Esc` closes. Other keys: `←`/`→` pan, `+`/`−` zoom, `N` jumps to now, `Space`
+plays the replay. With the mouse, the wheel zooms, dragging pans and a click selects a train.
+
+The recommendation in the data is a **DEMO**: it holds one freight train at its entry, replayed in
+the twin, until the optimiser produces real recommendations. Accept, modify and reject only write to
+the on-screen decision log. The chart is an in-house D3 + Canvas component (`d3-scale`, ISC), the
+DR-0001 §3.4 fallback. `npm --prefix web run licences` is the npm licence gate.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under

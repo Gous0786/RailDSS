@@ -1,0 +1,30 @@
+{
+  "name": "raildss-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "RailDSS web UI: global chrome and the time-distance control chart (issue #86).",
+  "scripts": {
+    "start": "npm install --no-audit --no-fund && vite --open",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "licences": "node scripts/check-licences.mjs"
+  },
+  "dependencies": {
+    "d3-scale": "4.0.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/d3-scale": "4.0.9",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.7",
+    "vitest": "5.1.0"
+  }
+}

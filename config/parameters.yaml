@@ -958,6 +958,17 @@ parameters:
     status: DATA
     owner: ui
     valid_from: 2026-11-03
+  - key: ui.preview_demo_hold_min
+    value: 10
+    unit: min
+    source: "issue #86 (demo recommendation preview until the optimiser lands)"
+    status: SA
+    owner: ui
+    valid_from: 2026-11-09
+    notes: >-
+      The control-chart export adds one demo recommendation, "hold a freight train at its entry for
+      this long", replayed in the twin, so the before/after preview can be shown before the
+      optimiser produces real recommendations.
   - key: hitl.sm_ack_latency_s
     value: {min: 30, max: 90}
     unit: s
