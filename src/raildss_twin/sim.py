@@ -111,6 +111,17 @@ class Directives:
     from_s: float = 0.0  # the fork time: decisions before it are history and are not changed
 
 
+@dataclass(frozen=True)
+class Restriction:
+    """A speed limit on a block line for a while (TSR, degraded working after a signal failure)."""
+
+    segment: str  # pair key of the block's two stations
+    line_id: str | None  # None: every line of the segment
+    start_s: float
+    end_s: float
+    kmh: float
+
+
 class Refusal(BaseModel):
     time_s: float
     run_id: str
@@ -165,6 +176,7 @@ class Train:
     segment: tuple[float, float, float, float] | None = None  # t0, t1, km0, km1
     km: float = 0.0
     stood: bool = False
+    line: BlockLine | None = None  # the block line it is running on
     stuck_reason: str = ""
     exit_s: float | None = None
     entered: bool = False
@@ -201,6 +213,7 @@ class Sim:
         keep_events: bool = False,
         directives: Directives | None = None,
     ) -> None:
+        self.register = register
         cfg = register.value("twin.sim")
         self.state_period = float(cfg["state_period_s"])
         self.min_dwell = float(cfg["min_dwell_s"])
@@ -214,7 +227,7 @@ class Sim:
         self.origin, self.day, self.scenario_id, self.seed = origin, day, scenario_id, seed
         self.sink = sink
         self.trains = [Train(p) for p in plans]
-        self.resources: dict[str, simpy.Resource] = {}
+        self.resources: dict[str, simpy.PriorityResource] = {}
         self.owner: dict[Any, Train] = {}
         self.gates: dict[str, tuple[str, set[str]]] = {}
         self._gate_events: dict[str, simpy.Event] = {}
@@ -227,6 +240,8 @@ class Sim:
         self.deadlocks: list[Deadlock] = []
         self._deadlock_seen: set[frozenset[str]] = set()
         self.refusals: list[Refusal] = []
+        self.restrictions: list[Restriction] = []  # speed limits from incidents (TSR, signal failure)
+        self.stalls: dict[str, tuple[float, float]] = {}  # run id -> (from, to): loco failure
         self.directives = directives or Directives()
         self.directive_refusals: list[Refusal] = []
         last_plan = max((t.plan.nodes[-1].dep for t in self.trains), default=0.0)
@@ -244,6 +259,7 @@ class Sim:
         payload: dict[str, Any],
         km: float | None = None,
         ne_id: str | None = None,
+        source: str = SOURCE,
     ) -> None:
         self.seq += 1
         when = self.origin + dt.timedelta(seconds=self.env.now)
@@ -253,7 +269,7 @@ class Sim:
             ),
             event_type=etype,
             schema_version="1.0",
-            source=SOURCE,
+            source=source,
             section_id=SECTION,
             network_version=self.layout.network_version,
             scenario_id=self.scenario_id,
@@ -271,10 +287,12 @@ class Sim:
             self.sink(topic, event)
 
     # ------------------------------------------------------------------ resources
-    def resource(self, label: str, capacity: int = 1) -> simpy.Resource:
+    def resource(self, label: str, capacity: int = 1) -> simpy.PriorityResource:
         r = self.resources.get(label)
         if r is None:
-            r = self.resources[label] = simpy.Resource(self.env, capacity)
+            r = self.resources[label] = simpy.PriorityResource(
+                self.env, capacity
+            )  # equal priorities: FIFO; incidents go first (#53)
         return r
 
     def _granted(self, t: Train, opt: Option, req: Any) -> None:
@@ -646,6 +664,23 @@ class Sim:
         span = self.timing.leg(t.plan, x.op, y.op, start_stopped, end_stopped)
         if t.plan.timetabled and not y.stop:
             span = max(span, y.arr - self.env.now)
+        return self.incident_span(t, x, y, span)
+
+    def incident_span(self, t: Train, x: Node, y: Node, span: float) -> float:
+        """Running time under the incidents active now: speed limits on the line, a stalled loco."""
+        now, line = self.env.now, t.line
+        if line is not None:
+            for r in self.restrictions:
+                if (
+                    r.segment == line.segment
+                    and r.line_id in (None, line.line_id)
+                    and r.start_s <= now < r.end_s
+                ):
+                    metres = abs(self.km_of(y.op) - self.km_of(x.op)) * M_PER_KM
+                    span = max(span, metres / (r.kmh / KMH_PER_MPS))
+        stall = self.stalls.get(t.plan.run_id)
+        if stall is not None and stall[0] < now + span and now < stall[1]:
+            span += stall[1] - max(now, stall[0])
         return span
 
     def _option(self, ln: BlockLine, label: str) -> Option:
@@ -666,6 +701,7 @@ class Sim:
         plan, layout = t.plan, self.layout
         a, b = plan.nodes[idx[k]], plan.nodes[idx[k + 1]]
         block = layout.blocks[line.block_id]
+        t.line = line
         route = [a, *plan.nodes[idx[k] + 1 : idx[k + 1]], b]
         stopped_at = [n.stop or (n is a and t.stood) for n in route]
         stopped_at[-1] = b.stop or (idx[k + 1] == len(plan.nodes) - 1 and plan.timetabled)

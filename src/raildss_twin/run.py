@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -69,6 +69,7 @@ def run_day(
     plans: list[Plan] | None = None,
     scenario_id: str | None = None,
     observers: Sequence[Observer] = (),
+    setup: Callable[[Sim], object] | None = None,
     directives: Directives | None = None,
 ) -> tuple[RunReport, Sim]:
     reg = world.register
@@ -105,6 +106,8 @@ def run_day(
     )
     for o in observers:
         o.attach(sim, sink)
+    if setup is not None:  # attach injector / station-master agents (issue #53) before the run
+        setup(sim)
     t0 = time.perf_counter()
     report = sim.run()
     for o in observers:

@@ -22,11 +22,66 @@ from pathlib import Path
 
 from raildss_common.envelope import EventEnvelope
 from raildss_twin import calibration
+from raildss_twin.injector import SECONDS_PER_MIN
 from raildss_twin.sim import SECONDS_PER_HOUR, Sink
 
 
-def _control(clock: object) -> None:
+def _incident(word: list[str], now_s: float) -> object:
+    """``inject <kind> <where> <minutes> [<announced ETR minutes>]`` -> a Disruption starting now.
+
+    ``where`` is a block id (line_block, signal_failure, tsr; ``block/line`` for one line), a
+    ``station/line`` (point_failure) or a train run id (loco_failure). A TSR takes ``@<km/h>``.
+    """
+    from raildss_twin.injector import Disruption
+
+    kind, where, minutes = word[1], word[2], float(word[3])
+    fields: dict[str, object] = {
+        "incident_id": f"INC-{int(now_s)}",
+        "kind": kind,
+        "start_s": now_s,
+        "duration_s": minutes * SECONDS_PER_MIN,
+    }
+    if word[4:] and not word[4].startswith("@"):
+        fields["etr_s"] = now_s + float(word[4]) * SECONDS_PER_MIN
+    speed = next((w[1:] for w in word[4:] if w.startswith("@")), None)
+    if kind == "point_failure":
+        station, _, line_no = where.partition("/")
+        fields |= {"station": station, "line_no": int(line_no)}
+    elif kind == "loco_failure":
+        fields["run_id"] = where
+    else:
+        block, _, line_id = where.partition("/")
+        fields |= {
+            "block_id": block,
+            "line_id": line_id or None,
+            "speed_kmh": float(speed) if speed else None,
+        }
+    return Disruption.model_validate(fields)
+
+
+def _order(word: list[str], now_s: float) -> object:
+    """``order <id> <station> <run id> line <n>`` or ``... hold <minutes>``."""
+    from raildss_twin.agents import Order
+
+    oid, station, run_id, what, value = word[1:6]
+    if what == "line":
+        return Order(
+            order_id=oid, station=station, run_id=run_id, action="receive_on_line", line_no=int(value)
+        )
+    return Order(
+        order_id=oid,
+        station=station,
+        run_id=run_id,
+        action="hold_until",
+        until_s=now_s + float(value) * SECONDS_PER_MIN,
+    )
+
+
+def _control(clock: object, extras: dict[str, object]) -> None:
+    """Twin console: pause | resume | speed N | inject ... | order ... (FR-SCN-03, FR-TWIN-15)."""
+    from raildss_twin.agents import Order, StationMasters
     from raildss_twin.clock import Clock
+    from raildss_twin.injector import Disruption, Injector
 
     assert isinstance(clock, Clock)
     for line in sys.stdin:
@@ -38,7 +93,20 @@ def _control(clock: object) -> None:
                 clock.resume()
             elif word[:1] == ["speed"] and word[1:]:
                 clock.set_speed(float(word[1]))
-        except ValueError as exc:
+            elif word[:1] == ["inject"] and isinstance(extras.get("injector"), Injector):
+                inj = extras["injector"]
+                assert isinstance(inj, Injector)
+                d = _incident(word, inj.sim.env.now)
+                assert isinstance(d, Disruption)
+                inj.inject(d)
+                print(f"control: injected {d.incident_id} ({d.kind})", file=sys.stderr)
+            elif word[:1] == ["order"] and isinstance(extras.get("agents"), StationMasters):
+                sm = extras["agents"]
+                assert isinstance(sm, StationMasters)
+                o = _order(word, sm.sim.env.now)
+                assert isinstance(o, Order)
+                sm.receive(o)
+        except (ValueError, IndexError) as exc:
             print(f"control: {exc}", file=sys.stderr)
 
 
@@ -50,8 +118,9 @@ def _run(args: argparse.Namespace) -> int:
     world = run.load_world()
     cfg = world.register.value("twin.sim")
     clock = Clock(args.speed, float(cfg["max_speed_factor"])) if args.speed else None
+    extras: dict[str, object] = {}
     if clock is not None and args.control:
-        threading.Thread(target=_control, args=(clock,), daemon=True).start()
+        threading.Thread(target=_control, args=(clock, extras), daemon=True).start()
     sinks: list[Sink] = []
     producer = None
     if args.kafka:
@@ -77,6 +146,22 @@ def _run(args: argparse.Namespace) -> int:
     day = dt.date.fromisoformat(args.date)
     until = args.until_h * SECONDS_PER_HOUR if args.until_h else None
     observers = [] if args.profile == "none" else [Observer(world.register, args.profile)]
+    from raildss_twin.agents import StationMasters
+    from raildss_twin.injector import Disruption, Injector
+
+    scripted = (
+        [Disruption.model_validate(d) for d in json.loads(args.inject.read_text(encoding="utf-8"))]
+        if args.inject
+        else []
+    )
+
+    def setup(sim: object) -> None:
+        from raildss_twin.sim import Sim
+
+        assert isinstance(sim, Sim)
+        extras["injector"] = Injector(sim, scripted)
+        extras["agents"] = StationMasters(sim)
+
     report, _ = run.run_day(
         world,
         day,
@@ -85,6 +170,7 @@ def _run(args: argparse.Namespace) -> int:
         clock=clock,
         until_s=until,
         observers=observers,
+        setup=setup,
     )
     if producer is not None:
         producer.flush()
@@ -174,6 +260,9 @@ def main(argv: list[str] | None = None) -> int:
         "--trace-out", type=Path, default=None, help="write every gt.* and obs.* event as JSON lines"
     )
     p_run.add_argument("--report-out", type=Path, default=None)
+    p_run.add_argument(
+        "--inject", type=Path, default=None, help="JSON list of scripted disruptions (raildss_twin.injector)"
+    )
     p_dl = sub.add_parser("displib", help="convert a window of a day to the DISPLIB-style IR (issue #22)")
     p_dl.add_argument("--date", default="2025-08-20")
     p_dl.add_argument("--from-h", type=float, default=0.0)
