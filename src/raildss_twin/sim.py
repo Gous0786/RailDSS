@@ -97,6 +97,20 @@ ENFORCED_RULES: dict[str, str] = {
 }
 
 
+@dataclass
+class Directives:
+    """What a candidate plan tells the twin to do differently from BL-0 (G3 sandbox, FR-TWIN-16).
+
+    ``holds``: (run id, station) -> do not despatch the train from that station before this time.
+    ``lines``: (run id, station) -> receive the train on this station line. A line the rules do not
+    permit is not taken: the refusal is logged in :attr:`Sim.directive_refusals` and BL-0 chooses.
+    """
+
+    holds: dict[tuple[str, str], float] = field(default_factory=dict)
+    lines: dict[tuple[str, str], int] = field(default_factory=dict)
+    from_s: float = 0.0  # the fork time: decisions before it are history and are not changed
+
+
 class Refusal(BaseModel):
     time_s: float
     run_id: str
@@ -185,6 +199,7 @@ class Sim:
         env: simpy.Environment | None = None,
         until_s: float | None = None,
         keep_events: bool = False,
+        directives: Directives | None = None,
     ) -> None:
         cfg = register.value("twin.sim")
         self.state_period = float(cfg["state_period_s"])
@@ -212,6 +227,8 @@ class Sim:
         self.deadlocks: list[Deadlock] = []
         self._deadlock_seen: set[frozenset[str]] = set()
         self.refusals: list[Refusal] = []
+        self.directives = directives or Directives()
+        self.directive_refusals: list[Refusal] = []
         last_plan = max((t.plan.nodes[-1].dep for t in self.trains), default=0.0)
         self.windowed = until_s is not None
         self.until_s = until_s if until_s is not None else max(last_plan, SECONDS_PER_DAY) + self.grace_s
@@ -407,6 +424,34 @@ class Sim:
                 keep.append(sl)
         return keep
 
+    def directed_line(
+        self, t: Train, op: str, permitted: list[StationLine], fitting: list[StationLine]
+    ) -> list[StationLine]:
+        """Apply a plan's line choice at ``op``. A line the rules forbid is refused and logged (G3)."""
+        want = self.directives.lines.get((t.plan.run_id, op))
+        if want is None or self.env.now < self.directives.from_s:
+            return fitting
+        chosen = [sl for sl in fitting if sl.line_no == want]
+        if chosen:
+            return chosen
+        too_short = any(sl.line_no == want for sl in permitted)
+        self.directive_refusals.append(
+            Refusal(
+                time_s=self.env.now,
+                run_id=t.plan.run_id,
+                station=op,
+                line=want,
+                rule="VER-XNG-02" if too_short else "VER-CON-01",
+                reason=(
+                    f"planned line {want} at {op} is shorter than the train"
+                    if too_short
+                    else f"planned line {want} at {op} is not permitted for this move (Connections, direction"
+                    " or traffic kind)"
+                ),
+            )
+        )
+        return fitting
+
     def station_candidates(
         self, t: Train, node: Node, incoming: BlockLine | None, hop: tuple[str, str] | None, stands: bool
     ) -> list[StationLine]:
@@ -478,9 +523,11 @@ class Sim:
                 cands = self.station_candidates(t, node, incoming, hop, stands)
                 if not cands:
                     raise NoRouteError(f"no station line at {node.op} permits the move")
+                permitted = cands
                 cands = self.refuse_short_lines(t, node.op, cands)
                 if not cands:
                     raise NoRouteError(f"no station line at {node.op} is long enough for the train")
+                cands = self.directed_line(t, node.op, permitted, cands)
                 i = yield from self.acquire(
                     t, [Option(f"SL:{node.op}/{sl.line_no}", sl.capacity_trains) for sl in cands]
                 )
@@ -509,6 +556,11 @@ class Sim:
                     t.status = "dwelling"
                     t.stood = True
                     yield self.env.timeout(max(self.min_dwell, node.dep - arrived, 0.0))
+                    t.status = "running"
+                hold = self.directives.holds.get((plan.run_id, node.op))
+                if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)
+                    t.status = "dwelling"
+                    yield self.env.timeout(hold - self.env.now)
                     t.status = "running"
                 if plan.timetabled and node.stop:
                     self._delay(t, node, "departure", self.env.now - node.dep)
