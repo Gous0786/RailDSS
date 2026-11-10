@@ -15,7 +15,9 @@ from raildss_twin.calibration import (
     Runner,
     check_reference,
     read_reference,
+    render_markdown,
     run,
+    weighted_quantile,
 )
 from raildss_twin.rolling_stock import KMH_PER_MPS, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
@@ -122,6 +124,30 @@ def test_freight_calibration_meets_dsc10(report: CalibrationReport) -> None:
     assert report.freight_blocks == 64
     assert report.freight_share >= 0.9
     assert report.freight_physics_within < report.freight_within  # supplements add, physics is reported
+
+
+def test_freight_blocks_are_modelled_with_their_wagon_mix(report: CalibrationReport) -> None:
+    # issue #60: every scored block carries the wagon families of its loads, and the report shows them
+    stock = RollingStock()
+    assert len(report.freight_rows) == report.freight_blocks
+    assert sum(r.within for r in report.freight_rows) == report.freight_within
+    families = set(stock.wagon_family.values())
+    for r in report.freight_rows:
+        assert r.wagon_mix and set(r.wagon_mix) <= families, r
+    assert len({frozenset(r.wagon_mix) for r in report.freight_rows}) > 1  # not one reference wagon
+    doc = render_markdown(report)
+    assert "## Wagon mix per freight block" in doc
+    first = report.freight_rows[0]
+    assert f"| {first.ref} | {first.direction} | {first.kind} | {sum(first.wagon_mix.values())} |" in doc
+
+
+def test_weighted_quantile_is_the_lower_quantile_over_loads() -> None:
+    times = [(600, 9), (500, 1), (700, 10)]  # 500 s for 1 load in 20
+    assert weighted_quantile(times, 0.05) == 500
+    assert weighted_quantile(times, 0.1) == 600  # 1 load is 5 %, short of the 10 % level
+    assert weighted_quantile(times, 0.5) == 600
+    assert weighted_quantile(times, 1.0) == 700
+    assert weighted_quantile([(42, 3)], 0.1) == 42
 
 
 def test_pass_through_never_slower_and_reproducible(report: CalibrationReport) -> None:

@@ -17,7 +17,9 @@ Two layers, both reported:
 References:
 
 * freight: the log p10 per adjacent block, direction and loaded/empty (``n >= min_samples``),
-  simulated pass to pass; target +-``freight_tolerance``;
+  simulated pass to pass; target +-``freight_tolerance``. The model's reference for a block is the
+  load-weighted 10th percentile of its wagon families' physics times (the block's wagon mix in the
+  log, each family on its own consist template, issue #60), as the log p10 is taken over those loads;
 * passenger: WTT stop-to-stop spans of >= ``span_min_legs`` legs, net of the WTT's engineering and
   traffic allowances, simulated stop to stop (acceleration and braking from physics). The reference
   is the span's standard time (modal net time over trains with the same stops); spans more than
@@ -53,6 +55,7 @@ CALIBRATION_FILE = OUT_DIR / "ktv_psa_runtime_calibration.json"
 REFERENCE_FILE = OUT_DIR / "ktv_psa_runtime_reference_seconds.json"
 REFERENCE_TOLERANCE_S = 1  # a recorded run may differ by rounding only (DSC-10: reproducible to 1 s)
 WORST = 10
+REFERENCE_QUANTILE = 0.1  # the log reference is a p10: the 10th percentile over loads
 
 
 class Residual(BaseModel):
@@ -65,6 +68,7 @@ class Residual(BaseModel):
     simulated_s: float
     residual: float  # fraction (freight) or seconds (passenger)
     within: bool
+    wagon_mix: dict[str, int] = {}  # freight: loads per wagon family on the block (issue #60)
 
 
 class CalibrationReport(BaseModel):
@@ -86,6 +90,7 @@ class CalibrationReport(BaseModel):
     reference_mismatches: list[str]  # runs whose seconds moved; empty when the physics is unchanged
     reproducible: bool  # recorded runs exist and all reproduce within REFERENCE_TOLERANCE_S
     worst_blocks: list[Residual]
+    freight_rows: list[Residual] = []  # every scored freight block, with its wagon mix (issue #60)
     worst_spans: list[Residual]
 
     freight_target_met: bool
@@ -259,19 +264,53 @@ class Runner:
 # ---------------------------------------------------------------- freight
 
 
+def wagon_mix(
+    demand: FreightDemand, rs: RollingStock, blocks: set[tuple[str, bool]]
+) -> tuple[dict[tuple[str, bool], Counter[str]], dict[str, str]]:
+    """Loads per wagon family on each (block, loaded) of ``blocks``, and one wagon code per family."""
+    mix: dict[tuple[str, bool], Counter[str]] = defaultdict(Counter)
+    code_of: dict[str, str] = {}
+    for ld in demand.loads:
+        family = rs.family_of(ld.wagon_type)
+        code_of.setdefault(family, ld.wagon_type.strip())
+        for block in set(ld.path):
+            if (block, ld.loaded) in blocks:
+                mix[(block, ld.loaded)][family] += 1
+    return dict(mix), code_of
+
+
+def weighted_quantile(values: Sequence[tuple[int, int]], q: float) -> int:
+    """Lower ``q`` quantile of ``(value, weight)`` pairs: the smallest value whose cumulative weight
+    reaches ``q`` of the total."""
+    ordered = sorted(values)
+    total = sum(w for _, w in ordered)
+    seen = 0
+    for value, weight in ordered:
+        seen += weight
+        if seen >= q * total:
+            return value
+    return ordered[-1][0]
+
+
 def _freight(
     runner: Runner, demand: FreightDemand, rs: RollingStock, cfg: dict[str, Any]
 ) -> tuple[dict[str, float], dict[str, float], list[Residual], int]:
     targets = [b for b in demand.block_times if b.n >= int(cfg["min_samples"])]
-    wagon = str(cfg["freight_reference_wagon"])
-    tpl = {True: rs.freight(wagon, True), False: rs.freight(wagon, False)}
+    mix, code_of = wagon_mix(demand, rs, {(b.block, b.loaded) for b in targets})
+    reference = str(cfg["freight_reference_wagon"])
     tol = float(cfg["freight_tolerance"])
 
     def physics(caps: tuple[float, float]) -> list[int]:
         out = []
         for b in targets:
             a, c = b.block.split("-")
-            out.append(runner.time(tpl[b.loaded], a, c, False, False, caps[0] if b.loaded else caps[1]))
+            cap = caps[0] if b.loaded else caps[1]
+            families = mix.get((b.block, b.loaded)) or Counter({rs.family_of(reference): 1})
+            times = [
+                (runner.time(rs.freight(code_of.get(f, reference), b.loaded), a, c, False, False, cap), n)
+                for f, n in families.items()
+            ]
+            out.append(weighted_quantile(times, REFERENCE_QUANTILE))
         return out
 
     def within(sim: float, ref: float) -> bool:
@@ -305,6 +344,7 @@ def _freight(
                 simulated_s=s + sup,
                 residual=round((s + sup - ref) / ref, 4),
                 within=within(s + sup, ref),
+                wagon_mix=dict(sorted(mix.get((b.block, b.loaded), Counter()).items())),
             )
         )
     physics_within = sum(within(s, b.p10_min * 60) for s, b in zip(phys, targets, strict=True))
@@ -555,6 +595,7 @@ def calibrate(
         reference_mismatches=mismatches[:WORST],
         reproducible=bool(recorded) and not mismatches,
         worst_blocks=sorted(f_rows, key=lambda r: -abs(r.residual))[:WORST],
+        freight_rows=sorted(f_rows, key=lambda r: (r.ref, r.direction, r.kind)),
         worst_spans=sorted(p_rows, key=lambda r: -abs(r.residual))[:WORST],
     )
     calibration = Calibration(
@@ -583,6 +624,21 @@ def render_markdown(report: CalibrationReport) -> str:
             )
         return out
 
+    def mix(r: Residual) -> str:
+        total = sum(r.wagon_mix.values())
+        parts = sorted(r.wagon_mix.items(), key=lambda kv: (-kv[1], kv[0]))
+        return ", ".join(f"{fam} {n / total:.0%}" for fam, n in parts) if total else "reference wagon"
+
+    mix_rows = [
+        "| Block | Dir | Kind | Loads | Wagon mix (share of loads) | Model p10 (s) | Log p10 (s) | Within |",
+        "|---|---|---|---:|---|---:|---:|:---:|",
+        *(
+            f"| {r.ref} | {r.direction} | {r.kind} | {sum(r.wagon_mix.values())} | {mix(r)} | "
+            f"{r.physics_s} | {r.reference_s:.0f} | {'yes' if r.within else 'no'} |"
+            for r in report.freight_rows
+        ),
+    ]
+
     lines = [
         "# Running-time calibration report (issue #16, DSC-10)",
         "",
@@ -608,6 +664,14 @@ def render_markdown(report: CalibrationReport) -> str:
         "## Worst 10 freight blocks",
         "",
         *table(report.worst_blocks, "%"),
+        "",
+        "## Wagon mix per freight block",
+        "",
+        "Each block is modelled with the wagon families of the loads that crossed it in the log (loaded or "
+        "empty as the row), each on its own consist template. The model p10 is the load-weighted 10th "
+        "percentile of the families' physics times, before the block allowance (issue #60).",
+        "",
+        *mix_rows,
         "",
         "## Worst 10 passenger spans",
         "",

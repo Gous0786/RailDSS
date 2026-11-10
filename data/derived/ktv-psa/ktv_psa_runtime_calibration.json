@@ -91,6 +91,1386 @@
    "loaded": 55.0
   },
   "freight_physics_within": 43,
+  "freight_rows": [
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 554,
+    "ref": "ALM-KPL",
+    "reference_s": 600.0,
+    "residual": 0.0075,
+    "simulated_s": 604.5,
+    "supplement_s": 50.5,
+    "wagon_mix": {
+     "BCN": 11,
+     "BLC": 1,
+     "BOST": 3,
+     "BOXN": 12,
+     "BOXNHL": 8,
+     "BOXNHL25T": 1,
+     "BTAP": 38,
+     "BTPG": 15,
+     "BTPN": 21,
+     "CAR_CARRIER": 20
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 605,
+    "ref": "ALM-KPL",
+    "reference_s": 660.0,
+    "residual": -0.0068,
+    "simulated_s": 655.5,
+    "supplement_s": 50.5,
+    "wagon_mix": {
+     "BCN": 116,
+     "BLC": 75,
+     "BOBRN": 59,
+     "BOST": 23,
+     "BOXN": 271,
+     "BOXNHL": 159,
+     "BOXNHL25T": 9,
+     "BRN": 59,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 427,
+    "ref": "ALM-KUK",
+    "reference_s": 480.0,
+    "residual": 0.0854,
+    "simulated_s": 521.0,
+    "supplement_s": 94.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 69,
+     "BOST": 11,
+     "BOXN": 44,
+     "BOXNHL": 23,
+     "BOXNHL25T": 3,
+     "BRN": 42,
+     "BTAP": 8,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 465,
+    "ref": "ALM-KUK",
+    "reference_s": 600.0,
+    "residual": -0.0683,
+    "simulated_s": 559.0,
+    "supplement_s": 94.0,
+    "wagon_mix": {
+     "BCN": 154,
+     "BLC": 85,
+     "BOBRN": 9,
+     "BOST": 10,
+     "BOXN": 276,
+     "BOXNHL": 160,
+     "BOXNHL25T": 18,
+     "BRN": 7,
+     "BTAP": 40,
+     "BTPG": 12,
+     "BTPN": 52,
+     "CAR_CARRIER": 23
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 388,
+    "ref": "CHE-DUSI",
+    "reference_s": 720.0,
+    "residual": 0.0174,
+    "simulated_s": 732.5,
+    "supplement_s": 344.5,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 423,
+    "ref": "CHE-DUSI",
+    "reference_s": 780.0,
+    "residual": -0.016,
+    "simulated_s": 767.5,
+    "supplement_s": 344.5,
+    "wagon_mix": {
+     "BCN": 68,
+     "BLC": 38,
+     "BOBRN": 37,
+     "BOST": 14,
+     "BOXN": 133,
+     "BOXNHL": 64,
+     "BOXNHL25T": 4,
+     "BRN": 23,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 602,
+    "ref": "CHE-ULM",
+    "reference_s": 660.0,
+    "residual": 0.0038,
+    "simulated_s": 662.5,
+    "supplement_s": 60.5,
+    "wagon_mix": {
+     "BCN": 6,
+     "BOBRN": 70,
+     "BOST": 8,
+     "BOXN": 44,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 45,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 657,
+    "ref": "CHE-ULM",
+    "reference_s": 720.0,
+    "residual": -0.0035,
+    "simulated_s": 717.5,
+    "supplement_s": 60.5,
+    "wagon_mix": {
+     "BCN": 129,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 25,
+     "BOXNHL": 32,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 25
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 394,
+    "ref": "CPP-GVI",
+    "reference_s": 342.0,
+    "residual": 0.152,
+    "simulated_s": 394.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": false
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 430,
+    "ref": "CPP-GVI",
+    "reference_s": 420.0,
+    "residual": 0.0238,
+    "simulated_s": 430.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 66,
+     "BLC": 37,
+     "BOBRN": 36,
+     "BOST": 14,
+     "BOXN": 128,
+     "BOXNHL": 63,
+     "BOXNHL25T": 4,
+     "BRN": 24,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 796,
+    "ref": "CPP-SGDM",
+    "reference_s": 720.0,
+    "residual": 0.1056,
+    "simulated_s": 796.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 72,
+     "BOST": 8,
+     "BOXN": 46,
+     "BOXNHL": 16,
+     "BOXNHL25T": 3,
+     "BRN": 45,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 869,
+    "ref": "CPP-SGDM",
+    "reference_s": 780.0,
+    "residual": 0.1141,
+    "simulated_s": 869.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 138,
+     "BLC": 69,
+     "BOST": 6,
+     "BOXN": 27,
+     "BOXNHL": 31,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 26
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 388,
+    "ref": "DUSI-CHE",
+    "reference_s": 630.0,
+    "residual": -0.004,
+    "simulated_s": 627.5,
+    "supplement_s": 239.5,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 68,
+     "BOST": 7,
+     "BOXN": 46,
+     "BOXNHL": 18,
+     "BOXNHL25T": 3,
+     "BRN": 45,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 423,
+    "ref": "DUSI-CHE",
+    "reference_s": 660.0,
+    "residual": 0.0038,
+    "simulated_s": 662.5,
+    "supplement_s": 239.5,
+    "wagon_mix": {
+     "BCN": 131,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 26,
+     "BOXNHL": 32,
+     "BRN": 5,
+     "BTPG": 9,
+     "BTPN": 16,
+     "CAR_CARRIER": 25
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 529,
+    "ref": "DUSI-PDU",
+    "reference_s": 480.0,
+    "residual": 0.1375,
+    "simulated_s": 546.0,
+    "supplement_s": 17.0,
+    "wagon_mix": {
+     "BCN": 5,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 16
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 577,
+    "ref": "DUSI-PDU",
+    "reference_s": 660.0,
+    "residual": -0.1,
+    "simulated_s": 594.0,
+    "supplement_s": 17.0,
+    "wagon_mix": {
+     "BCN": 68,
+     "BLC": 39,
+     "BOBRN": 36,
+     "BOST": 14,
+     "BOXN": 131,
+     "BOXNHL": 61,
+     "BOXNHL25T": 4,
+     "BRN": 23,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 394,
+    "ref": "GVI-CPP",
+    "reference_s": 420.0,
+    "residual": -0.0429,
+    "simulated_s": 402.0,
+    "supplement_s": 8.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 71,
+     "BOST": 9,
+     "BOXN": 45,
+     "BOXNHL": 16,
+     "BOXNHL25T": 3,
+     "BRN": 46,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 430,
+    "ref": "GVI-CPP",
+    "reference_s": 420.0,
+    "residual": 0.0429,
+    "simulated_s": 438.0,
+    "supplement_s": 8.0,
+    "wagon_mix": {
+     "BCN": 136,
+     "BLC": 69,
+     "BOST": 5,
+     "BOXN": 27,
+     "BOXNHL": 31,
+     "BRN": 5,
+     "BTPG": 9,
+     "BTPN": 16,
+     "CAR_CARRIER": 26
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 740,
+    "ref": "GVI-NML",
+    "reference_s": 642.0,
+    "residual": 0.1526,
+    "simulated_s": 740.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": false
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 807,
+    "ref": "GVI-NML",
+    "reference_s": 780.0,
+    "residual": 0.0346,
+    "simulated_s": 807.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 68,
+     "BLC": 38,
+     "BOBRN": 37,
+     "BOST": 14,
+     "BOXN": 126,
+     "BOXNHL": 61,
+     "BOXNHL25T": 4,
+     "BRN": 24,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 835,
+    "ref": "KBM-NWP",
+    "reference_s": 804.0,
+    "residual": 0.0386,
+    "simulated_s": 835.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BOBRN": 69,
+     "BOST": 8,
+     "BOXN": 46,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 44,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 911,
+    "ref": "KBM-NWP",
+    "reference_s": 840.0,
+    "residual": 0.0845,
+    "simulated_s": 911.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 125,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 26,
+     "BOXNHL": 30,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 18,
+     "CAR_CARRIER": 23
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 823,
+    "ref": "KBM-TIU",
+    "reference_s": 780.0,
+    "residual": 0.0551,
+    "simulated_s": 823.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 898,
+    "ref": "KBM-TIU",
+    "reference_s": 888.0,
+    "residual": 0.0113,
+    "simulated_s": 898.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 70,
+     "BLC": 42,
+     "BOBRN": 36,
+     "BOST": 14,
+     "BOXN": 131,
+     "BOXNHL": 62,
+     "BOXNHL25T": 4,
+     "BRN": 26,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 554,
+    "ref": "KPL-ALM",
+    "reference_s": 600.0,
+    "residual": 0.0083,
+    "simulated_s": 605.0,
+    "supplement_s": 51.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 68,
+     "BOST": 12,
+     "BOXN": 40,
+     "BOXNHL": 21,
+     "BOXNHL25T": 2,
+     "BRN": 41,
+     "BTAP": 8,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 604,
+    "ref": "KPL-ALM",
+    "reference_s": 660.0,
+    "residual": -0.0076,
+    "simulated_s": 655.0,
+    "supplement_s": 51.0,
+    "wagon_mix": {
+     "BCN": 159,
+     "BLC": 85,
+     "BOBRN": 7,
+     "BOST": 10,
+     "BOXN": 270,
+     "BOXNHL": 163,
+     "BOXNHL25T": 17,
+     "BRN": 6,
+     "BTAP": 40,
+     "BTPG": 12,
+     "BTPN": 51,
+     "CAR_CARRIER": 22
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 464,
+    "ref": "KPL-KTV",
+    "reference_s": 618.0,
+    "residual": -0.0008,
+    "simulated_s": 617.5,
+    "supplement_s": 153.5,
+    "wagon_mix": {
+     "BCN": 12,
+     "BLC": 1,
+     "BOST": 3,
+     "BOXN": 14,
+     "BOXNHL": 9,
+     "BOXNHL25T": 1,
+     "BTAP": 38,
+     "BTPG": 15,
+     "BTPN": 22,
+     "CAR_CARRIER": 20
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 507,
+    "ref": "KPL-KTV",
+    "reference_s": 660.0,
+    "residual": 0.0008,
+    "simulated_s": 660.5,
+    "supplement_s": 153.5,
+    "wagon_mix": {
+     "BCN": 117,
+     "BLC": 77,
+     "BOBRN": 60,
+     "BOST": 23,
+     "BOXN": 271,
+     "BOXNHL": 160,
+     "BOXNHL25T": 8,
+     "BRN": 60,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 464,
+    "ref": "KTV-KPL",
+    "reference_s": 600.0,
+    "residual": -0.0358,
+    "simulated_s": 578.5,
+    "supplement_s": 114.5,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 69,
+     "BOST": 12,
+     "BOXN": 41,
+     "BOXNHL": 22,
+     "BOXNHL25T": 2,
+     "BRN": 42,
+     "BTAP": 9,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 507,
+    "ref": "KTV-KPL",
+    "reference_s": 600.0,
+    "residual": 0.0358,
+    "simulated_s": 621.5,
+    "supplement_s": 114.5,
+    "wagon_mix": {
+     "BCN": 167,
+     "BLC": 87,
+     "BOBRN": 7,
+     "BOST": 10,
+     "BOXN": 279,
+     "BOXNHL": 168,
+     "BOXNHL25T": 20,
+     "BRN": 6,
+     "BTAP": 40,
+     "BTPG": 12,
+     "BTPN": 51,
+     "CAR_CARRIER": 22
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 427,
+    "ref": "KUK-ALM",
+    "reference_s": 480.0,
+    "residual": 0.0229,
+    "simulated_s": 491.0,
+    "supplement_s": 64.0,
+    "wagon_mix": {
+     "BCN": 11,
+     "BLC": 1,
+     "BOST": 4,
+     "BOXN": 12,
+     "BOXNHL": 8,
+     "BOXNHL25T": 1,
+     "BTAP": 38,
+     "BTPG": 15,
+     "BTPN": 21,
+     "CAR_CARRIER": 20
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 465,
+    "ref": "KUK-ALM",
+    "reference_s": 540.0,
+    "residual": -0.0204,
+    "simulated_s": 529.0,
+    "supplement_s": 64.0,
+    "wagon_mix": {
+     "BCN": 113,
+     "BLC": 75,
+     "BOBRN": 60,
+     "BOST": 24,
+     "BOXN": 274,
+     "BOXNHL": 156,
+     "BOXNHL25T": 9,
+     "BRN": 58,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 639,
+    "ref": "KUK-VZM",
+    "reference_s": 960.0,
+    "residual": 0.0948,
+    "simulated_s": 1051.0,
+    "supplement_s": 412.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 71,
+     "BOST": 11,
+     "BOXN": 45,
+     "BOXNHL": 24,
+     "BOXNHL25T": 3,
+     "BRN": 48,
+     "BTAP": 8,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 697,
+    "ref": "KUK-VZM",
+    "reference_s": 1200.0,
+    "residual": -0.0758,
+    "simulated_s": 1109.0,
+    "supplement_s": 412.0,
+    "wagon_mix": {
+     "BCN": 164,
+     "BLC": 87,
+     "BOBRN": 9,
+     "BOST": 11,
+     "BOXN": 285,
+     "BOXNHL": 168,
+     "BOXNHL25T": 19,
+     "BRN": 8,
+     "BTAP": 41,
+     "BTPG": 12,
+     "BTPN": 54,
+     "CAR_CARRIER": 23
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 740,
+    "ref": "NML-GVI",
+    "reference_s": 660.0,
+    "residual": 0.1212,
+    "simulated_s": 740.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 69,
+     "BOST": 8,
+     "BOXN": 43,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 46,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 807,
+    "ref": "NML-GVI",
+    "reference_s": 720.0,
+    "residual": 0.1208,
+    "simulated_s": 807.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 135,
+     "BLC": 66,
+     "BOST": 5,
+     "BOXN": 28,
+     "BOXNHL": 31,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 26
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 704,
+    "ref": "NML-VZM",
+    "reference_s": 840.0,
+    "residual": -0.0024,
+    "simulated_s": 838.0,
+    "supplement_s": 134.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 2,
+     "CAR_CARRIER": 18
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 768,
+    "ref": "NML-VZM",
+    "reference_s": 900.0,
+    "residual": 0.0022,
+    "simulated_s": 902.0,
+    "supplement_s": 134.0,
+    "wagon_mix": {
+     "BCN": 71,
+     "BLC": 38,
+     "BOBRN": 40,
+     "BOST": 14,
+     "BOXN": 129,
+     "BOXNHL": 65,
+     "BOXNHL25T": 6,
+     "BRN": 25,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 835,
+    "ref": "NWP-KBM",
+    "reference_s": 720.0,
+    "residual": 0.1597,
+    "simulated_s": 835.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 1,
+     "CAR_CARRIER": 16
+    },
+    "within": false
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 911,
+    "ref": "NWP-KBM",
+    "reference_s": 900.0,
+    "residual": 0.0122,
+    "simulated_s": 911.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 72,
+     "BLC": 43,
+     "BOBRN": 37,
+     "BOST": 14,
+     "BOXN": 131,
+     "BOXNHL": 68,
+     "BOXNHL25T": 4,
+     "BRN": 26,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 794,
+    "ref": "NWP-PUN",
+    "reference_s": 780.0,
+    "residual": 0.0179,
+    "simulated_s": 794.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BOBRN": 72,
+     "BOST": 8,
+     "BOXN": 46,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 45,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 867,
+    "ref": "NWP-PUN",
+    "reference_s": 810.0,
+    "residual": 0.0704,
+    "simulated_s": 867.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 128,
+     "BLC": 69,
+     "BOBRN": 1,
+     "BOST": 6,
+     "BOXN": 28,
+     "BOXNHL": 31,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 19,
+     "CAR_CARRIER": 23
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 529,
+    "ref": "PDU-DUSI",
+    "reference_s": 600.0,
+    "residual": 0.01,
+    "simulated_s": 606.0,
+    "supplement_s": 77.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 70,
+     "BOST": 8,
+     "BOXN": 46,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 44,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 577,
+    "ref": "PDU-DUSI",
+    "reference_s": 660.0,
+    "residual": -0.0091,
+    "simulated_s": 654.0,
+    "supplement_s": 77.0,
+    "wagon_mix": {
+     "BCN": 130,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 28,
+     "BOXNHL": 30,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 24
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 604,
+    "ref": "PDU-SGDM",
+    "reference_s": 540.0,
+    "residual": 0.1185,
+    "simulated_s": 604.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 5,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 16
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 659,
+    "ref": "PDU-SGDM",
+    "reference_s": 660.0,
+    "residual": -0.0015,
+    "simulated_s": 659.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 66,
+     "BLC": 36,
+     "BOBRN": 36,
+     "BOST": 14,
+     "BOXN": 130,
+     "BOXNHL": 61,
+     "BOXNHL25T": 4,
+     "BRN": 23,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 794,
+    "ref": "PUN-NWP",
+    "reference_s": 720.0,
+    "residual": 0.1028,
+    "simulated_s": 794.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 2,
+     "CAR_CARRIER": 16
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 867,
+    "ref": "PUN-NWP",
+    "reference_s": 900.0,
+    "residual": -0.0367,
+    "simulated_s": 867.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 71,
+     "BLC": 43,
+     "BOBRN": 40,
+     "BOST": 14,
+     "BOXN": 132,
+     "BOXNHL": 64,
+     "BOXNHL25T": 4,
+     "BRN": 27,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 796,
+    "ref": "SGDM-CPP",
+    "reference_s": 762.0,
+    "residual": 0.0446,
+    "simulated_s": 796.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 869,
+    "ref": "SGDM-CPP",
+    "reference_s": 840.0,
+    "residual": 0.0345,
+    "simulated_s": 869.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 65,
+     "BLC": 35,
+     "BOBRN": 36,
+     "BOST": 14,
+     "BOXN": 130,
+     "BOXNHL": 64,
+     "BOXNHL25T": 4,
+     "BRN": 24,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 604,
+    "ref": "SGDM-PDU",
+    "reference_s": 660.0,
+    "residual": 0.0038,
+    "simulated_s": 662.5,
+    "supplement_s": 58.5,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 71,
+     "BOST": 8,
+     "BOXN": 46,
+     "BOXNHL": 16,
+     "BOXNHL25T": 3,
+     "BRN": 44,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 659,
+    "ref": "SGDM-PDU",
+    "reference_s": 720.0,
+    "residual": -0.0035,
+    "simulated_s": 717.5,
+    "supplement_s": 58.5,
+    "wagon_mix": {
+     "BCN": 137,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 28,
+     "BOXNHL": 30,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 25
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 823,
+    "ref": "TIU-KBM",
+    "reference_s": 720.0,
+    "residual": 0.1431,
+    "simulated_s": 823.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BOBRN": 70,
+     "BOST": 8,
+     "BOXN": 47,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 45,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 898,
+    "ref": "TIU-KBM",
+    "reference_s": 840.0,
+    "residual": 0.069,
+    "simulated_s": 898.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 124,
+     "BLC": 67,
+     "BOST": 6,
+     "BOXN": 25,
+     "BOXNHL": 32,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 24
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 578,
+    "ref": "TIU-ULM",
+    "reference_s": 486.0,
+    "residual": 0.1893,
+    "simulated_s": 578.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": false
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 630,
+    "ref": "TIU-ULM",
+    "reference_s": 660.0,
+    "residual": -0.0455,
+    "simulated_s": 630.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 69,
+     "BLC": 40,
+     "BOBRN": 33,
+     "BOST": 14,
+     "BOXN": 130,
+     "BOXNHL": 62,
+     "BOXNHL25T": 4,
+     "BRN": 24,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 602,
+    "ref": "ULM-CHE",
+    "reference_s": 720.0,
+    "residual": 0.0035,
+    "simulated_s": 722.5,
+    "supplement_s": 120.5,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 657,
+    "ref": "ULM-CHE",
+    "reference_s": 780.0,
+    "residual": -0.0032,
+    "simulated_s": 777.5,
+    "supplement_s": 120.5,
+    "wagon_mix": {
+     "BCN": 69,
+     "BLC": 39,
+     "BOBRN": 34,
+     "BOST": 14,
+     "BOXN": 130,
+     "BOXNHL": 63,
+     "BOXNHL25T": 4,
+     "BRN": 23,
+     "BTPN": 5
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 578,
+    "ref": "ULM-TIU",
+    "reference_s": 600.0,
+    "residual": -0.0367,
+    "simulated_s": 578.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BOBRN": 71,
+     "BOST": 8,
+     "BOXN": 46,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 44,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 630,
+    "ref": "ULM-TIU",
+    "reference_s": 600.0,
+    "residual": 0.05,
+    "simulated_s": 630.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 125,
+     "BLC": 66,
+     "BOST": 6,
+     "BOXN": 26,
+     "BOXNHL": 33,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 24
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "empty",
+    "physics_s": 639,
+    "ref": "VZM-KUK",
+    "reference_s": 870.0,
+    "residual": 0.0184,
+    "simulated_s": 886.0,
+    "supplement_s": 247.0,
+    "wagon_mix": {
+     "BCN": 11,
+     "BLC": 1,
+     "BOST": 4,
+     "BOXN": 12,
+     "BOXNHL": 10,
+     "BOXNHL25T": 1,
+     "BRN": 2,
+     "BTAP": 39,
+     "BTPG": 16,
+     "BTPN": 23,
+     "CAR_CARRIER": 20
+    },
+    "within": true
+   },
+   {
+    "direction": "UP",
+    "kind": "loaded",
+    "physics_s": 697,
+    "ref": "VZM-KUK",
+    "reference_s": 960.0,
+    "residual": -0.0167,
+    "simulated_s": 944.0,
+    "supplement_s": 247.0,
+    "wagon_mix": {
+     "BCN": 119,
+     "BLC": 79,
+     "BOBRN": 62,
+     "BOST": 24,
+     "BOXN": 287,
+     "BOXNHL": 165,
+     "BOXNHL25T": 9,
+     "BRN": 59,
+     "BTPN": 4
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "empty",
+    "physics_s": 937,
+    "ref": "VZM-NML",
+    "reference_s": 834.0,
+    "residual": 0.1235,
+    "simulated_s": 937.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 9,
+     "BOBRN": 71,
+     "BOST": 8,
+     "BOXN": 44,
+     "BOXNHL": 19,
+     "BOXNHL25T": 3,
+     "BRN": 47,
+     "BTPN": 2
+    },
+    "within": true
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 998,
+    "ref": "VZM-NML",
+    "reference_s": 840.0,
+    "residual": 0.1881,
+    "simulated_s": 998.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 139,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 33,
+     "BOXNHL": 30,
+     "BRN": 6,
+     "BTPG": 8,
+     "BTPN": 19,
+     "CAR_CARRIER": 26
+    },
+    "within": false
+   }
+  ],
   "freight_share": 0.9219,
   "freight_target_met": true,
   "freight_within": 59,
@@ -109,17 +1489,6 @@
   "spans_within_all": 77,
   "worst_blocks": [
    {
-    "direction": "DN",
-    "kind": "loaded",
-    "physics_s": 1012,
-    "ref": "VZM-NML",
-    "reference_s": 840.0,
-    "residual": 0.2048,
-    "simulated_s": 1012.0,
-    "supplement_s": 0.0,
-    "within": false
-   },
-   {
     "direction": "UP",
     "kind": "empty",
     "physics_s": 578,
@@ -128,6 +1497,36 @@
     "residual": 0.1893,
     "simulated_s": 578.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
+    "within": false
+   },
+   {
+    "direction": "DN",
+    "kind": "loaded",
+    "physics_s": 998,
+    "ref": "VZM-NML",
+    "reference_s": 840.0,
+    "residual": 0.1881,
+    "simulated_s": 998.0,
+    "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 139,
+     "BLC": 68,
+     "BOST": 6,
+     "BOXN": 33,
+     "BOXNHL": 30,
+     "BRN": 6,
+     "BTPG": 8,
+     "BTPN": 19,
+     "CAR_CARRIER": 26
+    },
     "within": false
    },
    {
@@ -139,6 +1538,14 @@
     "residual": 0.1597,
     "simulated_s": 835.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 1,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 10,
+     "BTPN": 1,
+     "CAR_CARRIER": 16
+    },
     "within": false
    },
    {
@@ -150,6 +1557,14 @@
     "residual": 0.1526,
     "simulated_s": 740.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
     "within": false
    },
    {
@@ -161,6 +1576,14 @@
     "residual": 0.152,
     "simulated_s": 394.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 17
+    },
     "within": false
    },
    {
@@ -172,6 +1595,16 @@
     "residual": 0.1431,
     "simulated_s": 823.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 6,
+     "BOBRN": 70,
+     "BOST": 8,
+     "BOXN": 47,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 45,
+     "BTPN": 2
+    },
     "within": true
    },
    {
@@ -183,17 +1616,35 @@
     "residual": 0.1375,
     "simulated_s": 546.0,
     "supplement_s": 17.0,
+    "wagon_mix": {
+     "BCN": 5,
+     "BLC": 1,
+     "BTAP": 2,
+     "BTPG": 11,
+     "BTPN": 1,
+     "CAR_CARRIER": 16
+    },
     "within": true
    },
    {
     "direction": "DN",
     "kind": "empty",
-    "physics_s": 939,
+    "physics_s": 937,
     "ref": "VZM-NML",
     "reference_s": 834.0,
-    "residual": 0.1259,
-    "simulated_s": 939.0,
+    "residual": 0.1235,
+    "simulated_s": 937.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 9,
+     "BOBRN": 71,
+     "BOST": 8,
+     "BOXN": 44,
+     "BOXNHL": 19,
+     "BOXNHL25T": 3,
+     "BRN": 47,
+     "BTPN": 2
+    },
     "within": true
    },
    {
@@ -205,6 +1656,16 @@
     "residual": 0.1212,
     "simulated_s": 740.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 7,
+     "BOBRN": 69,
+     "BOST": 8,
+     "BOXN": 43,
+     "BOXNHL": 17,
+     "BOXNHL25T": 3,
+     "BRN": 46,
+     "BTPN": 2
+    },
     "within": true
    },
    {
@@ -216,6 +1677,17 @@
     "residual": 0.1208,
     "simulated_s": 807.0,
     "supplement_s": 0.0,
+    "wagon_mix": {
+     "BCN": 135,
+     "BLC": 66,
+     "BOST": 5,
+     "BOXN": 28,
+     "BOXNHL": 31,
+     "BRN": 5,
+     "BTPG": 8,
+     "BTPN": 17,
+     "CAR_CARRIER": 26
+    },
     "within": true
    }
   ],
@@ -229,6 +1701,7 @@
     "residual": -567.9,
     "simulated_s": 2612.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -240,6 +1713,7 @@
     "residual": -501.9,
     "simulated_s": 2678.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -251,6 +1725,7 @@
     "residual": -501.9,
     "simulated_s": 2678.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -262,6 +1737,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -273,6 +1749,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -284,6 +1761,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -295,6 +1773,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -306,6 +1785,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -317,6 +1797,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    },
    {
@@ -328,6 +1809,7 @@
     "residual": -488.9,
     "simulated_s": 2691.1,
     "supplement_s": 280.1,
+    "wagon_mix": {},
     "within": false
    }
   ]

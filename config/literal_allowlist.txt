@@ -101,3 +101,4 @@ src/raildss_dss/__main__.py: 60  # CLI default idle stop (s) for --kafka, not a 
 src/raildss_twin/chart.py: 3  # rounding digits of chainage in km (metres), not a rule value
 src/raildss_twin/chart.py: 12  # midday hour used to pick the demo train deterministically, not a rule value
 src/raildss_twin/chart.py: 60  # seconds per minute and minutes per hour (unit conversion), not a rule value
+src/raildss_twin/calibration.py: 0.1  # p10 quantile level, the definition of the log reference, not a rule value
