@@ -109,7 +109,7 @@ class ScenarioDisruption(_Strict):
         run_id = f"{self.train_no}@{day.isoformat()}" if self.train_no else None
         return Disruption(
             incident_id=self.incident_id,
-            kind=self.type,  # type: ignore[arg-type]
+            kind=self.type,
             start_s=self.start_s,
             duration_s=duration_s,
             etr_s=etr_s,
