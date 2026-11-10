@@ -269,12 +269,14 @@ class Predictor:
             nodes.append(_Node(run_id, station, kind, release, booked, stale))
             return len(nodes) - 1
 
+        def since(when: dt.datetime | None) -> float:
+            return (when - t).total_seconds() if when else 0.0
+
         for st in snap.trains:
             tr = estimator.trains[st.run_id]
             path = self.directory.path(st.run_id) or []
             if not path:
                 continue
-            since = lambda when: (when - t).total_seconds() if when else 0.0  # noqa: E731
             if tr.station in path and tr.kind == "ARR":
                 i = path.index(tr.station)
                 if i == len(path) - 1:
@@ -327,9 +329,11 @@ class Predictor:
                 edges.append((prev, nxt, q.p50, q.p90))
                 prev, kind = nxt, nodes[nxt].kind
         for o in orderings:
-            a, b = next((k for k, v in self.directory.blocks.items() if v == o.block), (None, None))
-            left_block = index.get((token(o.first), str(b), "ARR"))
-            enter_block = index.get((token(o.second), str(a), "DEP"))
+            ends = next((k for k, v in self.directory.blocks.items() if v == o.block), None)
+            if ends is None:
+                continue
+            left_block = index.get((token(o.first), ends[1], "ARR"))
+            enter_block = index.get((token(o.second), ends[0], "DEP"))
             if left_block is not None and enter_block is not None:
                 edges.append((left_block, enter_block, 0.0, 0.0))
         p50 = _longest(nodes, edges, P50_COL)
