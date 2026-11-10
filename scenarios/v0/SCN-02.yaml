@@ -1,0 +1,23 @@
+# Scenario SCN-02 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-02
+title: "Premium train running late into the section among freight"
+family: "Late premium train"
+spec: "R01 §7.11, R04 §11.1"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-05"
+freight_day: aug25-day-05
+seed: 2
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN02-VB-LATE
+    type: entry_delay
+    train_no: "20830"
+    station: KTV
+    start: "15:14"
+    duration_min: {low_min: 30, high_min: 60}
+    note: "20830 Vande Bharat enters at KTV 30 to 60 min late (booked 15:14)."
+requires: [injector]
+expected_gt_hash: null
+notes: "A late entry is a train delay, applied by the injector or the perturbation model (M1)."

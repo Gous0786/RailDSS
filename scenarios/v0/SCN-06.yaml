@@ -1,0 +1,23 @@
+# Scenario SCN-06 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-06
+title: "Loop out of use at a precedence station (CPP loop 5)"
+family: "Loop or point failure"
+spec: "R01 §7.11, R05 §7.4"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-08"
+freight_day: aug25-day-08
+seed: 6
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN06-CPP-L5
+    type: point_failure
+    station: CPP
+    line_no: 5
+    start: "08:00"
+    duration_min: {low_min: 60, high_min: 120}
+    etr: {offset_min: 0, sigma_min: 15}
+requires: [injector]
+expected_gt_hash: null
+notes: "CPP line 5 (857 m) is the longest loop; freight must use shorter lines or wait."

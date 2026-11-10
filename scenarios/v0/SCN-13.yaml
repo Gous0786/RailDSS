@@ -1,0 +1,16 @@
+# Scenario SCN-13 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-13
+title: "Long freight against short lines (CPP line 1 = 390 m, PDU siding = 300 m)"
+family: "Crossing and CSR edge case"
+spec: "R04 §11.1, R06 §2"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-04"
+freight_day: aug25-day-04
+seed: 13
+density: 1.0
+degradation_profile: D1
+disruptions: []
+requires: []
+expected_gt_hash: "1342c7dab6b2297506da750aa449a9cd1213025204fa76e8235a439feef6cc98"
+notes: "Every freight consist is 668.6 m, so the twin refuses the short lines (csr_refused > 0)."

@@ -1,0 +1,16 @@
+# Scenario SCN-22 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-22
+title: "Real-freight-day replay: freight day 2, nominal passenger WTT"
+family: "Real-freight-day replay"
+spec: "R06 §2, §7; REC-25"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-02"
+freight_day: aug25-day-02
+seed: 22
+density: 1.0
+degradation_profile: D1
+disruptions: []
+requires: []
+expected_gt_hash: "3b2b16cd5bd06b097d67f04fbbfaed0683a85147ff1e9855f99ccd5332e9f442"
+notes: "No injected disruption. v1 replays all 27 days."

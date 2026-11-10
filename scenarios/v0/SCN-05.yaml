@@ -1,0 +1,23 @@
+# Scenario SCN-05 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-05
+title: "DN line blocked CPP-SGDM: single-line working on the UP line"
+family: "Single-line working"
+spec: "R04 §5.1, R06 §5; REC-29"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-07"
+freight_day: aug25-day-07
+seed: 5
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN05-DN-CPP-SGDM
+    type: line_block
+    block_id: CPP-SGDM
+    line_id: DN
+    start: "10:00"
+    duration_min: {low_min: 120, high_min: 180}
+    etr: {offset_min: 30, sigma_min: 20}
+requires: [injector]
+expected_gt_hash: null
+notes: "Crossings at CPP and SGDM; trains of both directions use the UP line."

@@ -1,0 +1,16 @@
+# Scenario SCN-16 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-16
+title: "VZM junction congestion on the busiest real day (204 trains)"
+family: "Junction congestion"
+spec: "R06 §2, §7"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-22"
+freight_day: aug25-day-22
+seed: 16
+density: 1.0
+degradation_profile: D1
+disruptions: []
+requires: []
+expected_gt_hash: "77c6eb9c64761f151ad5f9637aac6ac853d7ae6506e9a2e75426b7400bb0461d"
+notes: "The real day with the most trains; heavy freight detention at VZM shows as delay."

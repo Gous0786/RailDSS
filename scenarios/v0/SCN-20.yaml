@@ -1,0 +1,23 @@
+# Scenario SCN-20 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-20
+title: "Planned line block on DUSI-CHE (maintenance corridor) with overrun"
+family: "Single-line working"
+spec: "R06 §5; REC-29"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-09"
+freight_day: aug25-day-09
+seed: 20
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN20-UP-DUSI-CHE
+    type: line_block
+    block_id: DUSI-CHE
+    line_id: UP
+    start: "11:00"
+    duration_min: {low_min: 120, high_min: 180}
+    etr: {offset_min: -30, sigma_min: 10}
+requires: [injector]
+expected_gt_hash: null
+notes: "Planned single-line working on the DN line; the block overruns the announced end by 30 min."

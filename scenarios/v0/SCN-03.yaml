@@ -1,0 +1,24 @@
+# Scenario SCN-03 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-03
+title: "TSR on VZM-PSA shifting the precedence station"
+family: "Speed restriction"
+spec: "R01 §7.11, R04 §5.1"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-06"
+freight_day: aug25-day-06
+seed: 3
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN03-TSR-SGDM-PDU
+    type: tsr
+    block_id: SGDM-PDU
+    line_id: DN
+    speed_kmh: 20
+    start: "09:00"
+    duration_min: {low_min: 240, high_min: 480}
+    etr: {offset_min: 0, sigma_min: 30}
+requires: [injector]
+expected_gt_hash: null
+notes: "Caution order on the DN line of SGDM-PDU."

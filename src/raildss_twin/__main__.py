@@ -3,6 +3,7 @@
 python -m raildss_twin calibrate [--write]    # running-time calibration (issue #16)
 python -m raildss_twin run --date 2025-08-20  # one real day under BL-0 (issue #20)
 python -m raildss_twin displib --from-h 0 --to-h 2  # DISPLIB-style IR of a window (issue #22)
+python -m raildss_twin scenario check|index|run     # scenario library v0 (issue #21)
 
 ``run`` is headless by default. ``--speed N`` (1 to 60) follows the wall clock at N times real time;
 ``--control`` reads ``pause``, ``resume`` and ``speed N`` from standard input while it runs.
@@ -239,6 +240,38 @@ def _chart(args: argparse.Namespace) -> int:
     return 0
 
 
+def _scenario(args: argparse.Namespace) -> int:
+    from raildss_etl.publish import PUBLISHED_DIR, read_export
+    from raildss_twin import run, scenario
+
+    library = scenario.load_library()
+    if args.action == "index":
+        text = scenario.index_markdown(library)
+        if args.write:
+            scenario.INDEX_FILE.write_text(text, encoding="utf-8", newline="\n")
+            print(f"wrote {scenario.INDEX_FILE.name}: {len(library)} scenarios")
+        else:
+            sys.stdout.write(text)
+        return 0
+    if args.action == "check":
+        meta, tables, _ = read_export(PUBLISHED_DIR / scenario.NETWORK_VERSION)
+        bad = [f"{s.id}: {p}" for s in library for p in scenario.check_references(s, meta, tables)]
+        print("\n".join(bad) or f"scenarios: {len(library)} valid")
+        return 1 if bad else 0
+    chosen = [s for s in library if s.executable and (not args.ids or s.id in args.ids)]
+    world = run.load_world()
+    failed = 0
+    for s in chosen:
+        report = scenario.run_scenario(world, s)
+        same = report.trace_hash == s.expected_gt_hash
+        if args.record and not same:
+            scenario.record_hash(scenario.LIBRARY_DIR / f"{s.id}.yaml", report.trace_hash)
+        ok = report.completed and (same or args.record)
+        failed += not ok
+        print(f"{s.id}: {'OK' if ok else 'FAILED'} {report.trace_hash} ({report.wall_s} s)")
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m raildss_twin")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -277,8 +310,15 @@ def main(argv: list[str] | None = None) -> int:
     p_ch = sub.add_parser("chart", help="export the control-chart data of a day for the web UI (issue #86)")
     p_ch.add_argument("--date", default="2025-08-20")
     p_ch.add_argument("--out", type=Path, default=None, help="directory (default web/public/data)")
+    p_sc = sub.add_parser("scenario", help="check, index or run the scenario library (issue #21)")
+    p_sc.add_argument("action", choices=["check", "index", "run"])
+    p_sc.add_argument("ids", nargs="*", help="scenario ids to run (default: every executable one)")
+    p_sc.add_argument("--write", action="store_true", help="index: write INDEX.md")
+    p_sc.add_argument("--record", action="store_true", help="run: record the trace hash in the file")
     args = ap.parse_args(argv)
 
+    if args.cmd == "scenario":
+        return _scenario(args)
     if args.cmd == "run":
         return _run(args)
     if args.cmd == "displib":
