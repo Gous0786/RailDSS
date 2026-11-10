@@ -413,6 +413,17 @@ parameters:
     valid_from: 2026-11-03
     notes: "Service braking deceleration per consist type; to be calibrated in issue #16."
 
+  - key: twin.injector
+    value: {signal_failure_speed_kmh: 15, default_etr_sigma_min: 10}
+    unit: null
+    source: "FR-SCN-02, FR-TWIN-15; issue #53"
+    status: SA
+    owner: twin
+    valid_from: 2026-11-10
+    notes: >-
+      signal_failure_speed_kmh: trains pass a failed block line at caution under degraded working (a
+      speed limit on the line while the failure lasts). default_etr_sigma_min: the ETR uncertainty
+      published on ops.disruptions when a scripted incident gives none.
   - key: twin.sim
     value:
       state_period_s: 60
