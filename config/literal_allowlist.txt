@@ -104,3 +104,6 @@ src/raildss_twin/chart.py: 60  # seconds per minute and minutes per hour (unit c
 src/raildss_twin/calibration.py: 0.1  # p10 quantile level, the definition of the log reference, not a rule value
 src/raildss_twin/sandbox.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_verifier/gates.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/__main__.py: 16  # characters of the snapshot hash shown per CLI line, not a rule value
+src/raildss_dss/state.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/__main__.py: 10  # CLI default snapshot interval (min) of the state replay, not a rule value

@@ -2,6 +2,7 @@
 
 python -m raildss_dss ingest --trace run.jsonl     # replay a twin trace (raildss_twin run --trace-out)
 python -m raildss_dss ingest --kafka [--speed 60]  # consume obs.* / ops.* live as the ``dss`` principal
+python -m raildss_dss state --trace run.jsonl --every-min 10   # DS-3 snapshots S_t of a replayed trace
 
 Both print the per-source data-quality metrics, the data-quality alerts and the stale trains at the end
 (``--kafka`` stops on Ctrl+C or after ``--max-idle-s`` without a record). Rejected records go to the
@@ -18,6 +19,9 @@ import time
 from pathlib import Path
 
 from raildss_dss.ingest import ADAPTERS, DqAlert, Ingestor, JsonLinesTransport
+from raildss_dss.state import PlanDirectory, StateEstimator
+
+NEWLINE = "\n"
 
 
 def _print_alert(alert: DqAlert) -> None:
@@ -60,6 +64,32 @@ def _kafka(ing: Ingestor, speed: float, max_idle_s: float) -> None:
         ing.flush()
 
 
+def _state(trace: Path, every_min: float, out: Path | None) -> None:
+    ing = Ingestor()
+    ing.run(JsonLinesTransport(trace))
+    events = sorted(ing.released, key=lambda e: e.event_time)
+    if not events:
+        print("no events")
+        return
+    est = StateEstimator(PlanDirectory.from_published())
+    step = dt.timedelta(minutes=every_min)
+    t, i, last = events[0].event_time, 0, None
+    while t <= events[-1].event_time + step:
+        while i < len(events) and events[i].event_time <= t:
+            est.apply(events[i])
+            i += 1
+        last = est.snapshot(t)
+        stale = sum(s.stale for s in last.trains)
+        print(
+            f"{t.isoformat()}  v{last.version:<5} trains {len(last.trains):>3} stale {stale:>3}  "
+            f"{last.hash[:16]}"
+        )
+        t += step
+    if out is not None and last is not None:
+        out.write_text(json.dumps(last.to_json(), indent=1) + NEWLINE, encoding="utf-8", newline=NEWLINE)
+        print(f"wrote the last snapshot to {out}")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m raildss_dss")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -69,7 +99,15 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--kafka", action="store_true", help="consume obs.* / ops.* from Kafka")
     p_in.add_argument("--speed", type=float, default=1.0, help="feed seconds per wall second (--kafka)")
     p_in.add_argument("--max-idle-s", type=float, default=60.0, help="stop after this long without a record")
+    p_st = sub.add_parser("state", help="DS-3 state snapshots of a replayed twin trace (issue #71)")
+    p_st.add_argument("--trace", type=Path, required=True, help="twin trace file (JSON lines)")
+    p_st.add_argument("--every-min", type=float, default=10.0, help="snapshot interval in minutes")
+    p_st.add_argument("--out", type=Path, default=None, help="write the last snapshot as JSON")
     args = ap.parse_args(argv)
+
+    if args.cmd == "state":
+        _state(args.trace, args.every_min, args.out)
+        return 0
 
     ing = Ingestor(on_alert=_print_alert)
     if args.trace:
