@@ -1,0 +1,98 @@
+{
+ "meta": {
+  "day": "2025-08-20",
+  "network": "KTV-PSA-2025-08",
+  "peak_2h_start": "3:30:00",
+  "peak_2h_entering_trains": 23,
+  "time_limit_s": 15.0,
+  "workers": 8,
+  "machine": "Windows AMD64, Python 3.12.13",
+  "ortools": "9.15.6755"
+ },
+ "rows": [
+  {
+   "trains": 20,
+   "window": "3:30:00-5:15:01",
+   "window_h": 1.75,
+   "build_s": 1.3,
+   "bl0_objective": 75478.0,
+   "bl0_g1": "PASS",
+   "size": {
+    "trains": 20,
+    "operations": 2309,
+    "resources": 223,
+    "booleans": 5756
+   },
+   "warm_status": "FEASIBLE",
+   "warm_first_feasible_s": 1.543,
+   "warm_objective_5s": 61145.0,
+   "warm_objective": 55283.0,
+   "warm_gap_pct": 99.3,
+   "warm_wall_s": 15.274,
+   "warm_g1": "PASS",
+   "cold_status": "FEASIBLE",
+   "cold_first_feasible_s": 4.83,
+   "cold_objective_5s": 102004.0,
+   "cold_objective": 93963.0,
+   "cold_gap_pct": 100.0,
+   "cold_wall_s": 15.132,
+   "cold_g1": "PASS"
+  },
+  {
+   "trains": 40,
+   "window": "3:30:00-7:25:01",
+   "window_h": 3.92,
+   "build_s": 2.06,
+   "bl0_objective": 162750.0,
+   "bl0_g1": "PASS",
+   "size": {
+    "trains": 40,
+    "operations": 4396,
+    "resources": 223,
+    "booleans": 10944
+   },
+   "warm_status": "FEASIBLE",
+   "warm_first_feasible_s": 3.717,
+   "warm_objective_5s": 162740.0,
+   "warm_objective": 150883.0,
+   "warm_gap_pct": 100.0,
+   "warm_wall_s": 15.368,
+   "warm_g1": "PASS",
+   "cold_status": "FEASIBLE",
+   "cold_first_feasible_s": 8.858,
+   "cold_objective_5s": null,
+   "cold_objective": 254290.0,
+   "cold_gap_pct": 100.0,
+   "cold_wall_s": 15.266,
+   "cold_g1": "PASS"
+  },
+  {
+   "trains": 70,
+   "window": "3:30:00-11:00:01",
+   "window_h": 7.5,
+   "build_s": 3.48,
+   "bl0_objective": 623310.0,
+   "bl0_g1": "PASS",
+   "size": {
+    "trains": 70,
+    "operations": 7786,
+    "resources": 223,
+    "booleans": 19376
+   },
+   "warm_status": "UNKNOWN",
+   "warm_first_feasible_s": null,
+   "warm_objective_5s": null,
+   "warm_objective": null,
+   "warm_gap_pct": null,
+   "warm_wall_s": 15.822,
+   "warm_g1": null,
+   "cold_status": "UNKNOWN",
+   "cold_first_feasible_s": null,
+   "cold_objective_5s": null,
+   "cold_objective": null,
+   "cold_gap_pct": null,
+   "cold_wall_s": 15.586,
+   "cold_g1": null
+  }
+ ]
+}

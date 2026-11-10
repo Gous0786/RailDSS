@@ -130,3 +130,9 @@ src/raildss_dss/conflicts.py: 4  # conflict type code 4 of spec FR-CD-02, not a 
 src/raildss_dss/conflicts.py: 6  # conflict type code 6 of spec FR-CD-02, not a rule value
 src/raildss_dss/conflicts.py: 7  # conflict type code 7 of spec FR-CD-02, not a rule value
 src/raildss_dss/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_optimiser/cpsat.py: 2  # model bound multiple of the horizon / event tuple index, not a rule value
+src/raildss_optimiser/cpsat.py: 3  # model bound multiple, rounding digits, event tuple index, not a rule value
+src/raildss_optimiser/cpsat.py: 4  # event tuple index, not a rule value
+src/raildss_optimiser/cpsat.py: 7  # days in the horizon cap of the model (one week), not a rule value
+src/raildss_optimiser/cpsat.py: 24  # hours per day (unit conversion), not a rule value
+src/raildss_optimiser/cpsat.py: 3600  # seconds per hour (unit conversion), not a rule value

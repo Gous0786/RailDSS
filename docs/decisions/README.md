@@ -13,3 +13,4 @@ except for its status line.
 | [DR-0001](0001-licence-review-m0.md) | M0 licence review: train-graph component, Grafana, DEM/OSM, DISPLIB (#23) | Accepted |
 | [DR-0002](0002-m0-exit-review.md) | M0 exit review: criteria evidence, DSC-10 decision, PR re-check, M1 carry-over (#25) | Accepted |
 | [DR-0003](0003-od-04-05-25-policy-rules-horizon.md) | Precedence policy, rule-catalogue ownership and planning horizon (OD-04, OD-05, OD-25) | Accepted |
+| [DR-0004](0004-od-33-mvp-extent.md) | MVP extent: full KTV-PSA section, not the VZM-PSA fallback (OD-33, #76) | Proposed |

@@ -1,0 +1,42 @@
+{
+ "meta": {
+  "day": "2025-08-20",
+  "network": "KTV-PSA-2025-08",
+  "peak_2h_start": "3:30:00",
+  "peak_2h_entering_trains": 23,
+  "time_limit_s": 60.0,
+  "workers": 8,
+  "machine": "Windows AMD64, Python 3.12.13",
+  "ortools": "9.15.6755"
+ },
+ "rows": [
+  {
+   "trains": 70,
+   "window": "3:30:00-11:00:01",
+   "window_h": 7.5,
+   "build_s": 5.36,
+   "bl0_objective": 623310.0,
+   "bl0_g1": "PASS",
+   "size": {
+    "trains": 70,
+    "operations": 7786,
+    "resources": 223,
+    "booleans": 19376
+   },
+   "warm_status": "FEASIBLE",
+   "warm_first_feasible_s": 7.672,
+   "warm_objective_5s": null,
+   "warm_objective": 616845.0,
+   "warm_gap_pct": 99.8,
+   "warm_wall_s": 60.723,
+   "warm_g1": "PASS",
+   "cold_status": "FEASIBLE",
+   "cold_first_feasible_s": 10.594,
+   "cold_objective_5s": null,
+   "cold_objective": 763393.0,
+   "cold_gap_pct": 99.9,
+   "cold_wall_s": 60.557,
+   "cold_g1": "PASS"
+  }
+ ]
+}
