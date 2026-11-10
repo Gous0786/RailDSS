@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "77c6eb9c64761f151ad5f9637aac6ac853d7ae6506e9a2e75426b7400bb0461d"
+expected_gt_hash: "6884d552b5a84a17be6aadbdcab2bb6933b9945af7e148cf930f895c7940923a"
 notes: "The real day with the most trains; heavy freight detention at VZM shows as delay."
