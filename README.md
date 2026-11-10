@@ -200,6 +200,11 @@ uv run python -m raildss_dss ingest --trace trace.jsonl              # replay a 
 uv run python -m raildss_dss ingest --kafka --speed 60               # live, as the dss principal
 ```
 
+`python -m raildss_dss state --trace trace.jsonl --every-min 10` replays the same trace through DS-3 state
+estimation (issue #71). Each train gets its resource (station or block), km, speed, delay and fix age,
+and is flagged stale (position unknown, never extrapolated) after `state.stale_threshold_min`. It prints
+the snapshot `S_t` versions and hashes; `--out snap.json` writes the last snapshot.
+
 ## Web UI: control chart (issue #86)
 
 A React app in `web/` shows the COA-style time-distance control chart of a twin day on KTV-PSA:
