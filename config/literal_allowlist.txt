@@ -136,3 +136,8 @@ src/raildss_optimiser/cpsat.py: 4  # event tuple index, not a rule value
 src/raildss_optimiser/cpsat.py: 7  # days in the horizon cap of the model (one week), not a rule value
 src/raildss_optimiser/cpsat.py: 24  # hours per day (unit conversion), not a rule value
 src/raildss_optimiser/cpsat.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 24  # hours per day (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 5  # digits of the order number, not a rule value
+src/raildss_hitl/executor.py: 4  # rounding digits of a wall time, not a rule value
