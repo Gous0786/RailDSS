@@ -130,3 +130,7 @@ src/raildss_dss/conflicts.py: 4  # conflict type code 4 of spec FR-CD-02, not a 
 src/raildss_dss/conflicts.py: 6  # conflict type code 6 of spec FR-CD-02, not a rule value
 src/raildss_dss/conflicts.py: 7  # conflict type code 7 of spec FR-CD-02, not a rule value
 src/raildss_dss/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_optimiser/__main__.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_optimiser/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_optimiser/__main__.py: 10  # number of holds listed by the CLI, not a rule value
+src/raildss_optimiser/greedy.py: 60  # seconds per minute (unit conversion), not a rule value
