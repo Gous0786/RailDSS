@@ -1,0 +1,16 @@
+# Scenario SCN-12 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1.
+schema_version: 1
+id: SCN-12
+title: "Loss of RTIS feed and degraded-data day (profile D3)"
+family: "Degraded data"
+spec: "R01 §7.11, R05 §7.4"
+network_version: KTV-PSA-2025-08
+wtt_date: "2025-08-03"
+freight_day: aug25-day-03
+seed: 12
+density: 1.0
+degradation_profile: D3
+disruptions: []
+requires: []
+expected_gt_hash: "2b2234e060984da25705a71741a30b46d8391e00569711cc3a7189b949be7b15"
+notes: "Ground truth is as nominal; the DSS sees the D3 feeds (observer only reads, the gt hash is unchanged by it)."
