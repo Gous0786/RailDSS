@@ -110,6 +110,21 @@ class Directives:
     holds: dict[tuple[str, str], float] = field(default_factory=dict)
     lines: dict[tuple[str, str], int] = field(default_factory=dict)
     from_s: float = 0.0  # the fork time: decisions before it are history and are not changed
+    # greedy dispatcher (issue #75): request priority per run id (lower is served first; ties by arrival),
+    # closed segment lines (single-line working) and closed exits (boundary acceptance windows)
+    priority: dict[str, int] = field(default_factory=dict)
+    closures: list[Closure] = field(default_factory=list)
+    exit_windows: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Closure:
+    """A segment line (``line_id`` None: every line) closed for maintenance from ``start_s`` to ``end_s``."""
+
+    segment: str  # pair key of the block's two stations
+    line_id: str | None
+    start_s: float
+    end_s: float
 
 
 @dataclass(frozen=True)
@@ -388,7 +403,7 @@ class Sim:
                 r = self.resource(opt.label, opt.capacity)
                 if r.count < r.capacity and self.gate_ok(opt):
                     self._claim(t, opt)
-                    req = r.request()
+                    req = r.request(priority=self._priority(t))
                     yield req
                     self._granted(t, opt, req)
                     t.waiting, t.waiting_gates, t.status = None, [], previous
@@ -402,7 +417,7 @@ class Sim:
             requests = []
             for _, o in eligible:
                 self._claim(t, o)
-                requests.append(self.resource(o.label, o.capacity).request())
+                requests.append(self.resource(o.label, o.capacity).request(priority=self._priority(t)))
             wakers = [self.gate_event(o.gate) for o in blocked]
             yield simpy.AnyOf(self.env, [*requests, *wakers])
             granted = [k for k, rq in enumerate(requests) if rq.triggered]
@@ -614,6 +629,7 @@ class Sim:
                     raise NoRouteError(
                         f"no block line from {hop[0]} to {hop[1]} permitted by line {sl.line_no}"
                     )
+                lines = yield from self._open_lines(t, k, idx, node, lines)
                 first = [self._line_resource(ln, hop) for ln in lines]
                 j = yield from self.acquire(t, first)
                 chosen = lines[j]
@@ -639,6 +655,48 @@ class Sim:
             t.status, t.stuck_reason = "stuck", str(exc)
             for label in list(t.held):
                 self.release(t, label)
+
+    def _priority(self, t: Train) -> int:
+        """Request priority under a plan from its fork on (BL-0: everyone 0, first come first served)."""
+        if self.env.now < self.directives.from_s:
+            return 0
+        return self.directives.priority.get(t.plan.run_id, 0)
+
+    def _open_lines(self, t: Train, k: int, idx: list[int], node: Node, lines: list[BlockLine]) -> Proc:
+        """The permitted lines not closed during the coming traversal; wait at the station while there is
+        none (single-line working, a closed exit). Returns them."""
+        d = self.directives
+        if not d.closures and not d.exit_windows:
+            return lines
+        nxt = t.plan.nodes[idx[k + 1]]
+        final = k + 1 == len(idx) - 1
+        while True:
+            now = self.env.now
+            if now < d.from_s:
+                return lines
+            span = self.run_time(t, node, nxt, True, nxt.stop) + self.clearing_s(t)
+
+            def during(a: float, b: float) -> bool:
+                return a < now + span and now < b  # noqa: B023 (evaluated in this iteration)
+
+            exit_shut = [b for a, b in d.exit_windows.get(nxt.op, []) if final and during(a, b)]
+            shut = {
+                ln.line_id: [
+                    c.end_s
+                    for c in d.closures
+                    if c.segment == ln.segment
+                    and c.line_id in (None, ln.line_id)
+                    and during(c.start_s, c.end_s)
+                ]
+                for ln in lines
+            }
+            usable = [ln for ln in lines if not shut[ln.line_id]]
+            if usable and not exit_shut:
+                return usable
+            ends = exit_shut or [e for v in shut.values() for e in v]
+            t.status, t.stood = "dwelling", True
+            yield self.env.timeout(max(min(ends), now + 1.0) - now)
+            t.status = "running"
 
     def resume_hop(self, plan: Plan, idx: list[int]) -> int:
         """The hop (index into the block stations) a train booked before now is on: the first ending ahead."""

@@ -1,3 +1,4 @@
-"""Optimiser: greedy dispatcher and CP-SAT rolling horizon (spec §8.4; milestone M1/M2). Placeholder."""
+"""Optimiser (spec §8.4). M1: the greedy priority dispatcher (issue #75), :mod:`raildss_optimiser.greedy`;
+CP-SAT rolling horizon follows (M2)."""
 
 __version__ = "0.1.0"
