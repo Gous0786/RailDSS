@@ -713,6 +713,13 @@ parameters:
     bounds: {low: 60, high: 180}
     valid_from: 2026-11-08
     notes: OD-25 decided with the recommended default (H = 120 min, configurable 60-180).
+  - key: cd.urgent_lead_min
+    value: 15
+    unit: min
+    source: spec FR-CD-03 (near-conflicts are P3/P4, never P1/P2 unless the lead time is < 15 min)
+    status: SA
+    owner: dss
+    valid_from: 2026-11-10
   - key: cd.rerun_max_interval_s
     value: 30
     unit: s

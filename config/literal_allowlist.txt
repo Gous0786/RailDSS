@@ -122,3 +122,11 @@ src/raildss_twin/__main__.py: 6  # word count of a console order command, not a 
 src/raildss_twin/injector.py: 2  # midpoint of a block (halves), not a rule value
 src/raildss_twin/perturb.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_twin/perturb.py: 100  # percent to fraction (unit conversion), not a rule value
+src/raildss_dss/conflicts.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/conflicts.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_dss/conflicts.py: 2  # conflict type code 2 of spec FR-CD-02 / a pair of trains, not a rule value
+src/raildss_dss/conflicts.py: 3  # conflict type code 3 of spec FR-CD-02, not a rule value
+src/raildss_dss/conflicts.py: 4  # conflict type code 4 of spec FR-CD-02, not a rule value
+src/raildss_dss/conflicts.py: 6  # conflict type code 6 of spec FR-CD-02, not a rule value
+src/raildss_dss/conflicts.py: 7  # conflict type code 7 of spec FR-CD-02, not a rule value
+src/raildss_dss/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
