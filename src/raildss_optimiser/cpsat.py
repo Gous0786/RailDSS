@@ -50,7 +50,7 @@ class _Progress(cp_model.CpSolverSolutionCallback):
         self.points: list[tuple[float, float]] = []
 
     def on_solution_callback(self) -> None:
-        self.points.append((round(time.perf_counter() - self.t0, 3), self.ObjectiveValue()))
+        self.points.append((round(time.perf_counter() - self.t0, 3), self.objective_value))
 
 
 def _horizon(problem: Problem) -> int:
@@ -136,34 +136,34 @@ def solve(
         for oi, op in enumerate(ops):
             lb = int(op.get("start_lb", 0))
             ub = min(int(op["start_ub"]), horizon) if "start_ub" in op else horizon
-            xs.append(m.NewBoolVar(f"x{ti}_{oi}"))
-            ss.append(m.NewIntVar(lb, max(lb, ub), f"s{ti}_{oi}"))
-            es.append(m.NewIntVar(0, 2 * horizon, f"e{ti}_{oi}"))
-        m.Add(xs[0] == 1)
-        m.Add(xs[-1] == 1)
+            xs.append(m.new_bool_var(f"x{ti}_{oi}"))
+            ss.append(m.new_int_var(lb, max(lb, ub), f"s{ti}_{oi}"))
+            es.append(m.new_int_var(0, 2 * horizon, f"e{ti}_{oi}"))
+        m.add(xs[0] == 1)
+        m.add(xs[-1] == 1)
         inc: dict[int, list[Any]] = defaultdict(list)
         ed: dict[tuple[int, int], Any] = {}
         for oi, op in enumerate(ops):
             succ = [int(n) for n in op.get("successors", [])]
             if not succ:
-                m.Add(es[oi] == ss[oi] + int(op["min_duration"])).OnlyEnforceIf(xs[oi])
+                m.add(es[oi] == ss[oi] + int(op["min_duration"])).only_enforce_if(xs[oi])
                 continue
             out = []
             for nj in succ:
-                e = m.NewBoolVar(f"y{ti}_{oi}_{nj}")
+                e = m.new_bool_var(f"y{ti}_{oi}_{nj}")
                 ed[(oi, nj)] = e
                 out.append(e)
                 inc[nj].append(e)
-                m.Add(ss[nj] >= ss[oi] + int(op["min_duration"])).OnlyEnforceIf(e)
-                m.Add(es[oi] == ss[nj]).OnlyEnforceIf(e)
-            m.Add(sum(out) == xs[oi])
+                m.add(ss[nj] >= ss[oi] + int(op["min_duration"])).only_enforce_if(e)
+                m.add(es[oi] == ss[nj]).only_enforce_if(e)
+            m.add(sum(out) == xs[oi])
         for oi in range(1, len(ops)):
-            m.Add(sum(inc[oi]) == xs[oi])
+            m.add(sum(inc[oi]) == xs[oi])
         for oi, op in enumerate(ops):
             for use in op.get("resources", []):
                 rel = int(use.get("release_time", 0))
-                size = m.NewIntVar(0, 3 * horizon, f"z{ti}_{oi}_{use['resource']}")
-                iv = m.NewOptionalIntervalVar(ss[oi], size, es[oi] + rel, xs[oi], f"i{ti}_{oi}")
+                size = m.new_int_var(0, 3 * horizon, f"z{ti}_{oi}_{use['resource']}")
+                iv = m.new_optional_interval_var(ss[oi], size, es[oi] + rel, xs[oi], f"i{ti}_{oi}")
                 by_resource[str(use["resource"])].append(iv)
         x.append(xs)
         s.append(ss)
@@ -171,39 +171,39 @@ def solve(
         edges.append(ed)
     for ivs in by_resource.values():
         if len(ivs) > 1:
-            m.AddNoOverlap(ivs)
+            m.add_no_overlap(ivs)
     terms = []
     for k, c in enumerate(problem.get("objective", [])):
         ti, oi = int(c["train"]), int(c["operation"])
         thr = int(c.get("threshold", 0))
         coeff, incr = int(c.get("coeff", 0)), int(c.get("increment", 0))
-        d = m.NewIntVar(0, 2 * horizon, f"d{k}")
-        m.Add(d >= s[ti][oi] - thr).OnlyEnforceIf(x[ti][oi])
+        d = m.new_int_var(0, 2 * horizon, f"d{k}")
+        m.add(d >= s[ti][oi] - thr).only_enforce_if(x[ti][oi])
         terms.append(coeff * d)
         if incr:
-            late = m.NewBoolVar(f"l{k}")
-            m.Add(s[ti][oi] <= thr).OnlyEnforceIf([x[ti][oi], late.Not()])
+            late = m.new_bool_var(f"l{k}")
+            m.add(s[ti][oi] <= thr).only_enforce_if([x[ti][oi], ~late])
             terms.append(incr * late)
-    m.Minimize(sum(terms))
+    m.minimize(sum(terms))
     if hint is not None:
         for ti, path in paths_from_solution(problem, hint).items():
             on = {oi for oi, _ in path}
             for oi in range(len(trains[ti])):
-                m.AddHint(x[ti][oi], oi in on)
+                m.add_hint(x[ti][oi], oi in on)
             for oi, t in path:
-                m.AddHint(s[ti][oi], t)
+                m.add_hint(s[ti][oi], t)
             chosen = {(a, b) for (a, _), (b, _) in itertools.pairwise(path)}
             for key, e in edges[ti].items():
-                m.AddHint(e, key in chosen)
+                m.add_hint(e, key in chosen)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit_s
     solver.parameters.num_search_workers = workers
     solver.parameters.random_seed = seed
     t0 = time.perf_counter()
     progress = _Progress(t0)
-    status = solver.Solve(m, progress)
+    status = solver.solve(m, progress)
     wall = round(time.perf_counter() - t0, 3)
-    name = solver.StatusName(status)
+    name = solver.status_name(status)
     result = SolveResult(
         status=name,
         wall_s=wall,
@@ -221,14 +221,14 @@ def solve(
         for ti in range(len(trains)):
             path, oi = [], 0
             while True:
-                path.append((oi, solver.Value(s[ti][oi])))
-                nxt = [nj for (a, nj), e in edges[ti].items() if a == oi and solver.Value(e)]
+                path.append((oi, solver.value(s[ti][oi])))
+                nxt = [nj for (a, nj), e in edges[ti].items() if a == oi and solver.value(e)]
                 if not nxt:
                     break
                 oi = nxt[0]
             paths[ti] = path
         value = objective_of(problem, paths)
         result.objective = value
-        result.bound = solver.BestObjectiveBound()
+        result.bound = solver.best_objective_bound
         result.solution = {"objective_value": value, "events": order_events(problem, paths)}
     return result
