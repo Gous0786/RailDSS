@@ -5,7 +5,9 @@ front or injected interactively (:meth:`Injector.inject`, thread-safe, picked up
 period of simulated time), to the ground truth at their stated time and location:
 
 * ``line_block`` (corridor or line block, OHE trip): the block line is taken out of use after the
-  train on it has cleared (every sub-block of an automatic line);
+  train on it has cleared (every sub-block of an automatic line). With ``through_block`` it covers a range
+  of block sections, and with ``single_line_working`` the other line of a double-line section is worked
+  in both directions meanwhile, trains crossing at stations (FR-TWIN-18);
 * ``point_failure``: a station line (loop) is out of use;
 * ``signal_failure``: degraded working, trains pass the line at caution
   (``twin.injector.signal_failure_speed_kmh``);
@@ -52,6 +54,8 @@ class Disruption(BaseModel):
     line_no: int | None = None  # point_failure
     run_id: str | None = None  # loco_failure
     speed_kmh: float | None = None  # tsr
+    through_block: str | None = None  # line_block: the range runs from block_id to this block, inclusive
+    single_line_working: bool = False  # line_block: work the other line both ways meanwhile (FR-TWIN-18)
 
     @property
     def end_s(self) -> float:
@@ -82,6 +86,10 @@ class Injector:
         layout = self.sim.layout
         if d.kind in ("line_block", "signal_failure", "tsr") and d.block_id not in layout.blocks:
             raise ValueError(f"{d.incident_id}: unknown block section {d.block_id!r}")
+        if d.through_block is not None:
+            self._range(d)  # raises if the range is not valid
+        if d.single_line_working and (d.kind != "line_block" or d.line_id is None):
+            raise ValueError(f"{d.incident_id}: single-line working needs a line_block of one line")
         if d.kind == "tsr" and not d.speed_kmh:
             raise ValueError(f"{d.incident_id}: a TSR needs speed_kmh")
         if d.kind == "point_failure" and not any(
@@ -97,9 +105,31 @@ class Injector:
             while not self.pending.empty():
                 self.sim.env.process(self._run(self.pending.get()))
 
-    def _lines(self, d: Disruption) -> list[BlockLine]:
+    def _range(self, d: Disruption) -> list[str]:
+        """The block sections of the incident: ``block_id``, or the run from it to ``through_block``."""
         assert d.block_id is not None
-        return [ln for ln in self.sim.layout.lines[d.block_id] if d.line_id in (None, ln.line_id)]
+        layout = self.sim.layout
+        if d.through_block is None:
+            return [d.block_id]
+        first, last = layout.blocks[d.block_id], layout.blocks.get(d.through_block)
+        if last is None or first.direction != last.direction:
+            raise ValueError(
+                f"{d.incident_id}: {d.through_block!r} is not a block section of {d.block_id}'s direction"
+            )
+        stations = layout.block_stations()
+        i, j = stations.index(first.from_op), stations.index(last.to_op)
+        step = 1 if first.direction == "DN" else -1
+        if (j - i) * step <= 0:
+            raise ValueError(f"{d.incident_id}: {d.through_block} lies before {d.block_id}")
+        return [layout.block_by_pair[(stations[k], stations[k + step])].id for k in range(i, j, step)]
+
+    def _lines(self, d: Disruption) -> list[BlockLine]:
+        return [
+            ln
+            for bid in self._range(d)
+            for ln in self.sim.layout.lines[bid]
+            if d.line_id in (None, ln.line_id)
+        ]
 
     def _location(self, d: Disruption) -> tuple[float, str]:
         layout = self.sim.layout
@@ -144,6 +174,11 @@ class Injector:
         self.applied.append(d)
         self._publish(d, EventType.DISRUPTION_RAISED, "RAISED", announced)
         held: list[tuple[str, Any]] = []
+        working: list[tuple[str, list[str]]] = []
+        if d.single_line_working:
+            assert d.line_id is not None
+            for bid in self._range(d):
+                working.append((bid, self.sim.slw_begin(bid, d.line_id)))
         if d.kind in ("line_block", "point_failure"):
             labels = (
                 [lab for ln in self._lines(d) for lab in self._labels(ln)]
@@ -168,6 +203,9 @@ class Injector:
         for label, req in held:
             self.sim.resources[label].release(req)
             self._mark(label, False)
+        for bid, keys in working:
+            assert d.line_id is not None
+            self.sim.slw_end(bid, d.line_id, keys)
         self._publish(d, EventType.DISRUPTION_CLEARED, "CLEARED", env.now)
 
     def _labels(self, ln: BlockLine) -> list[str]:

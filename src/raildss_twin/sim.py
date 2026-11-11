@@ -42,7 +42,7 @@ from pydantic import BaseModel
 from raildss_common.envelope import EventEnvelope, EventType
 from raildss_params import Register
 from raildss_schema.entities import StationLine
-from raildss_twin.layout import BlockLine, Layout
+from raildss_twin.layout import BlockLine, Layout, pair_key
 from raildss_twin.perturb import CAUSE_ENTRY, Perturbations
 from raildss_twin.plans import SECONDS_PER_DAY, Node, Plan, Timing
 
@@ -130,6 +130,16 @@ class Refusal(BaseModel):
     line: int
     rule: str
     reason: str
+
+
+class Crossing(BaseModel):
+    """A train that stood at a station because the single line ahead was worked the other way (FR-TWIN-18)."""
+
+    time_s: float
+    run_id: str
+    station: str
+    line: int | None  # the station line it stood on
+    gate: str  # the single line it waited for
 
 
 class Deadlock(BaseModel):
@@ -246,6 +256,16 @@ class Sim:
         self.refusals: list[Refusal] = []
         self.restrictions: list[Restriction] = []  # speed limits from incidents (TSR, signal failure)
         self.stalls: dict[str, tuple[float, float]] = {}  # run id -> (from, to): loco failure
+        # Temporary single-line working (FR-TWIN-18): the working line of a segment is a reversible line,
+        # and against its own direction a train uses the Connections of the blocked line (the crossover).
+        self.reversible: dict[str, int] = {}  # physical line key -> windows making it reversible
+        self.borrowed: dict[
+            tuple[str, str], tuple[str, str]
+        ] = {}  # (block, working line) -> (block, blocked)
+        # Connections of a borrowed line, kept after the window for a train still on it: only a train that
+        # borrowed the line can be on a working line against its own direction.
+        self.borrow_connections: dict[tuple[str, str], tuple[str, str]] = {}
+        self.crossings: list[Crossing] = []
         self.directives = directives or Directives()
         self.directive_refusals: list[Refusal] = []
         last_plan = max((t.plan.nodes[-1].dep for t in self.trains), default=0.0)
@@ -397,6 +417,21 @@ class Sim:
             t.status = "waiting"
             eligible = [(i, o) for i, o in enumerate(options) if self.gate_ok(o)]
             blocked = [o for o in options if not self.gate_ok(o)]
+            for o in blocked:
+                if (
+                    o.gate in self.reversible and t.op
+                ):  # a crossing: stand at the station for the opposing train
+                    line = next((int(k.split("/")[-1]) for k in t.held if k.startswith(f"SL:{t.op}/")), None)
+                    if not any(c.run_id == t.plan.run_id and c.station == t.op for c in self.crossings):
+                        self.crossings.append(
+                            Crossing(
+                                time_s=self.env.now,
+                                run_id=t.plan.run_id,
+                                station=t.op,
+                                line=line,
+                                gate=o.gate,
+                            )
+                        )
             t.waiting = [(o.label, self.resource(o.label, o.capacity)) for _, o in eligible]
             t.waiting_gates = sorted({o.gate for o in blocked})
             requests = []
@@ -475,7 +510,13 @@ class Sim:
         return fitting
 
     def station_candidates(
-        self, t: Train, node: Node, incoming: BlockLine | None, hop: tuple[str, str] | None, stands: bool
+        self,
+        t: Train,
+        node: Node,
+        incoming: BlockLine | None,
+        hop: tuple[str, str] | None,
+        stands: bool,
+        crossing: bool = False,
     ) -> list[StationLine]:
         direction = self.layout.direction(*hop) if hop else None
         passenger = t.plan.kind == "passenger"
@@ -486,18 +527,20 @@ class Sim:
                 continue
             if not (sl.passenger_ok if passenger else sl.goods_ok):
                 continue
-            if incoming is not None and (incoming.block_id, incoming.line_id) not in self.layout.receive.get(
+            if incoming is not None and self.connection_of(incoming) not in self.layout.receive.get(
                 (node.op, sl.line_no), set()
             ):
                 continue
             if nxt is not None and direction is not None:
                 sends = self.layout.send.get((node.op, sl.line_no), set())
-                if not any((nxt.id, ln.line_id) in sends for ln in self.layout.lines_for(nxt.id, direction)):
+                if not any(self.connection_of(ln) in sends for ln in self.usable_lines(nxt.id, direction)):
                     continue
             out.append(sl)
 
         def rank(sl: StationLine) -> tuple[int, int]:
-            if passenger and stands:
+            if crossing:  # a train that will stand for an opposing train takes a loop, not the main line
+                order = 0 if sl.kind == "loop" else 1
+            elif passenger and stands:
                 order = 0 if sl.platform else 1 if sl.kind == "main" else 2
             else:
                 order = 0 if sl.kind == "main" else 1
@@ -505,11 +548,72 @@ class Sim:
 
         return sorted(out, key=rank)
 
+    # ------------------------------------------------------------------ temporary single-line working
+    def slw_begin(self, block_id: str, blocked_line_id: str) -> list[str]:
+        """Start single-line working of the segment of ``block_id`` with ``blocked_line_id`` out of use: the
+        other absolute-block lines become reversible; where a direction has no line of its own left, its
+        trains use the working line with the Connections of the blocked line. Returns the keys to end."""
+        segment = pair_key(*(self.layout.blocks[block_id].from_op, self.layout.blocks[block_id].to_op))
+        keys: list[str] = []
+        for b in self.layout.blocks.values():
+            if pair_key(b.from_op, b.to_op) != segment:
+                continue
+            lines = self.layout.lines[b.id]
+            blocked = next((ln for ln in lines if ln.line_id == blocked_line_id), None)
+            working = [ln for ln in lines if ln.line_id != blocked_line_id and ln.system != "AUTO"]
+            if blocked is None or not working:
+                continue
+            own = [
+                ln for ln in lines if ln.line_id != blocked_line_id and ln.direction in (b.direction, "BOTH")
+            ]
+            for ln in working:
+                self.reversible[ln.key] = self.reversible.get(ln.key, 0) + 1
+                keys.append(ln.key)
+                if not own and blocked.direction in (b.direction, "BOTH"):
+                    self.borrowed[(b.id, ln.line_id)] = (b.id, blocked.line_id)
+                    self.borrow_connections[(b.id, ln.line_id)] = (b.id, blocked.line_id)
+        return keys
+
+    def slw_end(self, block_id: str, blocked_line_id: str, keys: list[str]) -> None:
+        for key in keys:
+            self.reversible[key] -= 1
+            if not self.reversible[key]:
+                del self.reversible[key]
+        block = self.layout.blocks[block_id]
+        segment = pair_key(block.from_op, block.to_op)
+        for (bid, working), (_, blocked) in list(self.borrowed.items()):
+            b = self.layout.blocks[bid]
+            if pair_key(b.from_op, b.to_op) == segment and blocked == blocked_line_id:
+                del self.borrowed[(bid, working)]
+
+    def connection_of(self, ln: BlockLine) -> tuple[str, str]:
+        """The (block, line) whose Connections edges a move onto ``ln`` follows."""
+        return self.borrow_connections.get((ln.block_id, ln.line_id), (ln.block_id, ln.line_id))
+
+    def usable_lines(self, block_id: str, direction: str) -> list[BlockLine]:
+        out = self.layout.lines_for(block_id, direction)
+        for (bid, lid), _ in self.borrowed.items():
+            if bid == block_id and all(ln.line_id != lid for ln in out):
+                out.append(next(ln for ln in self.layout.lines[bid] if ln.line_id == lid))
+        return out
+
+    def must_cross(self, hop: tuple[str, str]) -> bool:
+        """Is every single line ahead worked the other way or occupied, so the train will have to stand?"""
+        if not self.reversible:
+            return False
+        block = self.layout.block_by_pair[hop]
+        singles = [
+            ln for ln in self.usable_lines(block.id, self.layout.direction(*hop)) if ln.key in self.reversible
+        ]
+        return bool(singles) and all(
+            not self.gate_ok(Option("", 1, ln.key, block.direction)) for ln in singles
+        )
+
     def block_options(self, t: Train, a: str, b: str, sl: StationLine) -> list[BlockLine]:
         block = self.layout.block_by_pair[(a, b)]
         direction = self.layout.direction(a, b)
         sends = self.layout.send.get((a, sl.line_no), set())
-        return [ln for ln in self.layout.lines_for(block.id, direction) if (block.id, ln.line_id) in sends]
+        return [ln for ln in self.usable_lines(block.id, direction) if self.connection_of(ln) in sends]
 
     # ------------------------------------------------------------------ the train process
     def km_of(self, op: str) -> float:
@@ -561,7 +665,8 @@ class Sim:
                 t.op, t.block, t.segment, t.km = node.op, None, None, self.km_of(node.op)
                 # ---- reception: take a station line, then release the block it came by
                 stands = node.stop or last
-                cands = self.station_candidates(t, node, incoming, hop, stands)
+                crossing = hop is not None and self.must_cross(hop)
+                cands = self.station_candidates(t, node, incoming, hop, stands, crossing)
                 if not cands:
                     raise NoRouteError(f"no station line at {node.op} permits the move")
                 permitted = cands
@@ -711,7 +816,7 @@ class Sim:
         return span
 
     def _option(self, ln: BlockLine, label: str) -> Option:
-        if ln.direction != "BOTH":
+        if ln.direction != "BOTH" and ln.key not in self.reversible:
             return Option(label)
         return Option(label, 1, ln.key, self.layout.blocks[ln.block_id].direction)
 
