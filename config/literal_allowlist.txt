@@ -130,3 +130,8 @@ src/raildss_dss/conflicts.py: 4  # conflict type code 4 of spec FR-CD-02, not a 
 src/raildss_dss/conflicts.py: 6  # conflict type code 6 of spec FR-CD-02, not a rule value
 src/raildss_dss/conflicts.py: 7  # conflict type code 7 of spec FR-CD-02, not a rule value
 src/raildss_dss/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 24  # hours per day (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_hitl/executor.py: 5  # digits of the order number, not a rule value
+src/raildss_hitl/executor.py: 4  # rounding digits of a wall time, not a rule value
