@@ -8,6 +8,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "confluent-kafka>=2.6",
+    "ortools>=9.12",
     "pandas>=2.3",
     "pg8000>=1.31",
     "pyarrow>=21",
@@ -82,6 +83,11 @@ check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = ["pg8000", "pg8000.*"]
+ignore_missing_imports = true
+
+# OR-Tools CP-SAT (issue #76): typed loosely; treat as untyped.
+[[tool.mypy.overrides]]
+module = ["ortools", "ortools.*"]
 ignore_missing_imports = true
 
 # confluent-kafka's admin package re-exports its types without __all__.
