@@ -11,7 +11,7 @@ travel order of their block id; sub-block ``k`` of ``n`` on the UP id is ``n + 1
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,7 @@ from raildss_schema.entities import (
 PUBLISHED_DIR = default_path().parent.parent / "data" / "published"
 DN = "DN"
 BOTH = "BOTH"
+AUTO = "AUTO"
 
 
 @dataclass(frozen=True)
@@ -157,3 +158,30 @@ def load(version: str, root: Path | None = None) -> Network:
         },
         sub_blocks=subs,
     )
+
+
+def single_line_working(net: Network, block_id: str, blocked_line_id: str) -> Network:
+    """The network as it is worked while ``blocked_line_id`` of ``block_id``'s segment is out of use
+    (temporary single-line working, FR-TWIN-18): the remaining absolute-block lines of the segment are
+    worked in both directions, and a train against such a line's own direction uses the stations'
+    Connections of the blocked line. Audit a trace of the working window against this network.
+    """
+    segment = net.segment(block_id, blocked_line_id)
+    records = [b.id for b in net.blocks.values() if net.segment(b.id, blocked_line_id) == segment]
+    lines = dict(net.lines)
+    connections = set(net.connections)
+    for bid in records:
+        working = [
+            ln
+            for (b, lid), ln in net.lines.items()
+            if b == bid and lid != blocked_line_id and ln.system != AUTO
+        ]
+        for ln in working:
+            lines[(bid, ln.line_id)] = replace(ln, direction=BOTH)
+            blocked = net.lines.get((bid, blocked_line_id))
+            if blocked is not None and blocked.direction == net.blocks[bid].direction:
+                # the record's own line is the blocked one: its connections are borrowed
+                for op, no, b, lid, mode in net.connections:
+                    if b == bid and lid == blocked_line_id:
+                        connections.add((op, no, bid, ln.line_id, mode))
+    return replace(net, lines=lines, connections=connections)
