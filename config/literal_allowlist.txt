@@ -146,3 +146,10 @@ src/raildss_optimiser/__main__.py: 60  # seconds per minute (unit conversion), n
 src/raildss_optimiser/__main__.py: 10  # number of holds listed by the CLI, not a rule value
 src/raildss_optimiser/greedy.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_twin/chart.py: 2  # chart export format version and a rounding digit, not a rule value
+src/raildss_dss/kpi.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/kpi.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_dss/kpi.py: 0.9  # P90 quantile level of the A6 definition, not a rule value
+src/raildss_dss/kpi.py: 100  # percent (unit conversion), not a rule value
+src/raildss_dss/kpi.py: 2  # rounding digits, not a rule value
+src/raildss_dss/kpi.py: 3  # number of most affected trains in a delta (FR-KPI-02), not a rule value
+src/raildss_twin/kpi_eval.py: 2  # index offset of the last hop, not a rule value

@@ -65,14 +65,14 @@ def _select_all(c: Any, model: type[Stamped]) -> list[Stamped]:
 
 
 def test_migrations_apply_and_are_reversible(conn: Any) -> None:
-    assert up(conn) == ["0001"]
-    assert applied(conn) == ["0001"]
+    assert up(conn) == ["0001", "0002"]
+    assert applied(conn) == ["0001", "0002"]
     tables = {r[0] for r in conn.run("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")}
     assert {m.__table__ for m in ENTITIES} <= tables
-    assert down(conn) == ["0001"]
+    assert down(conn) == ["0002", "0001"]
     tables = {r[0] for r in conn.run("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")}
     assert not ({m.__table__ for m in ENTITIES} & tables)
-    assert up(conn) == ["0001"]  # re-apply after revert
+    assert up(conn) == ["0001", "0002"]  # re-apply after revert
 
 
 def test_round_trip_model_db_model_is_lossless(conn: Any) -> None:
@@ -101,3 +101,25 @@ def test_version_stamp_columns_exist(conn: Any) -> None:
             )
         }
         assert {"network_version", "timetable_version", "policy_version", "rule_catalogue_version"} <= cols
+
+
+def test_kpi_snapshots_are_stored_in_a_hypertable_and_queried_by_scope(conn: Any) -> None:
+    """FR-KPI-08 (issue #81)."""
+    import datetime as dt
+
+    from raildss_dss.kpi import KpiReport, store
+
+    up(conn)
+    report = KpiReport(
+        scope="day 2025-08-20",
+        arm="BL-0",
+        policy_version="p",
+        network_version="KTV-PSA-2025-08",
+        kpis={"A5": 12.5},
+    )
+    at = dt.datetime(2025, 8, 20, 12, tzinfo=dt.UTC)
+    assert store(conn, report, at) == 1
+    hyper = conn.run("SELECT hypertable_name FROM timescaledb_information.hypertables")
+    assert ["kpi_snapshot"] in [list(r) for r in hyper]
+    rows = conn.run("SELECT arm, value FROM kpi_snapshot WHERE scope = :s AND kpi = 'A5'", s=report.scope)
+    assert [list(r) for r in rows] == [["BL-0", 12.5]]
