@@ -245,6 +245,17 @@ the twin, until the optimiser produces real recommendations. Accept, modify and 
 the on-screen decision log. The chart is an in-house D3 + Canvas component (`d3-scale`, ISC), the
 DR-0001 §3.4 fallback. `npm --prefix web run licences` is the npm licence gate.
 
+## Greedy priority dispatcher (issue #75)
+
+`python -m raildss_optimiser greedy --at-h 8` plans the next `cd.horizon_min` of a twin day from 08:00. It
+serves every queue by `policy.weights` (relief trains first, ties to the earliest arrival), chooses
+lines (own direction before MID), and checks the plan with gate G2. `--close DUSI~PDU/UP@8.5-9.5`
+closes a line for single-line working and `--exit-closed PSA@8.5-9` closes a boundary exit (trains
+are held at the last block station). `--conflicts` runs the DSS chain (DS-1 to DS-5) up to that time
+and prints a recommendation for every detected conflict. `RollingDispatcher` re-plans on
+`opt.replan_triggers` and at least every `opt.replan_max_interval_min`, keeping decisions inside
+`opt.freeze_window_min`.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under

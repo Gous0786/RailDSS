@@ -141,3 +141,7 @@ src/raildss_hitl/executor.py: 3600  # seconds per hour (unit conversion), not a 
 src/raildss_hitl/executor.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_hitl/executor.py: 5  # digits of the order number, not a rule value
 src/raildss_hitl/executor.py: 4  # rounding digits of a wall time, not a rule value
+src/raildss_optimiser/__main__.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_optimiser/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_optimiser/__main__.py: 10  # number of holds listed by the CLI, not a rule value
+src/raildss_optimiser/greedy.py: 60  # seconds per minute (unit conversion), not a rule value
