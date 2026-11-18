@@ -34,7 +34,7 @@ from raildss_twin import displib, run
 from raildss_twin.plans import day_start
 from raildss_twin.sim import Deadlock, Directives, RunReport, Sim, token
 from raildss_verifier import network
-from raildss_verifier.auditor import TrainMeta, audit
+from raildss_verifier.auditor import TrainMeta, audit, plan_from_trace
 from raildss_verifier.model import Action, CandidatePlan, FrozenCall, MaintenanceBlock, Status
 
 SECONDS_PER_MIN = 60
@@ -69,6 +69,15 @@ class G3Violation(BaseModel):
     source: Literal["replay", "plan_step", "deadlock", "stuck"]
 
 
+class Departure(BaseModel):
+    """A departure of the replayed plan: what executing it makes happen (the exit is not one)."""
+
+    run_id: str
+    station: str
+    line_no: int
+    dep_s: float
+
+
 class G3Result(BaseModel):
     plan_id: str
     day: dt.date
@@ -81,6 +90,7 @@ class G3Result(BaseModel):
     trace_hash: str
     baseline_trace_hash: str
     snapshot_mismatch: list[str] = Field(default_factory=list)
+    departures: list[Departure] = Field(default_factory=list)  # in the window, as replayed
 
 
 def train_meta(sim: Sim) -> dict[str, TrainMeta]:
@@ -147,22 +157,40 @@ def replay(
     snapshot: displib.Snapshot | None = None,
     net: network.Network | None = None,
     register: Register | None = None,
+    standing: Directives | None = None,
+    baseline: tuple[RunReport, Sim] | None = None,
 ) -> G3Result:
-    """Fork at ``start_s``, replay ``plan`` over the horizon, and judge it (G3, deterministic)."""
+    """Fork at ``start_s``, replay ``plan`` over the horizon, and judge it (G3, deterministic).
+
+    ``standing`` is what already holds in the world (closures, closed exits, accepted holds and lines,
+    issue #84): it applies to the baseline and under the plan. ``baseline`` is that baseline run, so a
+    cycle that judges several options runs it once."""
     reg = register or world.register
     horizon = horizon_s if horizon_s is not None else float(reg.value("cd.horizon_min")) * SECONDS_PER_MIN
     end_s = start_s + horizon
     net = net or network.load(world.layout.network_version)
     plans, _, inst = run.plans_for(world, day)
-    base_report, base = run.run_day(
-        world, day, plans=plans, until_s=end_s, keep_events=True, scenario_id=f"{inst}-g3-baseline"
-    )
+    if baseline is None:
+        baseline = run.run_day(
+            world,
+            day,
+            plans=plans,
+            until_s=end_s,
+            keep_events=True,
+            directives=standing,
+            scenario_id=f"{inst}-g3-baseline",
+        )
+    base_report, base = baseline
     # plans name trains as the trace does (no spaces); the twin keys them by run id
     rid = {token(p.run_id): p.run_id for p in plans} | {p.run_id: p.run_id for p in plans}
+    held = standing or Directives()
     directives = Directives(
-        holds={(rid.get(h.run_id, h.run_id), h.station): h.until_s for h in plan.holds},
-        lines={(rid.get(c.run_id, c.run_id), c.station): c.line_no for c in plan.lines},
-        from_s=start_s,
+        holds=held.holds | {(rid.get(h.run_id, h.run_id), h.station): h.until_s for h in plan.holds},
+        lines=held.lines | {(rid.get(c.run_id, c.run_id), c.station): c.line_no for c in plan.lines},
+        from_s=min(start_s, held.from_s) if standing else start_s,
+        priority=held.priority,
+        closures=list(held.closures),
+        exit_windows=dict(held.exit_windows),
     )
     report, sim = run.run_day(
         world,
@@ -225,6 +253,9 @@ def replay(
     status: Literal["PASS", "PASS_WITH_WARN", "FAIL"] = (
         "FAIL" if violations else "PASS_WITH_WARN" if warnings else "PASS"
     )
+    realised = plan_from_trace(
+        sim.events, train_meta(sim), net, day_start(day), register=reg, plan_id=plan.plan_id, context=context
+    )
     return G3Result(
         plan_id=plan.plan_id,
         day=day,
@@ -237,6 +268,12 @@ def replay(
         trace_hash=report.trace_hash,
         baseline_trace_hash=base_report.trace_hash,
         snapshot_mismatch=_mismatch(snapshot, base) if snapshot is not None else [],
+        departures=[
+            Departure(run_id=t.run_id, station=c.op, line_no=c.line_no, dep_s=c.dep_s)
+            for t in realised.trains
+            for c in t.calls[:-1]
+            if start_s <= c.dep_s < end_s
+        ],
     )
 
 

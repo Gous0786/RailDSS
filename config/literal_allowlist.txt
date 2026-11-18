@@ -153,3 +153,17 @@ src/raildss_dss/kpi.py: 100  # percent (unit conversion), not a rule value
 src/raildss_dss/kpi.py: 2  # rounding digits, not a rule value
 src/raildss_dss/kpi.py: 3  # number of most affected trains in a delta (FR-KPI-02), not a rule value
 src/raildss_twin/kpi_eval.py: 2  # index offset of the last hop, not a rule value
+src/raildss_orchestrator/loop.py: 60  # seconds per minute (unit conversion) and the simulated clock step, not rule values
+src/raildss_orchestrator/loop.py: 6  # conflicts released per cycle (a loop sizing default), not a rule value
+src/raildss_orchestrator/loop.py: 2  # midpoint of the min/max acknowledgement latency; rounding digits
+src/raildss_orchestrator/model.py: 3  # at most three verified options per decision (FR-OPT-07), a spec constant
+src/raildss_orchestrator/twin.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_orchestrator/twin.py: 36  # hours: the warm-start run goes past midnight to the end of the day, not a rule value
+src/raildss_orchestrator/twin.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_orchestrator/twin.py: 2  # slice offsets and rounding digits, not rule values
+src/raildss_orchestrator/twin.py: -2  # drop the exit operation and the synthetic exit from a path, not a rule value
+src/raildss_orchestrator/twin.py: 0.000001  # float noise guard when flooring a time, as in tools/cpsat_spike.py
+src/raildss_orchestrator/cadence.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_orchestrator/__main__.py: 60  # seconds per minute and the simulated clock step default, not rule values
+src/raildss_orchestrator/__main__.py: 30  # default notice of a closure in the demo CLI, not a rule value
+src/raildss_orchestrator/__main__.py: 3600  # seconds per hour (unit conversion), not a rule value

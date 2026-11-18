@@ -79,6 +79,7 @@ class GreedyPlan:
     stuck: list[str]
     runtime_s: float
     report: RunReport
+    occupancy: list[tuple[float, str, str, bool]] = field(default_factory=list)  # twin occupancy log
 
     @property
     def g2_fails(self) -> int:
@@ -216,7 +217,19 @@ class GreedyDispatcher:
         stuck = sorted(
             {s.run_id for s in report.stuck} | {t.run_id for d in report.deadlocks for t in d.trains}
         )
-        return GreedyPlan(plan_id, start_s, end_s, cand, g2, decisions, holds, stuck, runtime, report)
+        return GreedyPlan(
+            plan_id,
+            start_s,
+            end_s,
+            cand,
+            g2,
+            decisions,
+            holds,
+            stuck,
+            runtime,
+            report,
+            list(sim.occupancy_log),
+        )
 
     # ------------------------------------------------------------------ scenarios
     def closures_of(self, scenario: Any) -> list[Closure]:
