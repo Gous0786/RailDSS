@@ -145,3 +145,4 @@ src/raildss_optimiser/__main__.py: 3600  # seconds per hour (unit conversion), n
 src/raildss_optimiser/__main__.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_optimiser/__main__.py: 10  # number of holds listed by the CLI, not a rule value
 src/raildss_optimiser/greedy.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_twin/chart.py: 2  # chart export format version and a rounding digit, not a rule value
