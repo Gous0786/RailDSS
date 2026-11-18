@@ -2,6 +2,7 @@
 
 python -m raildss_orchestrator run --date 2025-08-20 --from-h 8 --to-h 9      # one twin day window, headless
 python -m raildss_orchestrator run --from-h 8 --to-h 10 --out run.json --kpis  # the log and the day's KPIs
+python -m raildss_orchestrator replay --report docs/kpi/replay-2025-08-20.md   # M1 demo (issue #90)
 python -m raildss_orchestrator run --from-h 8 --to-h 9 --close DUSI~PDU/UP@8.5-9.5 --notice-min 20
 
 The run replays the twin day under a degradation profile, feeds it to the DSS chain tick by tick on a
@@ -34,13 +35,10 @@ def _window(text: str) -> tuple[str, float, float]:
     return what, float(a) * SECONDS_PER_HOUR, float(b) * SECONDS_PER_HOUR
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m raildss_orchestrator")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="the rolling loop on a real twin day, headless (issue #84)")
+def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
     r.add_argument("--date", default="2025-08-20")
-    r.add_argument("--from-h", type=float, required=True)
-    r.add_argument("--to-h", type=float, required=True)
+    r.add_argument("--from-h", type=float, required=not replay, default=8.0)
+    r.add_argument("--to-h", type=float, required=not replay, default=10.0)
     r.add_argument("--tick-s", type=float, default=60.0, help="simulated clock step")
     r.add_argument("--profile", default="D0", help="degradation profile of the observed feeds")
     r.add_argument(
@@ -50,12 +48,35 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument(
         "--notice-min", type=float, default=30.0, help="how long before it starts a closure is known"
     )
-    r.add_argument("--no-cpsat", action="store_true", help="greedy options only")
     r.add_argument("--alternatives", type=int, default=1, help="extra CP-SAT solutions (other seeds)")
-    r.add_argument("--no-auto-accept", action="store_true", help="release only: nobody accepts")
-    r.add_argument("--kpis", action="store_true", help="the day's KPIs, DSS arm against BL-0 (two day runs)")
     r.add_argument("--out", type=Path, default=None, help="write the run summary as JSON")
+    if replay:
+        r.add_argument(
+            "--cpsat", action="store_true", help="add warm-started CP-SAT options to the greedy ones"
+        )
+        r.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
+    else:
+        r.add_argument("--no-cpsat", action="store_true", help="greedy options only")
+        r.add_argument("--no-auto-accept", action="store_true", help="release only: nobody accepts")
+        r.add_argument(
+            "--kpis", action="store_true", help="the day's KPIs, DSS arm against BL-0 (two day runs)"
+        )
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="python -m raildss_orchestrator")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    _common(
+        sub.add_parser("run", help="the rolling loop on a real twin day, headless (issue #84)"), replay=False
+    )
+    _common(
+        sub.add_parser("replay", help="closed-loop replay of a real day with KPIs vs BL-0 (issue #90)"),
+        replay=True,
+    )
     args = ap.parse_args(argv)
+    replay = args.cmd == "replay"
+    if replay:  # the M1 demo: greedy recommendations, evaluation auto-accept, KPIs against BL-0
+        args.no_cpsat, args.no_auto_accept, args.kpis = not args.cpsat, False, True
 
     world = run.load_world()
     day = dt.date.fromisoformat(args.date)
@@ -101,6 +122,16 @@ def main(argv: list[str] | None = None) -> int:
         holds, lines = loop.commitments()
         doc["kpis"] = day_kpis(world, day, closures=closures, exit_windows=exits, holds=holds, lines=lines)
         print(json.dumps(doc["kpis"]["deltas"], indent=1))
+    if replay:
+        from raildss_orchestrator.report import render
+
+        text = render(summary, doc["kpis"], args.date, solver="greedy + CP-SAT" if args.cpsat else "greedy")
+        if args.report is not None:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(text, encoding="utf-8", newline=NEWLINE)
+            print(f"wrote {args.report}")
+        else:
+            print(text)
     if args.out is not None:
         args.out.write_text(json.dumps(doc, indent=1) + NEWLINE, encoding="utf-8", newline=NEWLINE)
         print(f"wrote {args.out}")

@@ -65,3 +65,4 @@ def test_decisions_inside_the_freeze_window_are_frozen_until_they_start(cadence:
     assert set(by_run) == {"B", "C"}  # A has started; C enters the window
     assert by_run["B"].line_no == 2 and by_run["B"].dep_s == 9 * MIN  # the frozen decision is unchanged
     assert by_run["C"].dep_s == 11 * MIN
+    assert [d.run_id for d in cadence.history()] == ["A"]  # a started decision stays fixed as history

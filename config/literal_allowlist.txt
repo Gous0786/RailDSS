@@ -167,3 +167,7 @@ src/raildss_orchestrator/cadence.py: 60  # seconds per minute (unit conversion),
 src/raildss_orchestrator/__main__.py: 60  # seconds per minute and the simulated clock step default, not rule values
 src/raildss_orchestrator/__main__.py: 30  # default notice of a closure in the demo CLI, not a rule value
 src/raildss_orchestrator/__main__.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_orchestrator/report.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_orchestrator/report.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_orchestrator/__main__.py: 8  # default replay window start hour in the demo CLI, not a rule value
+src/raildss_orchestrator/__main__.py: 10  # default replay window end hour in the demo CLI, not a rule value
