@@ -212,6 +212,12 @@ class Orchestrator:
         frozen = self.cadence.freeze(self._last_plan, now)
         holds, lines = self.commitments()
         frozen += [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
+        past = {(d.run_id, d.station): d for d in self.cadence.history()}
+        past |= {
+            (d.run_id, d.station): d
+            for oid, d in self._decisions.items()
+            if d.dep_s < now and self._in_force(oid)
+        }
         disruption = "disruption" in triggers or bool(closures)
         limits = self.register.value("opt.time_limit_s")
         ctx = PlanContext(
@@ -219,6 +225,7 @@ class Orchestrator:
             plan_id=f"plan-{len(self.cycles)}",
             triggers=triggers,
             frozen=frozen,
+            history=list(past.values()),
             closures=closures,
             exit_windows=self.exit_windows,
             commit_holds=holds,
@@ -395,11 +402,14 @@ class Orchestrator:
         self._events.add("controller_action")
         if status is Status.ORDER_ISSUED:
             entry = self._entries[self.executor.options[rec_id].option_id]
-            realised = {(d.run_id, d.station): d for d in entry.candidate.g3.departures}
+            cand = entry.candidate
+            # a greedy plan is exact in its own world; a solver plan is rounded by the IR, so freeze what
+            # executing it makes happen (the sandbox replay) rather than the rounded times (VER-FRZ-01)
+            made = cand.decisions if cand.g1 is None else cand.g3.departures
+            realised = {(d.run_id, d.station): d for d in made}
             for oid, action in zip(
                 self.executor.current[rec_id], self.executor.options[rec_id].actions, strict=True
             ):
-                # what executing the order makes happen is what the next plan must keep (VER-FRZ-01)
                 d = realised.get((action.run_id, action.station))
                 if d is not None:
                     self._decisions[oid] = Decision(d.run_id, d.station, d.line_no, d.dep_s)

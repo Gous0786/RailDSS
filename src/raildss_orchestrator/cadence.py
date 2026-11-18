@@ -24,6 +24,7 @@ class Cadence:
         self.last_plan_s: float | None = None
         self.first_plan_s: float | None = None
         self.frozen: dict[tuple[str, str], Decision] = {}
+        self.done: dict[tuple[str, str], Decision] = {}  # started decisions: history never changes
         self.starts: list[float] = []
 
     def fired(self, events: Iterable[str]) -> list[str]:
@@ -40,8 +41,15 @@ class Cadence:
         for d in previous:
             if now_s <= d.dep_s < now_s + self.freeze_s:
                 self.frozen.setdefault((d.run_id, d.station), d)
+        for k, d in self.frozen.items():
+            if d.dep_s < now_s:
+                self.done[k] = d
         self.frozen = {k: d for k, d in self.frozen.items() if d.dep_s >= now_s}
         return list(self.frozen.values())
+
+    def history(self) -> list[Decision]:
+        """Decisions that have started: re-planning re-simulates the day, so they stay fixed (VER-FRZ-01)."""
+        return list(self.done.values())
 
     def mark(self, now_s: float) -> None:
         if self.first_plan_s is None:

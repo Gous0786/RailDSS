@@ -244,7 +244,7 @@ class TwinPlanner:
         gp = self.dispatcher.plan(
             self.day,
             ctx.now_s,
-            frozen=ctx.frozen,
+            frozen=ctx.frozen + ctx.history,
             closures=ctx.closures,
             exit_windows=ctx.exit_windows,
             plan_id=ctx.plan_id,
@@ -282,7 +282,7 @@ class TwinPlanner:
                 self.day,
                 ctx.now_s,
                 horizon_s=HINT_END_S - ctx.now_s,
-                frozen=ctx.frozen,
+                frozen=ctx.frozen + ctx.history,
                 closures=ctx.closures,
                 exit_windows=ctx.exit_windows,
                 plan_id=f"{ctx.plan_id}-hint",
@@ -310,7 +310,7 @@ class TwinPlanner:
     def _sandbox(
         self, ctx: PlanContext, plan_id: str, decisions: list[Decision], holds: list[Hold]
     ) -> sandbox.SandboxPlan:
-        frozen = list(ctx.frozen)
+        frozen = ctx.frozen + ctx.history
         keys = {(f.run_id, f.station) for f in frozen}
         return sandbox.SandboxPlan(
             plan_id=plan_id,

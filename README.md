@@ -256,6 +256,27 @@ and prints a recommendation for every detected conflict. `RollingDispatcher` re-
 `opt.replan_triggers` and at least every `opt.replan_max_interval_min`, keeping decisions inside
 `opt.freeze_window_min`.
 
+## Closed-loop replay of a real day (issues #84, #90)
+
+`python -m raildss_orchestrator replay --report docs/kpi/replay-ktv-psa-2025-08-20.md` is the M1 demo:
+the twin plays 20 Aug 2025 (WTT plus the real freight day) from 08:00 to 10:00, the DSS chain
+(DS-1 to DS-5) reads its observed feeds, and every re-plan (on triggers and at least every 5 min, OD-25)
+builds greedy options, checks them with gates G0-G3 and releases only verified ones into the
+recommendation lifecycle. The evaluation policy accepts the best option, the executor issues its control
+orders and the station masters acknowledge them; the day is then re-simulated under those orders. The
+report compares the KPIs of the DSS arm with BL-0 (same seed, same demand) and lists what the loop did.
+`--from-h/--to-h` set the window, `--cpsat` adds warm-started CP-SAT options, `--close SEG/LINE@FROM-TO`
+adds a closure and `--out run.json` keeps the full log. `python -m raildss_orchestrator run` is the same
+loop without the report. See `docs/dss/orchestrator.md`. The result of the committed run is in
+`docs/kpi/replay-ktv-psa-2025-08-20.md`.
+
+The committed run (greedy options, 08:00-10:00) executes 16 accepted recommendations in the twin and
+ends close to BL-0 (A5 weighted delay +2 %, unplanned stops -1.6 %). It is a first demo, not a
+benefit claim: after the first few orders most re-plans fail the frozen-decision rule (VER-FRZ-01),
+because each plan re-simulates the day from midnight and the stacked frozen decisions of earlier
+plans no longer all hold, so those plans are not released (9 of 48 candidate plans verified). Making
+the rolling plan consistent with its own frozen decisions is the next improvement.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under
