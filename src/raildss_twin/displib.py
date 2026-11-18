@@ -45,7 +45,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from raildss_params import Register
+from raildss_params import Register, policy
 from raildss_twin.layout import BlockLine, Layout
 from raildss_twin.plans import Node, Plan, Timing
 from raildss_twin.run import World, plans_for
@@ -297,8 +297,8 @@ def _clearing_s(plan: Plan, register: Register) -> int:
 
 
 def _weight(plan: Plan, register: Register) -> float:
-    weights = register.value("policy.weights")
-    return float(weights.get(plan.category, weights[DEFAULT_WEIGHT_CLASS]))
+    """The precedence weight of the train: the policy table shared with KPI A5 (FR-KPI-03)."""
+    return policy.weight_of(plan.category, register)
 
 
 def _station_lines(layout: Layout, plan: Plan, op: str) -> list[Any]:
