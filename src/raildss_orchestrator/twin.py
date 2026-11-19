@@ -241,11 +241,12 @@ class TwinPlanner:
 
     def plan(self, ctx: PlanContext) -> PlanSet:
         t0 = time.perf_counter()
+        imposed, checked = self._frozen_of(ctx)
         gp = self.dispatcher.plan(
             self.day,
             ctx.now_s,
-            frozen=ctx.frozen + ctx.history,
-            committed=ctx.committed,
+            frozen=imposed,
+            committed=checked,
             closures=ctx.closures,
             exit_windows=ctx.exit_windows,
             plan_id=ctx.plan_id,
@@ -283,8 +284,8 @@ class TwinPlanner:
                 self.day,
                 ctx.now_s,
                 horizon_s=HINT_END_S - ctx.now_s,
-                frozen=ctx.frozen + ctx.history,
-                committed=ctx.committed,
+                frozen=imposed,
+                committed=checked,
                 closures=ctx.closures,
                 exit_windows=ctx.exit_windows,
                 plan_id=f"{ctx.plan_id}-hint",
@@ -303,6 +304,17 @@ class TwinPlanner:
         return out
 
     # ------------------------------------------------------------------ candidates
+    @staticmethod
+    def _frozen_of(ctx: PlanContext) -> tuple[list[Decision], list[Decision]]:
+        """What the greedy plan must keep: (imposed as directives, only checked by G2).
+
+        The plan is a pure function of the day and its directives, so an unchanged world reproduces its
+        own earlier decisions; a hold directive on a train that was queueing would send it to the back of
+        the queue. Decisions are imposed only when the world changed (closures, closed exits), and checked
+        always (VER-FRZ-01, issue #127)."""
+        fixed = ctx.frozen + ctx.history
+        return (fixed, ctx.committed) if ctx.impose else ([], fixed + ctx.committed)
+
     @staticmethod
     def _signature(c: Candidate) -> tuple[Any, ...]:
         return tuple(sorted((h.run_id, h.station, round(h.until_s)) for h in c.holds)), tuple(

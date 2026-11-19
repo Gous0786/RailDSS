@@ -229,6 +229,7 @@ class Orchestrator:
             triggers=triggers,
             frozen=frozen,
             committed=committed,
+            impose=bool(closures or self.exit_windows),
             history=list(past.values()),
             closures=closures,
             exit_windows=self.exit_windows,

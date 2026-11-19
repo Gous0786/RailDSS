@@ -270,12 +270,13 @@ adds a closure and `--out run.json` keeps the full log. `python -m raildss_orche
 loop without the report. See `docs/dss/orchestrator.md`. The result of the committed run is in
 `docs/kpi/replay-ktv-psa-2025-08-20.md`.
 
-The committed run (greedy options, 08:00-10:00) executes 35 accepted recommendations in the twin and
-ends ahead of BL-0: A5 weighted delay -5.0 % (11137 against 11721 train-min), P90 exit delay -4.3 min,
-unplanned stops -33. 47 of its 51 candidate plans pass gates G0-G3. A frozen decision fixes only its own
-line and departure; the plan is a pure function of the day and its directives, so accepted orders beyond
-the commit window are checked (VER-FRZ-01) rather than imposed as holds, which would send a queueing
-train to the back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
+The committed run (greedy options, 08:00-10:00) executes 32 accepted recommendations in the twin and
+ends ahead of BL-0: A5 weighted delay -4.9 % (11141 against 11721 train-min), P90 exit delay -4.3 min,
+unplanned stops -33. All 53 candidate plans pass gates G0-G3. The greedy plan is a pure function of the
+day and its directives, so an unchanged world reproduces the decisions of earlier plans. Frozen decisions
+(commit window, started, accepted orders) are therefore only checked (VER-FRZ-01) and imposed as holds
+only when the world changes (a closure or a closed exit): a hold sends a train that was queueing to the
+back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
 
 ## Licence
 

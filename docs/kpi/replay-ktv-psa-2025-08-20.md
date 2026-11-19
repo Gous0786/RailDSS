@@ -7,14 +7,14 @@ Window 8-10 h, options by greedy, evaluation auto-accept, identical seed and dem
 | What | Value |
 |---|---|
 | Clock ticks | 61 |
-| Plans (cycles) | 51 |
+| Plans (cycles) | 53 |
 | Longest gap between plans | 6 min |
-| Candidate plans verified (G0-G3) / built | 47 / 51 |
-| Recommendations released | 35 |
-| Accepted (evaluation policy) | 35 |
+| Candidate plans verified (G0-G3) / built | 53 / 53 |
+| Recommendations released | 32 |
+| Accepted (evaluation policy) | 32 |
 | Control orders issued | 37 (0 declined) |
 | Most options for one decision | 1 |
-| Final statuses | DIVERGED 26, SUPERSEDED 9 |
+| Final statuses | DIVERGED 26, SUPERSEDED 6 |
 
 ## KPIs: DSS against BL-0
 
@@ -26,11 +26,11 @@ Window 8-10 h, options by greedy, evaluation auto-accept, identical seed and dem
 | A2_lop_count | 35 | 36 |
 | A4_mean_arrival_delay_min | 17.45 | 18.92 |
 | A4_max_arrival_delay_min | 173.31 | 173.31 |
-| A5_weighted_delay_train_min | 11137.2 | 11720.8 |
-| A6_mean_exit_delay_min | 16.88 | 18.25 |
+| A5_weighted_delay_train_min | 11140.9 | 11720.8 |
+| A6_mean_exit_delay_min | 16.89 | 18.25 |
 | A6_median_exit_delay_min | 0.82 | 0.82 |
 | A6_p90_exit_delay_min | 62.58 | 66.87 |
-| A9_mean_time_lost_min | 18.58 | 19.95 |
+| A9_mean_time_lost_min | 18.59 | 19.95 |
 | B1_trains_exited | 193 | 193 |
 | C1_freight_speed_kmh | 44.53 | 44.86 |
 | C2_freight_detention_h | 14.43 | 12.93 |
@@ -44,11 +44,11 @@ Window 8-10 h, options by greedy, evaluation auto-accept, identical seed and dem
 | A2_lop_count | -1 |
 | A4_mean_arrival_delay_min | -1.47 |
 | A4_max_arrival_delay_min | +0 |
-| A5_weighted_delay_train_min | -583.64 |
-| A6_mean_exit_delay_min | -1.37 |
+| A5_weighted_delay_train_min | -579.89 |
+| A6_mean_exit_delay_min | -1.36 |
 | A6_median_exit_delay_min | +0 |
 | A6_p90_exit_delay_min | -4.29 |
-| A9_mean_time_lost_min | -1.37 |
+| A9_mean_time_lost_min | -1.36 |
 | B1_trains_exited | +0 |
 | C1_freight_speed_kmh | -0.33 |
 | C2_freight_detention_h | +1.5 |
