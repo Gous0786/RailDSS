@@ -16,3 +16,4 @@ except for its status line.
 | [DR-0004](0004-od-33-mvp-extent.md) | MVP extent: full KTV-PSA section, not the VZM-PSA fallback (OD-33, #76) | Proposed |
 | [DR-0005](0005-dsc10-passenger-per-train-reference.md) | DSC-10 passenger KPI against each train's own booked time (#137) | Proposed |
 | [DR-0006](0006-network-version-governance.md) | Version governance: the network hash covers content; a content change needs a new network_version (#63) | Proposed |
+| [DR-0007](0007-static-table-version-stamps.md) | Static tables are exempt from policy and rule-catalogue stamps; N-05 enforces it (#65) | Proposed |
