@@ -243,7 +243,15 @@ plays the replay. With the mouse, the wheel zooms, dragging pans and a click sel
 The recommendation in the data is a **DEMO**: it holds one freight train at its entry, replayed in
 the twin, until the optimiser produces real recommendations. Accept, modify and reject only write to
 the on-screen decision log. The chart is an in-house D3 + Canvas component (`d3-scale`, ISC), the
-DR-0001 §3.4 fallback. `npm --prefix web run licences` is the npm licence gate.
+DR-0001 §3.4 fallback. `npm --prefix web run licences` is the npm licence gate and
+`npm --prefix web run licences:report` also writes `web/licences.json` (CI uploads it as an artifact).
+
+Packaging and attributions (issue #89): the chart and the About page are separate chunks
+(`npm --prefix web run check-chunks` after a build). The **About** button (or `I`) shows the OSM and
+Copernicus attributions, the production dependencies with their licences and the Grafana note; the chart
+carries a corner "© OpenStreetMap contributors" link (DR-0001 §5.3). Production dependencies are pinned
+exactly. To show a "Health ↗" link to Grafana (an unmodified, separate service, DR-0001 §4), start the UI with
+`VITE_GRAFANA_URL=http://localhost:3000 npm --prefix web start`.
 
 ## Greedy priority dispatcher (issue #75)
 

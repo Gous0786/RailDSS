@@ -1,9 +1,10 @@
 // RailDSS web UI: global chrome, control chart, KPI strip, train queue, alerts and the recommendation card
 // (FR-UI-01..03, FR-UI-07..10, FR-HITL-12/13).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ControlChart, type PreviewMode, describe } from "./chart/ControlChart";
-import { type Window, defaultWindow, hhmm, panWindow, zoomWindow } from "./chart/geometry";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { grafanaUrl, OSM_ATTRIBUTION, OSM_COPYRIGHT_URL } from "./aboutContent";
+import type { PreviewMode } from "./chart/ControlChart";
+import { type Window, defaultWindow, describe, hhmm, panWindow, zoomWindow } from "./chart/geometry";
 import { AlertsPanel } from "./ops/AlertsPanel";
 import { CardPanel, REASONS } from "./ops/CardPanel";
 import { KpiStrip } from "./ops/KpiStrip";
@@ -13,6 +14,11 @@ import { acceptState, expiresIn } from "./ops/card";
 import { kpis } from "./ops/kpi";
 import { HORIZON_S, NO_FILTER, type QueueFilter, type SortKey, filterRows, queueRows, sortRows } from "./ops/queue";
 import type { Alert, ChartData, Priority } from "./types";
+
+// The chart and the About page load as separate chunks (DR-0001 §3.3 condition 2; issue #89).
+const ControlChart = lazy(() => import("./chart/ControlChart").then((m) => ({ default: m.ControlChart })));
+const About = lazy(() => import("./About"));
+const GRAFANA = grafanaUrl(import.meta.env as Record<string, string | undefined>);
 
 type Mode = "REPLAY" | "SIM" | "SANDBOX";
 type Phase = "none" | "card" | "rejecting" | "done";
@@ -39,6 +45,7 @@ const SHORTCUTS: [string, string][] = [
   ["+ / −", "zoom in / out"],
   ["N", "jump to now"],
   ["Space", "play / pause the replay (SIM ×60)"],
+  ["I", "about, attributions and licences"],
   ["?", "show / hide this help"],
 ];
 
@@ -65,6 +72,7 @@ export default function App() {
   const [preview, setPreview] = useState<PreviewMode>("off");
   const [selected, setSelected] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [about, setAbout] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [acked, setAcked] = useState<ReadonlySet<string>>(new Set());
@@ -162,13 +170,15 @@ export default function App() {
         return;
       }
       if (k === "Escape") {
-        if (help) setHelp(false);
+        if (about) setAbout(false);
+        else if (help) setHelp(false);
         else if (drawer) setDrawer(false);
         else if (sandbox) setSandbox(false);
         else closeCard();
         return;
       }
       if (k === "?") return setHelp((h) => !h);
+      if (k === "i" || k === "I") return setAbout((a) => !a);
       if (k === "p" || k === "P") {
         setPhase("card");
         setPreview("after");
@@ -234,7 +244,7 @@ export default function App() {
         setPlaying((p) => !p);
       }
     },
-    [data, phase, help, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
+    [data, phase, help, about, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
   );
 
   useEffect(() => {
@@ -267,6 +277,14 @@ export default function App() {
             <option key={d}>{d}</option>
           ))}
         </select>
+        {GRAFANA && (
+          <a href={GRAFANA} target="_blank" rel="noreferrer" title="System health and analyst time series (Grafana)">
+            Health ↗
+          </a>
+        )}
+        <button onClick={() => setAbout((a) => !a)} aria-label="About and attributions">
+          About
+        </button>
         <button onClick={() => setHelp((h) => !h)} aria-label="Keyboard shortcuts">
           ?
         </button>
@@ -279,16 +297,23 @@ export default function App() {
         {!data && !error && <div className="loading">Loading {day}…</div>}
         {data && (
           <div className="main">
-            <ControlChart
-              data={data}
-              window={view}
-              now={now}
-              option={option}
-              mode={preview}
-              selected={selected}
-              onWindow={setView}
-              onSelect={setSelected}
-            />
+            <div className="chart-wrap">
+              <Suspense fallback={<div className="loading">Loading chart…</div>}>
+                <ControlChart
+                  data={data}
+                  window={view}
+                  now={now}
+                  option={option}
+                  mode={preview}
+                  selected={selected}
+                  onWindow={setView}
+                  onSelect={setSelected}
+                />
+              </Suspense>
+              <a className="map-attribution" href={OSM_COPYRIGHT_URL} target="_blank" rel="noreferrer">
+                {OSM_ATTRIBUTION}
+              </a>
+            </div>
             <QueuePanel
               rows={rows}
               total={allRows.length}
@@ -338,6 +363,11 @@ export default function App() {
               {log.length === 0 ? <p className="muted">No decisions yet.</p> : log.map((l) => <p key={l}>{l}</p>)}
             </section>
           </aside>
+        )}
+        {about && (
+          <Suspense fallback={null}>
+            <About grafana={GRAFANA} onClose={() => setAbout(false)} />
+          </Suspense>
         )}
         {help && (
           <div className="help" role="dialog" aria-label="Keyboard shortcuts">

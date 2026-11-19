@@ -11,7 +11,9 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "licences": "node scripts/check-licences.mjs"
+    "licences": "node scripts/check-licences.mjs",
+    "licences:report": "node scripts/check-licences.mjs --report licences.json",
+    "check-chunks": "node scripts/check-chunks.mjs"
   },
   "dependencies": {
     "d3-scale": "4.0.3",

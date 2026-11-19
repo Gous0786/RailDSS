@@ -535,3 +535,59 @@ kbd {
     flex: 1 1 auto;
   }
 }
+
+/* ---- issue #89: chart wrapper, map-style attribution, About page ---- */
+.chart-wrap {
+  flex: 1 1 58%;
+  min-height: 200px;
+  min-width: 0;
+  position: relative;
+  display: flex;
+}
+.main .chart-wrap .chart {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.map-attribution {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 1px 6px;
+  font-size: 11px;
+  background: #0d1117cc;
+  color: #9da7b3;
+  border-top-left-radius: 4px;
+}
+.chrome a {
+  color: #79c0ff;
+  text-decoration: none;
+}
+.about {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100% - 60px);
+  overflow-y: auto;
+  background: #1b1f26;
+  border: 1px solid #373e47;
+  border-radius: 8px;
+  padding: 4px 18px 12px;
+  box-shadow: 0 8px 30px #000a;
+  z-index: 5;
+}
+.about-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.about h4 {
+  margin: 12px 0 4px;
+}
+.about a {
+  color: #79c0ff;
+}
+.about td {
+  padding: 2px 14px 2px 0;
+}
