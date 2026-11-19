@@ -18,7 +18,7 @@ wrapped with the dynamics the schema does not carry (Davis coefficients, braking
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -106,9 +106,19 @@ def te_curve(spec: dict[str, Any], vmax_kmh: float, fit: dict[str, Any]) -> list
 
 
 class RollingStock:
-    """Loco classes, vehicle types and consist templates built from one parameter register."""
+    """Loco classes, vehicle types and consist templates built from one parameter register.
 
-    def __init__(self, register: Register | None = None, network_version: str | None = None) -> None:
+    With ``published`` tables (``loco_class``, ``vehicle_type``, ``consist`` of a network publication),
+    the published records are used instead of the ones built here; the register still gives the
+    dynamics (Davis resistance, braking) and the rake rules (issue #66).
+    """
+
+    def __init__(
+        self,
+        register: Register | None = None,
+        network_version: str | None = None,
+        published: Mapping[str, Sequence[Any]] | None = None,
+    ) -> None:
         reg = register or load()
         self.register = reg
         self.network_version = network_version or str(reg.value("network.version"))
@@ -180,6 +190,13 @@ class RollingStock:
                 vmax_kmh=float(f["vmax_loaded_kmh"]),
             )
 
+        tables = published or {}
+        if tables.get("loco_class"):
+            self.loco_classes = {r.code: r for r in tables["loco_class"]}
+        if tables.get("vehicle_type"):
+            self.vehicle_types = {r.code: r for r in tables["vehicle_type"]}
+        self.consists: dict[str, Consist] = {c.id: c for c in tables.get("consist", ())}
+
     # ------------------------------------------------------------------ lookups
 
     def family_of(self, wagon_type: str) -> str:
@@ -213,7 +230,8 @@ class RollingStock:
             trailing_t=trailing,
             vmax_kmh=min(loco.vmax_kmh, float(coach.vmax_kmh or loco.vmax_kmh)),
         )
-        return self._template(consist, "passenger", loco, trailing)
+        consist = self.consists.get(consist.id, consist)
+        return self._template(consist, "passenger", loco, float(consist.trailing_t or trailing))
 
     def freight(self, wagon_type: str, loaded: bool) -> ConsistTemplate:
         """Freight consist: the standard rake of the wagon type's family + one loco."""
@@ -236,7 +254,8 @@ class RollingStock:
             trailing_t=trailing,
             vmax_kmh=min(loco.vmax_kmh, float(f["vmax_loaded_kmh" if loaded else "vmax_empty_kmh"])),
         )
-        return self._template(consist, consist_type, loco, trailing, family)
+        consist = self.consists.get(consist.id, consist)
+        return self._template(consist, consist_type, loco, float(consist.trailing_t or trailing), family)
 
     def _template(
         self,

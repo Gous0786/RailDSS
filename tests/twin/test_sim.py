@@ -39,7 +39,7 @@ def test_real_day_completes_headless_within_the_limit(day_run: Any) -> None:
     report, _ = day_run
     assert report.completed, (report.stuck[:3], report.deadlocks[:1])
     assert report.wall_s <= HEADLESS_LIMIT_S
-    assert report.network_version == "KTV-PSA-2025-08"
+    assert report.network_version == "KTV-PSA-2025-08-r2"
 
 
 def test_every_train_enters_and_exits_or_is_listed_with_a_reason(day_run: Any) -> None:

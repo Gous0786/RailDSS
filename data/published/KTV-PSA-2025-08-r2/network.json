@@ -1,0 +1,68 @@
+{
+ "counts": {
+  "block_section": 50,
+  "block_section_line": 76,
+  "connection_edge": 392,
+  "consist": 43,
+  "curve": 130,
+  "day_instance": 27,
+  "freight_load": 2604,
+  "gradient": 232,
+  "loco_class": 3,
+  "network_version": 1,
+  "operational_point": 22,
+  "platform": 70,
+  "scenario_definition": 0,
+  "service": 250,
+  "signal": 338,
+  "speed_profile": 8,
+  "station_line": 103,
+  "sub_block": 210,
+  "timetable_point": 4260,
+  "train_run": 2342,
+  "vehicle_type": 14
+ },
+ "etl_version": "0.1.0",
+ "format_version": "1",
+ "layers": {
+  "macro": {
+   "day_instance": 27,
+   "freight_load": 2604,
+   "operational_point": 22,
+   "service": 250,
+   "timetable_point": 4260,
+   "train_run": 2342
+  },
+  "meso": {
+   "block_section": 50,
+   "block_section_line": 76,
+   "connection_edge": 392,
+   "platform": 70,
+   "speed_profile": 8,
+   "station_line": 103
+  },
+  "meta": {
+   "network_version": 1
+  },
+  "micro": {
+   "curve": 130,
+   "gradient": 232,
+   "signal": 338,
+   "sub_block": 210
+  },
+  "rolling_stock": {
+   "consist": 43,
+   "loco_class": 3,
+   "vehicle_type": 14
+  },
+  "scenarios": {
+   "scenario_definition": 0
+  }
+ },
+ "mapping_version": "2026.11.1",
+ "network_hash": "0540a724763a64108f77dc0a9d53f4f4bc781a19b293cc489381d8bcbd38bda7",
+ "network_version": "KTV-PSA-2025-08-r2",
+ "register_version": "2026.11.1+974f95b21b41",
+ "timetable_version": "KTV-PSA-TT-2025-08",
+ "validator_errors": 0
+}

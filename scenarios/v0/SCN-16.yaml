@@ -4,7 +4,7 @@ id: SCN-16
 title: "VZM junction congestion on the busiest real day (204 trains)"
 family: "Junction congestion"
 spec: "R06 §2, §7"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-22"
 freight_day: aug25-day-22
 seed: 16
@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "6985b4a7175fe4c9dd796c6c05eb1e17d5831ee0c93838f183cd8ba4ed13c0d2"
+expected_gt_hash: "36d7e79c3429c5406643f117da736244d8fe7b6d47a989b442d605fa9a5e43a7"
 notes: "The real day with the most trains; heavy freight detention at VZM shows as delay."

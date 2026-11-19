@@ -1,8 +1,8 @@
 """The ``raildss`` command line (issue #18).
 
     raildss network publish [--out DIR] [--check] [--db-url URL]
-    raildss network load KTV-PSA-2025-08 --db-url URL [--dir DIR]
-    raildss network show KTV-PSA-2025-08 [--dir DIR] [--db-url URL]
+    raildss network load KTV-PSA-2025-08-r2 --db-url URL [--dir DIR]
+    raildss network show KTV-PSA-2025-08-r2 [--dir DIR] [--db-url URL]
 
 ``publish`` runs the whole ETL, validates and writes the publication; ``--check`` rebuilds it and
 fails on any difference from the committed files (CI gate). ``show`` prints the version stamps and

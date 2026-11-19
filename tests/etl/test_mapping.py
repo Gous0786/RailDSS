@@ -95,7 +95,7 @@ def test_fidelity_notes_are_recorded_and_match_the_published_data() -> None:
     notes = {n.id: n for n in load_mapping().fidelity_notes}
     assert set(notes) == {"HCM-CROSSING-FLAG", "FREIGHT-SKIPPING-LEGS"}
     assert all(n.status in ("confirmed", "corrected") and n.decision for n in notes.values())
-    _, published, _ = publish.read_export(publish.default_dir("KTV-PSA-2025-08"))
+    _, published, _ = publish.read_export(publish.default_dir("KTV-PSA-2025-08-r2"))
     tables: dict[str, Any] = dict(published)
     hcm = next(o for o in tables["operational_point"] if o.code == "HCM")
     assert hcm.is_halt and hcm.crossing_facility

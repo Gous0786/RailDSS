@@ -39,7 +39,7 @@ def test_two_hour_window_converts_and_reports_counts(window: Any) -> None:
         counts["resources"] > 100 and counts["operations"] > 1000 and counts["edges"] > counts["operations"]
     )
     assert counts["objective_components"] > counts["trains"]
-    assert instance.network_version == "KTV-PSA-2025-08"
+    assert instance.network_version == "KTV-PSA-2025-08-r2"
     assert instance.window.day == DAY and instance.window.end_s == WINDOW_S
     assert {r.kind for r in instance.resources} == {"station_line", "block_line", "sub_block"}
     # every train enters in the window

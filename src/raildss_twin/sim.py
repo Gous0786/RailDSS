@@ -1,6 +1,6 @@
 """Meso-level movement simulator, policy BL-0 (spec FR-TWIN-10/12/14, §12.2; issue #20).
 
-A SimPy discrete-event simulation of one day on the published network ``KTV-PSA-2025-08``:
+A SimPy discrete-event simulation of one day on the published network ``KTV-PSA-2025-08-r2``:
 
 * **Unit resources.** On VZM-PSA (absolute block) a COA block line is one resource; on KTV-VZM
   (automatic block) each synthetic sub-block of a line is one. Station lines are resources too. A

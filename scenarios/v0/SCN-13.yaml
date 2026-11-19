@@ -4,7 +4,7 @@ id: SCN-13
 title: "Long freight against short lines (CPP line 1 = 390 m, PDU siding = 300 m)"
 family: "Crossing and CSR edge case"
 spec: "R04 §11.1, R06 §2"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-04"
 freight_day: aug25-day-04
 seed: 13
@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "2b0c4cc7acd65b46faa1ab8f31c84da0043ee8c2d6b3fb56b646a00ccaf021c8"
+expected_gt_hash: "c0243ba0b9ee0055b4ccf75f0c14a3ec9395e8769e9282dcff092c2db6205040"
 notes: "Every freight consist is 668.6 m, so the twin refuses the short lines (csr_refused > 0)."

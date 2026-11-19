@@ -16,7 +16,7 @@ from raildss_verifier.auditor import AuditReport, TrainMeta, audit
 
 DAY = dt.date(2025, 8, 20)
 START_S, LENGTH_S = 10 * 3600, 3 * 3600
-NETWORK = "KTV-PSA-2025-08"
+NETWORK = "KTV-PSA-2025-08-r2"
 
 
 def window(block: str = "CPP-SGDM", line: str = "DN", **kw: Any) -> Disruption:

@@ -4803,7 +4803,7 @@
    "vzm_psa/UP/ULM-CHE": 15.3
   }
  },
- "network_version": "KTV-PSA-2025-08",
+ "network_version": "KTV-PSA-2025-08-r2",
  "parameters": {
   "long_dwell_min": 30.0,
   "stabled_threshold_min": 360.0,

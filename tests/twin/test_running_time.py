@@ -94,7 +94,7 @@ def test_psr_on_mid_does_not_slow_a_dn_main_run(stock: RollingStock) -> None:
 
 
 def test_network_applies_psr_5440_to_the_dn_line_not_to_a_line_without_it() -> None:
-    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08-r2")
     args = (tables["operational_point"], tables["block_section"], tables["speed_profile"], tables["gradient"])
     net = Network.from_entities(*args, tables["block_section_line"])  # type: ignore[arg-type]
     psr = {r.vmax_kmh: r for r in net.tracks[("DN", "passenger")].restrictions}[15.0]
@@ -164,7 +164,7 @@ def test_pass_through_never_slower_and_reproducible(report: CalibrationReport) -
 def test_reference_check_fails_when_the_physics_changes(report: CalibrationReport) -> None:
     recorded = read_reference()
     assert report.reference_runs == len(recorded) > 0 and report.reference_mismatches == []
-    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08-r2")
     net = Network.from_entities(
         tables["operational_point"],  # type: ignore[arg-type]
         tables["block_section"],  # type: ignore[arg-type]
@@ -216,7 +216,7 @@ def test_committed_calibration_matches_a_fresh_run(report: CalibrationReport) ->
 
 
 def _published_network() -> Network:
-    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08-r2")
     return Network.from_entities(
         tables["operational_point"],  # type: ignore[arg-type]
         tables["block_section"],  # type: ignore[arg-type]
@@ -278,7 +278,7 @@ def test_every_scored_passenger_miss_is_itemised(report: CalibrationReport) -> N
 
 
 def test_twin_timing_uses_the_booked_platform() -> None:
-    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08-r2")
     timing = Timing(tables, load())  # type: ignore[arg-type]
     plan = Plan(
         run_id="t",

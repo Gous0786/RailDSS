@@ -12,7 +12,7 @@ from raildss_etl.load import run_stage1
 from raildss_etl.mapping import load_mapping
 from raildss_params import load
 
-VERSION = "KTV-PSA-2025-08"
+VERSION = "KTV-PSA-2025-08-r2"
 
 
 @pytest.fixture(scope="module")

@@ -4,7 +4,7 @@ id: SCN-22
 title: "Real-freight-day replay: freight day 2, nominal passenger WTT"
 family: "Real-freight-day replay"
 spec: "R06 §2, §7; REC-25"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-02"
 freight_day: aug25-day-02
 seed: 22
@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "3a88a1a37d8a2053f9e4d946337068d3733490678e4b0e75fba6dc3d4250ca90"
+expected_gt_hash: "211e682d72abe556474794f5d5697aecf200a1a6f9f6b55f5af17d68f0990115"
 notes: "No injected disruption. v1 replays all 27 days."

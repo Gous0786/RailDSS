@@ -1,4 +1,4 @@
-"""Network publication ``KTV-PSA-2025-08`` (spec FR-TWIN-02, DQ-10, FR-DATA-03/04, §6.6 step 7; issue #18).
+"""Network publication ``KTV-PSA-2025-08-r2`` (spec FR-TWIN-02, DQ-10, FR-DATA-03/04, §6.6 step 7; issue #18).
 
 ``assemble`` takes the output of the whole ETL (topology, station lines and speeds, signals and
 sub-blocks, gradients and curves, WTT, freight demand), stamps it with the version in force,
@@ -30,10 +30,12 @@ from pydantic import TypeAdapter
 import raildss_etl
 from raildss_etl import dq, gradients, signalling, validator
 from raildss_etl.mapping import REPO
+from raildss_etl.timetable import Timetable, ist
 from raildss_params import Register
 from raildss_schema import migrate, store
 from raildss_schema.base import Stamped
-from raildss_schema.entities import ENTITIES, NetworkVersion
+from raildss_schema.entities import ENTITIES, Consist, NetworkVersion, TrainRun
+from raildss_twin.rolling_stock import RollingStock
 
 PUBLISHED_DIR = REPO / "data" / "published"
 STATS_FILE = "freight_demand_stats.json"
@@ -129,6 +131,45 @@ def _stamp_timetable(records: list[Any], timetable_version: str) -> list[Any]:
     return [r.model_copy(update={"timetable_version": timetable_version}) for r in records]
 
 
+def rolling_stock_tables(reg: Register, nv: str, tt: Timetable) -> tuple[list[Any], list[Any], list[Consist]]:
+    """The #15 templates (issue #66): loco classes, vehicle types and the consist templates the twin uses,
+    one passenger consist per coach count in the WTT and one freight rake per wagon family, loaded and
+    empty."""
+    rs = RollingStock(reg, nv)
+    default = int(reg.value("runtime.calibration")["passenger_coaches_default"])
+    consists: dict[str, Consist] = {}
+    for n in sorted({s.coaches or default for s in tt.services}):
+        c = rs.passenger(n).consist
+        consists[c.id] = c
+    first_code: dict[str, str] = {}
+    for code, fam in sorted(rs.wagon_family.items()):
+        first_code.setdefault(fam, code)
+    for code in first_code.values():
+        for loaded in (True, False):
+            c = rs.freight(code, loaded).consist
+            consists[c.id] = c
+    return (
+        list(rs.loco_classes.values()),
+        list(rs.vehicle_types.values()),
+        [consists[k] for k in sorted(consists)],
+    )
+
+
+def train_runs(reg: Register, nv: str, tt: Timetable, days: list[dt.date]) -> list[TrainRun]:
+    """The dated WTT expansion (issue #66): every passenger run with a section row on one of ``days``,
+    with the consist template of its coach count."""
+    rs = RollingStock(reg, nv)
+    default = int(reg.value("runtime.calibration")["passenger_coaches_default"])
+    runs: dict[str, TrainRun] = {}
+    for day in days:
+        for run in tt.runs_on(day, ist(), nv):
+            coaches = tt.service(str(run.train_id)).coaches or default
+            runs.setdefault(
+                run.run_id, run.model_copy(update={"consist_id": rs.passenger(coaches).consist.id})
+            )
+    return list(runs.values())
+
+
 def _synthetic_counts(tables: dict[str, list[Stamped]]) -> dict[str, dict[str, int]]:
     out: dict[str, dict[str, int]] = {}
     for name, rows in tables.items():
@@ -149,9 +190,13 @@ def assemble(stages: dq.Stages | None = None) -> Assembled:
     nv = str(reg.value("network.version"))
     tv = str(reg.value("timetable.version"))
     sig = signalling.build_signalling(st.topo, st.speed_result.station_lines, reg)
-    grads, curves = gradients.read_gradients(), gradients.read_curves()
+    # The derived gradient and curve files do not depend on the label: stamp them with this version.
+    grads = [g.model_copy(update={"network_version": nv}) for g in gradients.read_gradients()]
+    curves = [c.model_copy(update={"network_version": nv}) for c in gradients.read_curves()]
     report = dq.build_report(stages=st)
 
+    locos, vehicles, consists = rolling_stock_tables(reg, nv, st.tt)
+    days = sorted({d.day for d in st.demand.days})
     tables: dict[str, list[Any]] = {
         "operational_point": st.topo.operational_points,
         "block_section": st.topo.block_sections,
@@ -168,6 +213,10 @@ def assemble(stages: dq.Stages | None = None) -> Assembled:
         "timetable_point": _stamp_timetable(st.tt.points, tv),
         "freight_load": _stamp_timetable(st.demand.loads, tv),
         "day_instance": _stamp_timetable(st.demand.days, tv),
+        "train_run": _stamp_timetable(train_runs(reg, nv, st.tt, days), tv),
+        "loco_class": locos,
+        "vehicle_type": vehicles,
+        "consist": consists,
     }
     for model in ENTITIES:
         tables.setdefault(model.__table__, [])
@@ -260,7 +309,7 @@ def render_card(a: Assembled, digest: str) -> str:
         "",
         "| Field (spec FR-DATA-03) | Value |",
         "|---|---|",
-        "| Dataset | Network `KTV-PSA-2025-08`: micro, meso and macro layers, WTT services and points, "
+        "| Dataset | Network `KTV-PSA-2025-08-r2`: micro, meso and macro layers, WTT services and points, "
         "freight loads and day instances (JSON, one file per entity) |",
         "| Source | The user-supplied KTV-PSA dataset (14 files under `data/raw/ktv-psa`, see its card), the "
         "derived completion data under `data/derived/ktv-psa`, and OpenStreetMap and Copernicus DEM "
@@ -317,9 +366,9 @@ def render_card(a: Assembled, digest: str) -> str:
         "|---|---|---|",
         *[f"| {layer_of(t)} | `{t}` | {c} |" for t, c in n.items()],
         "",
-        "Rolling stock (`loco_class`, `vehicle_type`, `consist`) is published by issue #15 and scenarios "
-        "by M1, so those tables are empty in this version. `train_run` is not materialised: passenger "
-        "runs expand from the services and the Monday-first calendar for any date.",
+        "`train_run` is the dated WTT expansion: every passenger run with a section row on a day of the "
+        "freight log, with its consist template. `loco_class`, `vehicle_type` and `consist` are the "
+        "rolling-stock templates of issue #15 (issue #66). Scenarios are published by M1.",
         "",
         "## Source hashes (SHA-256)",
         "",

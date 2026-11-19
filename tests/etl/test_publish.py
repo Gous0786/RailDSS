@@ -18,7 +18,7 @@ from raildss_params import load
 from raildss_params.register import default_path
 from raildss_schema.entities import ENTITIES
 
-VERSION = "KTV-PSA-2025-08"
+VERSION = "KTV-PSA-2025-08-r2"
 DIR = publish.default_dir(VERSION)
 
 
@@ -208,7 +208,7 @@ def test_the_network_hash_covers_content_not_the_metadata_record(export: Any) ->
     base = publish.network_hash(texts)
     meta = dict(texts)
     meta["network_version.json"] = texts["network_version.json"].replace(
-        '"created_at":"2026-11-03', '"created_at":"2026-11-04'
+        '"description":"', '"description":"x', 1
     )
     assert meta != texts and publish.network_hash(meta) == base
     content = dict(texts)

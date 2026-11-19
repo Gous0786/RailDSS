@@ -28,12 +28,12 @@ spec_version: "1.3"
 parameters:
   # ------------------------------------------------------------------ network and section
   - key: network.version
-    value: KTV-PSA-2025-08
+    value: KTV-PSA-2025-08-r2
     unit: null
-    source: R06 §6.7
+    source: "R06 §6.7; DR-0006 (r2 adds train_run and the rolling-stock tables, issue #66)"
     status: DATA
     owner: data
-    valid_from: 2026-11-03
+    valid_from: 2026-11-19
   - key: timetable.version
     value: KTV-PSA-TT-2025-08
     unit: null
@@ -41,7 +41,7 @@ parameters:
     status: SA
     owner: data
     valid_from: 2026-11-08
-    notes: Stamp on the WTT services, timetable points, freight loads and day instances of network KTV-PSA-2025-08.
+    notes: Stamp on the WTT services, timetable points, freight loads and day instances of network KTV-PSA-2025-08-r2.
   - key: section.length_km
     value: {total: 176.83, ktv_vzm: 34.73, vzm_psa: 142.10}
     unit: km
