@@ -320,7 +320,7 @@ def _block_duration(
     stopped[-1] = route[-1].stop or (b_last and plan.timetabled)
     total = 0.0
     for x, y, sx, sy in zip(route, route[1:], stopped, stopped[1:], strict=False):
-        total += timing.leg(plan, x.op, y.op, sx, sy)
+        total += timing.leg(plan, x.op, y.op, sx, sy, x.platform, y.platform)
         if y is not route[-1] and y.stop:
             total += min_dwell
     return total

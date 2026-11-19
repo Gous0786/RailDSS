@@ -22,7 +22,7 @@ from raildss_etl.timetable import Timetable, ist
 from raildss_params import Register
 from raildss_schema.base import Stamped
 from raildss_schema.entities import DayInstance, FreightLoad, Service, TimetablePoint
-from raildss_twin.calibration import CALIBRATION_FILE, Calibration, Network, Runner
+from raildss_twin.calibration import CALIBRATION_FILE, Calibration, Network, Runner, booked_platform
 from raildss_twin.layout import Layout
 from raildss_twin.rolling_stock import ConsistTemplate, RollingStock
 
@@ -37,6 +37,7 @@ class Node:
     arr: float
     dep: float
     stop: bool
+    platform: str | None = None  # booked platform at a stop (WTT planned line), issue #59
 
 
 @dataclass
@@ -77,6 +78,8 @@ class Timing:
             tables["speed_profile"],  # type: ignore[arg-type]
             tables["gradient"],  # type: ignore[arg-type]
             tables["block_section_line"],  # type: ignore[arg-type]
+            tables.get("station_line", ()),  # type: ignore[arg-type]
+            tables.get("platform", ()),  # type: ignore[arg-type]
         )
         raw = json.loads(Path(CALIBRATION_FILE).read_text(encoding="utf-8"))
         self.calibration = Calibration.model_validate(raw["calibration"])
@@ -85,18 +88,32 @@ class Timing:
         self.default_coaches = int(register.value("runtime.calibration")["passenger_coaches_default"])
         self._cache: dict[tuple[Any, ...], float] = {}
 
-    def leg(self, plan: Plan, a: str, b: str, start_stopped: bool, end_stopped: bool) -> float:
-        key = (plan.template.consist.id, a, b, start_stopped, end_stopped)
+    def leg(
+        self,
+        plan: Plan,
+        a: str,
+        b: str,
+        start_stopped: bool,
+        end_stopped: bool,
+        dep_platform: str | None = None,
+        arr_platform: str | None = None,
+    ) -> float:
+        """Running time of a leg. A passenger train leaves from and is received on the station line of its
+        booked platform (``dep_platform`` at ``a``, ``arr_platform`` at ``b``), issue #59."""
+        passenger = plan.kind == "passenger"
+        dep = self.runner.net.approach(a, dep_platform) if passenger and start_stopped else None
+        arr = self.runner.net.approach(b, arr_platform) if passenger and end_stopped else None
+        key = (plan.template.consist.id, a, b, start_stopped, end_stopped, dep, arr)
         if key not in self._cache:
             cal, tpl = self.calibration, plan.template
-            if plan.kind == "passenger":
+            if passenger:
                 cap = cal.passenger_cap_kmh
                 extra = cal.leg_supplement_s.get(f"{a}-{b}", 0.0)
             else:
                 cap = cal.freight_caps_kmh["loaded" if tpl.consist_type == "freight_loaded" else "empty"]
                 direction = self.runner.net.direction(a, b)
                 extra = cal.block_allowance_s.get(f"{a}-{b}/{direction}", 0.0)
-            self._cache[key] = self.runner.time(tpl, a, b, start_stopped, end_stopped, cap) + extra
+            self._cache[key] = self.runner.time(tpl, a, b, start_stopped, end_stopped, cap, dep, arr) + extra
         return self._cache[key]
 
 
@@ -133,7 +150,18 @@ def passenger_plans(
             unsupported.append(Unsupported(run.run_id, "the booked path itself starts or ends at a halt"))
             continue
         # arr_s / dep_s count from the start of the origin day, so they already include the day offset.
-        nodes = [Node(p.op_code, shift + p.arr_s, shift + p.dep_s, p.is_stop) for p in on]
+        # Only a booked stop has a platform: a train that stands at a pass point (held, waiting for a
+        # line) is not on its booked platform, so its run stays as calibrated (issue #59).
+        nodes = [
+            Node(
+                p.op_code,
+                shift + p.arr_s,
+                shift + p.dep_s,
+                p.is_stop,
+                booked_platform(p.planned_line) if p.is_stop else None,
+            )
+            for p in on
+        ]
         plans.append(
             Plan(
                 run_id=run.run_id,
