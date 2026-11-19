@@ -4,7 +4,7 @@
 |---|---|
 | Spec references | FR-DATA-04; DR-0002 F08; DR-0006 |
 | Date | 2026-11-19 |
-| Status | **Proposed** (accepted when the PR that adds it is merged) |
+| Status | **Accepted** (PR merged) |
 | Supersedes | n/a |
 
 ## Context

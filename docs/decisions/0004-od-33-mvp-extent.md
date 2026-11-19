@@ -4,7 +4,7 @@
 |---|---|
 | Spec references | §15 OD-33; REC-02, REC-30; RK-06; NFR-SCL-03, NFR-PERF-01..03; §12.3 latency spike; DR-0002 F19 |
 | Date | 2026-11-10 |
-| Status | **Proposed** (accepted when the PR that adds it is merged) |
+| Status | **Accepted** (PR merged) |
 | Supersedes | n/a |
 
 ## Context

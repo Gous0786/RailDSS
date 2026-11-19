@@ -5,7 +5,7 @@
 | Spec references | §12 DSC-10 (rev. v1.5 → v1.7); FR-TWIN-06; DR-0002 F01 |
 | Issues | #137 (this change), #59 (station-approach model, PR #136), #16 |
 | Date | 2026-11-19 |
-| Status | **Proposed** (accepted when the PR that adds it is merged) |
+| Status | **Accepted** (PR merged) |
 | Supersedes | The v1.5 passenger criterion of DSC-10 (modal reference per stop pattern) |
 
 ## Context

@@ -13,7 +13,8 @@ except for its status line.
 | [DR-0001](0001-licence-review-m0.md) | M0 licence review: train-graph component, Grafana, DEM/OSM, DISPLIB (#23) | Accepted |
 | [DR-0002](0002-m0-exit-review.md) | M0 exit review: criteria evidence, DSC-10 decision, PR re-check, M1 carry-over (#25) | Accepted |
 | [DR-0003](0003-od-04-05-25-policy-rules-horizon.md) | Precedence policy, rule-catalogue ownership and planning horizon (OD-04, OD-05, OD-25) | Accepted |
-| [DR-0004](0004-od-33-mvp-extent.md) | MVP extent: full KTV-PSA section, not the VZM-PSA fallback (OD-33, #76) | Proposed |
-| [DR-0005](0005-dsc10-passenger-per-train-reference.md) | DSC-10 passenger KPI against each train's own booked time (#137) | Proposed |
-| [DR-0006](0006-network-version-governance.md) | Version governance: the network hash covers content; a content change needs a new network_version (#63) | Proposed |
-| [DR-0007](0007-static-table-version-stamps.md) | Static tables are exempt from policy and rule-catalogue stamps; N-05 enforces it (#65) | Proposed |
+| [DR-0004](0004-od-33-mvp-extent.md) | MVP extent: full KTV-PSA section, not the VZM-PSA fallback (OD-33, #76) | Accepted |
+| [DR-0005](0005-dsc10-passenger-per-train-reference.md) | DSC-10 passenger KPI against each train's own booked time (#137) | Accepted |
+| [DR-0006](0006-network-version-governance.md) | Version governance: the network hash covers content; a content change needs a new network_version (#63) | Accepted |
+| [DR-0007](0007-static-table-version-stamps.md) | Static tables are exempt from policy and rule-catalogue stamps; N-05 enforces it (#65) | Accepted |
+| [DR-0008](0008-m1-exit-review.md) | M1 exit review: criteria evidence, deviations, M2 carry-over (#92) | Proposed |

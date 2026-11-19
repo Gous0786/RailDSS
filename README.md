@@ -1,18 +1,66 @@
 # RailDSS
 
-AI-powered **decision support for Indian Railways section controllers**, with a section-level
-digital twin. RailDSS is **advisory and non-SIL**: it recommends verified precedence, crossing and
-recovery options; the controller accepts, modifies or rejects them; interlocking and Kavach remain
-the safety layer.
+**RailDSS** is AI-powered **decision support for Indian Railways section controllers**, with a
+section-level digital twin.
+
+- **Advisory and non-SIL.** It detects conflicts and recommends verified precedence, crossing and
+  recovery options. The controller accepts, modifies or rejects them.
+- **Not a safety layer.** Interlocking and Kavach remain the safety layer, and RailDSS never sets
+  routes.
 
 The demo section is **Kottavalasa Jn (KTV) – Palasa (PSA)**, East Coast Railway, Waltair division:
-176.83 km, 22 stations, 3-line automatic block on KTV–VZM and double-line absolute block on VZM–PSA.
-It is built from a real COA/WTT/freight dataset committed under `data/raw/ktv-psa/`.
+176.83 km and 22 stations. KTV–VZM is 3-line automatic block; VZM–PSA is double-line absolute block.
+It is built from a real COA, WTT and freight dataset committed under `data/raw/ktv-psa/`. The
+published network is **`KTV-PSA-2025-08-r2`**.
 
-> The requirements live in the **RailDSS Software Specification v1.3** (maintained as a project
-> artifact). Work is tracked in GitHub issues, milestone **M0 — KTV-PSA ETL and foundations**.
+**Documentation:**
+- [docs/README.md](docs/README.md): index of decision records, KPI reports, calibration, scenarios and reviews.
+- [docs/architecture.md](docs/architecture.md): pipeline, package map, import boundaries and data flow.
 
-## Setup
+The requirements live in the **RailDSS Software Specification** (v1.8, a project artefact).
+
+## Status
+
+- **M0 (KTV-PSA ETL and foundations): done.** See DR-0002.
+- **M1 (baseline loop): done, with recorded deviations.** See [DR-0008](docs/decisions/0008-m1-exit-review.md).
+  - The twin runs real days.
+  - Scenario library v0 has 10 scenarios.
+  - The closed-loop replay runs with greedy (and optional CP-SAT) recommendations through gates G0-G3,
+    the HITL lifecycle and the executor.
+  - The mutation catch is 100 %, and TLA+ finds 0 violations.
+  - The UI has the control chart, mimic, queue, alerts and cards.
+  - Audit and replay work.
+- **Known limits** (DR-0008):
+  - Passenger timing: 31.9 % of spans are within 1 min of their own booked time. The ceiling of any
+    per-leg model is about 52 % (DR-0005).
+  - BL-0 freight has no detention model, so it is far faster than the log.
+  - The planner does not yet model TSRs, point failures or late-train disruptions.
+  - The DSS benefit is shown on one 2-hour demo window only.
+  - Face-validity findings FV-01 to FV-06 are open ([review](docs/review/m1-face-validity.md)).
+
+## Quick start
+
+Needs [uv](https://docs.astral.sh/uv/) and, for the web UI, Node.js 20+.
+
+```bash
+uv python install 3.12 && uv sync      # Python 3.12 and every dependency
+npm --prefix web ci                    # web UI dependencies
+```
+
+## One-command runs
+
+| What | Command |
+|---|---|
+| Twin: one real day under BL-0 | `uv run python -m raildss_twin run --date 2025-08-20` |
+| Closed-loop replay demo (DSS against BL-0, 08:00-10:00) | `uv run python -m raildss_orchestrator replay --report docs/kpi/replay-ktv-psa-2025-08-20.md` |
+| Disruption scenarios: twin hashes | `uv run python -m raildss_twin scenario run` |
+| Disruption scenarios: KPIs under BL-0 and the loop | `uv run python -m raildss_orchestrator scenarios --report docs/kpi/scenarios-v0.md` |
+| Web UI (control chart; `G` mimic; queue, alerts, cards; `L` audit) | `npm --prefix web start` (opens http://localhost:5173) |
+| Export a day for the web UI | `uv run python -m raildss_twin chart --date 2025-08-20` |
+| Running-time calibration (DSC-10) | `uv run python -m raildss_twin calibrate` (`--write` updates the report) |
+| Data checks (DQ, publication, KPI reference, manifests) | `uv run python -m raildss_etl dq --check && uv run raildss network publish --check && uv run python -m raildss_etl kpi-reference --check && uv run python tools/manifest.py --check` |
+
+## Setup (development)
 
 Requires [uv](https://docs.astral.sh/uv/) and, for local infrastructure, Docker.
 
@@ -65,14 +113,19 @@ and `raildss_common.bus`. Kafka integration tests: `RAILDSS_TEST_KAFKA_BOOTSTRAP
 
 | Package | Purpose | Spec |
 |---|---|---|
-| `raildss_common` | Event envelope and shared helpers | §6.2, issue #19 |
-| `raildss_schema` | Canonical data model (micro/meso/macro); strict typing | §6.1, issue #4 |
+| `raildss_common` | Event envelope, Kafka bus, topic catalogue and ACL lint | §6.2, issue #19 |
+| `raildss_schema` | Canonical data model (micro, meso and macro); strict typing; DDL and store | §6.1, issue #4 |
 | `raildss_params` | Parameter register: every rule value is configuration with a source | C-05, App. B, issue #3 |
-| `raildss_etl` | KTV–PSA ETL from COA master tables, WTT and the freight log; network publication and the `raildss` command | §6.6, issues #5–#12, #17, #18 |
-| `raildss_twin` | Digital twin: completion, running-time calculator, simulator | §3.3, issues #13–#16, #20 |
-| `raildss_optimiser` | Greedy dispatcher and CP-SAT (placeholder) | §8.4, M1/M2 |
-| `raildss_verifier` | Independent verification engine (placeholder). **Must not import** the optimiser, twin or ETL; enforced by import-linter | §9, NFR-MNT-02 |
-| `raildss_dss` | DSS online services. M1: DS-1 ingestion and data quality. **Must not import** the twin (it sees only `obs.*` / `ops.*`); enforced by import-linter | §4, FR-ING, issue #70 |
+| `raildss_etl` | KTV-PSA ETL, DQ, validator, network publication (`raildss` command), rolling-stock templates, KPI reference | §6.6, issues #5-#18, #63, #66 |
+| `raildss_twin` | Digital twin: calibration, simulator, observation model, injector, station masters, G3 sandbox, scenarios, chart and mimic export | §3.3, issues #13-#16, #20, #51-#53, #59, #87 |
+| `raildss_dss` | DSS services DS-1 to DS-5 (ingestion, state, prediction, conflict detection) and the KPI engine. **Must not import** the twin | §4, FR-TWIN-14 |
+| `raildss_optimiser` | Greedy rolling dispatcher and warm-started CP-SAT | §8.4, issues #75, #76 |
+| `raildss_verifier` | Gates G0-G2, rule catalogue, offline auditor. **Must not import** the optimiser, twin or ETL | §9, NFR-MNT-02 |
+| `raildss_hitl` | Recommendation lifecycle (TLA+-checked) and executor | §3.8, issues #82, #83 |
+| `raildss_orchestrator` | Rolling decision loop, closed-loop replay, scenario report, audit replay | DS-9, issues #84, #90, #57 |
+| `raildss_audit` | Hash-chained audit log | FR-AUD-01, issue #85 |
+
+The import boundaries are enforced by import-linter; see [docs/architecture.md](docs/architecture.md).
 
 Other folders: `tools/` (licence gate, dataset manifest), `tests/`, `data/` (see below).
 
@@ -81,7 +134,8 @@ Other folders: `tools/` (licence gate, dataset manifest), `tests/`, `data/` (see
 | Folder | Contents | Rules |
 |---|---|---|
 | `data/raw/ktv-psa/` | The 14 KTV–PSA CSV files exactly as supplied, plus `PROVENANCE.md` and `MANIFEST.sha256` | **Read-only input.** Never edited; all cleaning happens in the ETL (spec C-13). Stored byte-for-byte (`.gitattributes`: `data/** -text`) |
-| `data/derived/ktv-psa/` | `psa_station_lines_derived.csv`: Palasa line identities and **estimated** CSR from research report 06 | Estimates; see its provenance card |
+| `data/derived/ktv-psa/` | `psa_station_lines_derived.csv` (Palasa line identities and **estimated** CSR from research report 06), the derived alignment, gradients and curves, and the running-time calibration outputs | Estimates and derived data; see the provenance card |
+| `data/published/` | Network publications: `KTV-PSA-2025-08-r2` (current, with `train_run` and the rolling-stock tables) and `KTV-PSA-2025-08` (previous, kept unchanged) | A content change needs a new label (DR-0006) |
 | `data/external/osm-dem/` | Provenance card for the OpenStreetMap and Copernicus DEM gap-fill inputs (issue #14) | Attribution text must be copied wherever these data are distributed or shown |
 | `data/interim/` | ETL intermediate output | Git-ignored, rebuilt from `data/raw` |
 
@@ -182,7 +236,13 @@ uv run python -m raildss_twin run --speed 30 --control               # then type
 ```
 
 The trace hash is a SHA-256 over the emitted events in order; the same plans and seed give the same hash.
-Perturbations, the observation model, the injector and station-master agents are M1.
+M1 added the following:
+- seeded perturbations (`--perturb`);
+- the observation model (`obs.*` under profiles D0-D3, `--profile`);
+- the disruption injector;
+- the station-master agents.
+
+Passenger runs come from the published `train_run`, and the rolling stock from the published templates.
 
 `python -m raildss_twin displib --from-h 0 --to-h 2` converts a window of the day into the solver-facing,
 DISPLIB-style IR (operations, resources, release times, delay objective); see `docs/twin/displib-ir.md`.
@@ -286,13 +346,13 @@ adds a closure and `--out run.json` keeps the full log. `python -m raildss_orche
 loop without the report. See `docs/dss/orchestrator.md`. The result of the committed run is in
 `docs/kpi/replay-ktv-psa-2025-08-20.md`.
 
-The committed run (greedy options, 08:00-10:00) executes 32 accepted recommendations in the twin and
-ends ahead of BL-0: A5 weighted delay -4.9 % (11141 against 11721 train-min), P90 exit delay -4.3 min,
-unplanned stops -33. All 53 candidate plans pass gates G0-G3. The greedy plan is a pure function of the
-day and its directives, so an unchanged world reproduces the decisions of earlier plans. Frozen decisions
-(commit window, started, accepted orders) are therefore only checked (VER-FRZ-01) and imposed as holds
-only when the world changes (a closure or a closed exit): a hold sends a train that was queueing to the
-back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
+The committed run (greedy options, 08:00-10:00, regenerated for DR-0008) executes 37 accepted
+recommendations in the twin and ends ahead of BL-0: A5 weighted delay -6.1 % (13211 against 14071
+train-min), P90 exit delay -19.1 min, unplanned stops -39. All 81 candidate plans pass gates G0-G3. The
+greedy plan is a pure function of the day and its directives, so an unchanged world reproduces the
+decisions of earlier plans. Frozen decisions (commit window, started, accepted orders) are therefore only
+checked (VER-FRZ-01). They are imposed as holds only when the world changes (a closure or a closed exit),
+because a hold sends a train that was queueing to the back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
 
 ## Audit and replay (issue #85)
 

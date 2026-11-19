@@ -6,15 +6,15 @@ Window 8-10 h, options by greedy, evaluation auto-accept, identical seed and dem
 
 | What | Value |
 |---|---|
-| Clock ticks | 61 |
-| Plans (cycles) | 53 |
-| Longest gap between plans | 6 min |
-| Candidate plans verified (G0-G3) / built | 53 / 53 |
-| Recommendations released | 32 |
-| Accepted (evaluation policy) | 32 |
-| Control orders issued | 37 (0 declined) |
+| Clock ticks | 121 |
+| Plans (cycles) | 81 |
+| Longest gap between plans | 5 min |
+| Candidate plans verified (G0-G3) / built | 81 / 81 |
+| Recommendations released | 37 |
+| Accepted (evaluation policy) | 37 |
+| Control orders issued | 43 (0 declined) |
 | Most options for one decision | 1 |
-| Final statuses | DIVERGED 26, SUPERSEDED 6 |
+| Final statuses | DIVERGED 30, SUPERSEDED 7 |
 
 ## KPIs: DSS against BL-0
 
@@ -22,36 +22,36 @@ Window 8-10 h, options by greedy, evaluation auto-accept, identical seed and dem
 
 | KPI | DSS | BL-0 |
 |---|---|---|
-| A2_section_punctuality_pct | 64.65 | 63.64 |
-| A2_lop_count | 35 | 36 |
-| A4_mean_arrival_delay_min | 17.45 | 18.92 |
-| A4_max_arrival_delay_min | 173.31 | 173.31 |
-| A5_weighted_delay_train_min | 11140.9 | 11720.8 |
-| A6_mean_exit_delay_min | 16.89 | 18.25 |
-| A6_median_exit_delay_min | 0.82 | 0.82 |
-| A6_p90_exit_delay_min | 62.58 | 66.87 |
-| A9_mean_time_lost_min | 18.59 | 19.95 |
+| A2_section_punctuality_pct | 61.62 | 62.63 |
+| A2_lop_count | 38 | 37 |
+| A4_mean_arrival_delay_min | 18.79 | 20.42 |
+| A4_max_arrival_delay_min | 182.01 | 182.01 |
+| A5_weighted_delay_train_min | 13211.2 | 14071.5 |
+| A6_mean_exit_delay_min | 22.38 | 24.38 |
+| A6_median_exit_delay_min | 4.17 | 4.17 |
+| A6_p90_exit_delay_min | 64.27 | 83.36 |
+| A9_mean_time_lost_min | 24.08 | 26.08 |
 | B1_trains_exited | 193 | 193 |
-| C1_freight_speed_kmh | 44.53 | 44.86 |
-| C2_freight_detention_h | 14.43 | 12.93 |
-| F1_unplanned_stops | 725 | 758 |
+| C1_freight_speed_kmh | 43.1 | 43.65 |
+| C2_freight_detention_h | 20.89 | 18.27 |
+| F1_unplanned_stops | 623 | 662 |
 
 ### DSS minus BL-0
 
 | KPI | Delta |
 |---|---|
-| A2_section_punctuality_pct | +1.01 |
-| A2_lop_count | -1 |
-| A4_mean_arrival_delay_min | -1.47 |
+| A2_section_punctuality_pct | -1.01 |
+| A2_lop_count | +1 |
+| A4_mean_arrival_delay_min | -1.63 |
 | A4_max_arrival_delay_min | +0 |
-| A5_weighted_delay_train_min | -579.89 |
-| A6_mean_exit_delay_min | -1.36 |
+| A5_weighted_delay_train_min | -860.28 |
+| A6_mean_exit_delay_min | -2 |
 | A6_median_exit_delay_min | +0 |
-| A6_p90_exit_delay_min | -4.29 |
-| A9_mean_time_lost_min | -1.36 |
+| A6_p90_exit_delay_min | -19.09 |
+| A9_mean_time_lost_min | -2 |
 | B1_trains_exited | +0 |
-| C1_freight_speed_kmh | -0.33 |
-| C2_freight_detention_h | +1.5 |
-| F1_unplanned_stops | -33 |
+| C1_freight_speed_kmh | -0.55 |
+| C2_freight_detention_h | +2.62 |
+| F1_unplanned_stops | -39 |
 
-Most affected trains (exit delay, min): HPCVHPKB19082025132943 +53.76, 12664@2025-08-19 -50.87, 18048@2025-08-19 -44.34
+Most affected trains (exit delay, min): KSLKJEA_19082025115439 +109.72, HPCVHPKB19082025132943 +73.89, 12664@2025-08-19 -56.54
