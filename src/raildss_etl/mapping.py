@@ -74,6 +74,15 @@ class IgnorePattern(_Model):
         return v
 
 
+class FidelityNote(_Model):
+    id: str
+    subject: str
+    status: Literal["confirmed", "corrected"]
+    finding: str
+    evidence: str
+    decision: str
+
+
 class MappingSpec(_Model):
     mapping_version: str
     dataset: str
@@ -88,6 +97,7 @@ class MappingSpec(_Model):
     fixes: dict[str, list[str]] = Field(default_factory=dict)
     derived_files: dict[str, str] = Field(default_factory=dict)
     wtt: dict[str, Any] = Field(default_factory=dict)
+    fidelity_notes: list[FidelityNote] = Field(default_factory=list)
     tables: dict[str, TableSpec]
 
     def is_pattern_ignored(self, column: str) -> bool:
@@ -187,6 +197,19 @@ def render_markdown(mapping: MappingSpec) -> str:
         ],
         "",
     ]
+    if mapping.fidelity_notes:
+        lines += ["## Data-fidelity notes", ""]
+        for n in mapping.fidelity_notes:
+            lines += [
+                f"### {n.id} ({n.status})",
+                "",
+                f"**{n.subject}.** {n.finding}",
+                "",
+                f"Evidence: {n.evidence}",
+                "",
+                f"Decision: {n.decision}",
+                "",
+            ]
     for name, t in mapping.tables.items():
         lines += [
             f"## {name}",
