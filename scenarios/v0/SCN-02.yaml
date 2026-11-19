@@ -4,7 +4,7 @@ id: SCN-02
 title: "Premium train running late into the section among freight"
 family: "Late premium train"
 spec: "R01 §7.11, R04 §11.1"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-05"
 freight_day: aug25-day-05
 seed: 2
@@ -19,5 +19,5 @@ disruptions:
     duration_min: {low_min: 30, high_min: 60}
     note: "20830 Vande Bharat enters at KTV 30 to 60 min late (booked 15:14)."
 requires: []
-expected_gt_hash: "a0cf370bc5643b4bd215f23235cb205a1e2ee36cba573c0f30b352e78611a555"
+expected_gt_hash: "afb551211ad44a88e0629c72b12e13dbf508c8eab3bb40e3c8c2da673885cced"
 notes: "A late entry of one train: a scripted entry delay holds 20830 at the section entry (issue #57)."

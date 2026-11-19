@@ -4,7 +4,7 @@ id: SCN-12
 title: "Loss of RTIS feed and degraded-data day (profile D3)"
 family: "Degraded data"
 spec: "R01 §7.11, R05 §7.4"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-03"
 freight_day: aug25-day-03
 seed: 12
@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D3
 disruptions: []
 requires: []
-expected_gt_hash: "ccdf287277f4f195b0529309547b2051203317bd1b1d9c9ec8a50439b65ebef0"
+expected_gt_hash: "eabb847a966a77a816de0416c37d199dda83b65fc42362c51d4ff75ef12649c6"
 notes: "Ground truth is as nominal; the DSS sees the D3 feeds (observer only reads, the gt hash is unchanged by it)."

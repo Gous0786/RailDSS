@@ -152,7 +152,7 @@ day offset + time of day, and writes `stage1_report.json`. It never writes insid
 
 `raildss network publish` runs the whole ETL, validates the network (DQ-10: crossing stations have
 loops with CSR > 0, block sections have a system and a length, routes are consistent, references and
-version stamps) and writes `data/published/KTV-PSA-2025-08/`: one JSON file per canonical entity,
+version stamps) and writes `data/published/KTV-PSA-2025-08-r2/`: one JSON file per canonical entity,
 `network.json` (versions, counts per layer, **network hash**), a provenance card and a manifest. It
 refuses to publish while the validator reports an error. Re-run it (and `dq --update-baseline`)
 after changing inputs or `config/parameters.yaml`; CI fails on any difference. The network hash covers
@@ -161,8 +161,8 @@ the network content only, so a register edit keeps it; a content change under an
 
 ```bash
 uv run raildss network publish --check              # CI gate: rebuild and compare byte for byte
-uv run raildss network show KTV-PSA-2025-08         # version stamps and record count per entity
-uv run raildss network load KTV-PSA-2025-08 --db-url postgresql://...   # PostgreSQL + PostGIS
+uv run raildss network show KTV-PSA-2025-08-r2         # version stamps and record count per entity
+uv run raildss network load KTV-PSA-2025-08-r2 --db-url postgresql://...   # PostgreSQL + PostGIS
 ```
 
 ## Twin skeleton: one real day (issue #20)

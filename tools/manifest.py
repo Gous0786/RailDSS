@@ -22,7 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DATASET_DIRS = [
     ROOT / "data" / "raw" / "ktv-psa",
     ROOT / "data" / "derived" / "ktv-psa",
-    ROOT / "data" / "published" / "KTV-PSA-2025-08",
+    ROOT / "data" / "published" / "KTV-PSA-2025-08",  # previous version, kept immutable (DR-0006)
+    ROOT / "data" / "published" / "KTV-PSA-2025-08-r2",
 ]
 MANIFEST = "MANIFEST.sha256"
 EXCLUDED = {MANIFEST, "PROVENANCE.md"}

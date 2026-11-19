@@ -21,7 +21,7 @@ from typing import Any
 from raildss_etl.timetable import Timetable, ist
 from raildss_params import Register
 from raildss_schema.base import Stamped
-from raildss_schema.entities import DayInstance, FreightLoad, Service, TimetablePoint
+from raildss_schema.entities import DayInstance, FreightLoad, Service, TimetablePoint, TrainRun
 from raildss_twin.calibration import (
     CALIBRATION_FILE,
     Calibration,
@@ -92,7 +92,7 @@ class Timing:
         raw = json.loads(Path(CALIBRATION_FILE).read_text(encoding="utf-8"))
         self.calibration = Calibration.model_validate(raw["calibration"])
         self.runner = Runner(net, register)
-        self.stock = RollingStock(register, tables["operational_point"][0].network_version)
+        self.stock = RollingStock(register, tables["operational_point"][0].network_version, tables)
         self.default_coaches = int(register.value("runtime.calibration")["passenger_coaches_default"])
         self._cache: dict[tuple[Any, ...], float] = {}
 
@@ -127,6 +127,10 @@ class Timing:
         return self._cache[key]
 
 
+def _by_train(run: TrainRun) -> tuple[str, str]:
+    return str(run.train_id), run.run_id
+
+
 def passenger_plans(
     tables: Mapping[str, Sequence[Stamped]], layout: Layout, timing: Timing, day: dt.date
 ) -> tuple[list[Plan], list[Unsupported]]:
@@ -138,7 +142,14 @@ def passenger_plans(
     tt = Timetable(services=services, points=points, busy_days=busy)
     plans: list[Plan] = []
     unsupported: list[Unsupported] = []
-    for run in tt.runs_on(day, ist(), layout.network_version):
+    # The dated runs come from the publication (``train_run``, issue #66); a day it does not cover is
+    # expanded from the services and the calendar.
+    published: list[TrainRun] = [r for r in tables.get("train_run", ()) if isinstance(r, TrainRun)]
+    if any(r.kind == "passenger" and r.run_date == day for r in published):
+        runs = sorted((r for r in published if r.kind == "passenger" and tt.touches(r, day)), key=_by_train)
+    else:
+        runs = tt.runs_on(day, ist(), layout.network_version)
+    for run in runs:
         svc = tt.service(str(run.train_id))
         on = sorted((p for p in tt.points_of(svc.train_id) if tt.on_block(p, day)), key=lambda p: p.seq)
         origin = run.run_date

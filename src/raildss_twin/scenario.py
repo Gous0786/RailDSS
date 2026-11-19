@@ -31,7 +31,7 @@ from raildss_twin.injector import SECONDS_PER_MIN, Disruption
 from raildss_twin.sim import SECONDS_PER_HOUR
 
 SCHEMA_VERSION = 1
-NETWORK_VERSION = "KTV-PSA-2025-08"
+NETWORK_VERSION = "KTV-PSA-2025-08-r2"
 LIBRARY_DIR = REPO / "scenarios" / "v0"
 INDEX_FILE = LIBRARY_DIR / "INDEX.md"
 DISRUPTION_TYPES = ("line_block", "point_failure", "signal_failure", "tsr", "loco_failure", "entry_delay")

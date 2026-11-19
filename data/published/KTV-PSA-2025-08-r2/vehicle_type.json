@@ -1,0 +1,16 @@
+[
+{"code":"BCN","gross_t":87.28,"kind":"wagon","length_m":15.429,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":26.44,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BLC","gross_t":59.1,"kind":"wagon","length_m":12.53,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":19.1,"timetable_version":null,"vmax_kmh":100.0},
+{"code":"BOBRN","gross_t":81.30000000000001,"kind":"wagon","length_m":10.71,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":25.6,"timetable_version":null,"vmax_kmh":65.0},
+{"code":"BOST","gross_t":81.3,"kind":"wagon","length_m":13.7,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":24.0,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BOXN","gross_t":81.28,"kind":"wagon","length_m":10.731,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":22.47,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BOXNHL","gross_t":81.30000000000001,"kind":"wagon","length_m":10.716,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":20.6,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BOXNHL25T","gross_t":100.0,"kind":"wagon","length_m":10.716,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":21.0,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BRAKE_VAN","gross_t":20.0,"kind":"wagon","length_m":9.0,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":20.0,"timetable_version":null,"vmax_kmh":80.0},
+{"code":"BRN","gross_t":81.3,"kind":"wagon","length_m":14.645,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":23.4,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BTAP","gross_t":81.0,"kind":"wagon","length_m":12.7,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":27.0,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BTPG","gross_t":78.0,"kind":"wagon","length_m":18.0,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":42.0,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"BTPN","gross_t":81.3,"kind":"wagon","length_m":12.47,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":27.0,"timetable_version":null,"vmax_kmh":75.0},
+{"code":"CAR_CARRIER","gross_t":48.0,"kind":"wagon","length_m":23.5,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":36.0,"timetable_version":null,"vmax_kmh":100.0},
+{"code":"LHB","gross_t":50.0,"kind":"coach","length_m":24.0,"network_version":"KTV-PSA-2025-08-r2","policy_version":null,"raw":{},"rule_catalogue_version":null,"tare_t":42.0,"timetable_version":null,"vmax_kmh":160.0}
+]

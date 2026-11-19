@@ -4,7 +4,7 @@ Per day and over the month, for the KTV-PSA section:
 
 * **Through transit** (hours): last minus first arrival at section stations, for loads that call at
   at least ``freight.through_transit_min_stations`` section stations (median, p10, p90). A load
-  belongs to the day it enters the section (the day instance of ``KTV-PSA-2025-08``).
+  belongs to the day it enters the section (the day instance of ``KTV-PSA-2025-08-r2``).
 * **Dwell** by station (minutes): median, mean, p90 and the share above ``kpi.freight_long_dwell_min``.
   A call belongs to the day it arrives.
 * **Loads per day per block**: distinct loads on each adjacent block section, by arrival day, and the

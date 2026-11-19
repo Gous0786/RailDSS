@@ -4,7 +4,7 @@ id: SCN-05
 title: "DN line blocked CPP-SGDM: single-line working on the UP line"
 family: "Single-line working"
 spec: "R04 §5.1, R06 §5; REC-29"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-07"
 freight_day: aug25-day-07
 seed: 5
@@ -20,5 +20,5 @@ disruptions:
     duration_min: {low_min: 120, high_min: 180}
     etr: {offset_min: 30, sigma_min: 20}
 requires: []
-expected_gt_hash: "cc76fca90cfb46ad3af63f9664d4e192165ea94cab1312a1fa79312e798a8be5"
+expected_gt_hash: "ffcf7ea1b6e2dd2818308585a58307a7de33a4940938309d8c5815ae767202af"
 notes: "Crossings at CPP and SGDM; trains of both directions use the UP line."

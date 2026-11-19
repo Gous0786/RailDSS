@@ -4,7 +4,7 @@ id: SCN-06
 title: "Loop out of use at a precedence station (CPP loop 5)"
 family: "Loop or point failure"
 spec: "R01 §7.11, R05 §7.4"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-08"
 freight_day: aug25-day-08
 seed: 6
@@ -19,5 +19,5 @@ disruptions:
     duration_min: {low_min: 60, high_min: 120}
     etr: {offset_min: 0, sigma_min: 15}
 requires: []
-expected_gt_hash: "52015a2b810c29ffc1b137c90628c2d37224d244036a3a550a1c8a962cf9e7db"
+expected_gt_hash: "de87c4c55459b070cf9c0bd7eb16273380dcf4409e9e396f5800dc947df3d29f"
 notes: "CPP line 5 (857 m) is the longest loop; freight must use shorter lines or wait."

@@ -73,6 +73,12 @@ class Timetable(BaseModel):
     def starts_on(self, service: Service, origin: dt.date) -> bool:
         return service.valid_from <= origin <= service.valid_to and service.days[origin.weekday()]
 
+    def touches(self, run: TrainRun, day: dt.date) -> bool:
+        """True when ``run`` (a published ``train_run``) has a section row on ``day``: the test
+        :meth:`runs_on` applies, for a run already expanded (issue #66)."""
+        pts = [p for p in self.points_of(str(run.train_id)) if self.on_block(p, day)]
+        return bool(pts) and day - dt.timedelta(days=min(p.day_offset for p in pts)) == run.run_date
+
     def runs_on(self, day: dt.date, tz: dt.tzinfo, network_version: str) -> list[TrainRun]:
         """Train runs with at least one section row on ``day`` (origin date = day - day offset)."""
         by_train: dict[str, list[TimetablePoint]] = defaultdict(list)

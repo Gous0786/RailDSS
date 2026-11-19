@@ -4,7 +4,7 @@ id: SCN-03
 title: "TSR on VZM-PSA shifting the precedence station"
 family: "Speed restriction"
 spec: "R01 §7.11, R04 §5.1"
-network_version: KTV-PSA-2025-08
+network_version: KTV-PSA-2025-08-r2
 wtt_date: "2025-08-06"
 freight_day: aug25-day-06
 seed: 3
@@ -20,5 +20,5 @@ disruptions:
     duration_min: {low_min: 240, high_min: 480}
     etr: {offset_min: 0, sigma_min: 30}
 requires: []
-expected_gt_hash: "c749af5f99d08679aa27c49b1501caf17522bcb611e13e607b7ca3e8314e61a8"
+expected_gt_hash: "f1119278ddc4aa4e07c532fe9660d56d916a0a14417ccf2e875c45770d6ae649"
 notes: "Caution order on the DN line of SGDM-PDU."

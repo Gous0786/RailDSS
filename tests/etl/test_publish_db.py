@@ -20,7 +20,7 @@ pytestmark = [
     pytest.mark.db,
     pytest.mark.skipif(not URL, reason="RAILDSS_TEST_DB_URL not set (database tests run in CI)"),
 ]
-VERSION = "KTV-PSA-2025-08"
+VERSION = "KTV-PSA-2025-08-r2"
 
 
 @pytest.fixture()
