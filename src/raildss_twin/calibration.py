@@ -6,13 +6,14 @@ Two layers, both reported:
    class (freight loaded, freight empty, passenger) chosen from ``runtime.calibration`` on the
    physics-only fit.
 2. **Supplements.** Location effects the model has no data for (junction and yard approaches,
-   signal sighting) are absorbed by non-negative supplements:
+   signal sighting) are absorbed by supplements:
 
    * freight: one allowance per block and direction, shared by loaded and empty trains (one value
      against two references), = max(0, mean residual);
-   * passenger: one supplement per WTT leg and direction, fitted on non-stop legs whose time is
-     within ``padding_band_s`` of the leg's minimum (single minute-rounded legs are never used as
-     minima: the mean over trains is used), on legs with at least ``supplement_min_legs`` such runs.
+   * passenger: one signed supplement per WTT leg, direction and stopping context (pass or stop at
+     each end), fitted jointly on every train's stop-to-stop segments with a robust (absolute-error)
+     loss, each leg bounded below by its physics at line speed (:func:`fit_supplements`, issue #137).
+     Never per span or per train.
 
    A stop-to-stop passenger run leaves from and is received on the station line of its booked
    platform (WTT planned line -> ``platform`` -> ``station_line``) at ``station_line.speed_kmh``
@@ -24,10 +25,10 @@ References:
   simulated pass to pass; target +-``freight_tolerance``. The model's reference for a block is the
   load-weighted 10th percentile of its wagon families' physics times (the block's wagon mix in the
   log, each family on its own consist template, issue #60), as the log p10 is taken over those loads;
-* passenger: WTT stop-to-stop spans of >= ``span_min_legs`` legs, net of the WTT's engineering and
-  traffic allowances, simulated stop to stop (acceleration and braking from physics). The reference
-  is the span's standard time (modal net time over trains with the same stops); spans more than
-  ``padding_band_s`` above it are padded and reported, not scored. Target +-``span_tolerance_s``.
+* passenger: WTT stop-to-stop spans of >= ``span_min_legs`` legs. The reference of each span is its
+  own train's booked time net of the WTT's engineering and traffic allowances (DR-0005, issue #137).
+  A span is simulated as the sum of its legs, each in its stopping context (acceleration and braking
+  from physics), plus their supplements. Target +-``span_tolerance_s``.
 """
 
 from __future__ import annotations
@@ -35,9 +36,10 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import json
+import math
 import statistics
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -93,13 +95,11 @@ class CalibrationReport(BaseModel):
     freight_within: int
     freight_share: float
     spans_total: int
-    spans_padded: int
     spans_scored: int
     spans_physics_within: int
     spans_no_approach_within: int = 0  # physics + supplements, no station-line approach (issue #59)
     spans_within: int
     spans_share: float
-    spans_within_all: int
     pass_slower_than_stop: list[str]
     reference_runs: int  # recorded expected-seconds runs the physics is checked against
     reference_mismatches: list[str]  # runs whose seconds moved; empty when the physics is unchanged
@@ -122,9 +122,10 @@ class Span(NamedTuple):
     train_no: str
     coaches: int
     stops: tuple[str, ...]  # stations from the first stop to the next stop
-    net_s: int  # WTT time net of engineering and traffic allowances
+    net_s: int  # the train's own booked time, net of engineering and traffic allowances (reference)
     dep_platform: str | None = None  # booked platform at the first stop (WTT planned line)
     arr_platform: str | None = None  # booked platform at the last stop
+    legs: tuple[Leg, ...] = ()  # the span's legs, first from a stop, last to a stop
 
 
 class Approach(NamedTuple):
@@ -149,7 +150,7 @@ class Calibration(BaseModel):
     freight_caps_kmh: dict[str, float]  # "loaded" / "empty"
     passenger_cap_kmh: float
     block_allowance_s: dict[str, float]  # "A-B/DN"
-    leg_supplement_s: dict[str, float]  # "A-B/DN"
+    leg_supplement_s: dict[str, float]  # "A-B/pass-stop": leg, direction and stopping context (#137)
 
 
 # ---------------------------------------------------------------- track
@@ -450,42 +451,133 @@ def _freight(
 # ---------------------------------------------------------------- passenger
 
 
-def _legs(timetable: Timetable, km: dict[str, float]) -> dict[str, list[float]]:
-    legs: dict[str, list[float]] = defaultdict(list)
+class Leg(NamedTuple):
+    """One WTT leg of a train: booked net time and whether it starts or ends at a booked stop."""
+
+    a: str
+    b: str
+    start_stopped: bool
+    end_stopped: bool
+    net_s: int  # WTT time net of the engineering and traffic allowances at ``a``
+    dep_platform: str | None = None  # booked platform at ``a`` when it is a stop
+    arr_platform: str | None = None  # booked platform at ``b`` when it is a stop
+
+
+def calibrated_leg(
+    runner: Runner,
+    template: ConsistTemplate,
+    leg: Leg,
+    cap: float,
+    supplements: dict[str, float],
+    dep: Approach | None = None,
+    arr: Approach | None = None,
+) -> float:
+    """Calibrated passenger leg time (issue #137): physics plus the signed supplement of the leg's stopping
+    context, never faster than physics at line speed (VER-LSP-01), and never faster than the same leg with
+    fewer stops: stopping cannot shorten a run (the twin, the DISPLIB IR and the planners rely on it)."""
+
+    def one(start: bool, end: bool) -> float:
+        d, r = (dep if start else None), (arr if end else None)
+        run: float = runner.time(template, leg.a, leg.b, start, end, cap, d, r)
+        run += supplements.get(leg_key(leg.a, leg.b, start, end), 0.0)
+        return max(run, runner.time(template, leg.a, leg.b, start, end, math.inf, d, r))
+
+    return monotone(one, leg.start_stopped, leg.end_stopped)
+
+
+def monotone(time_of: Callable[[bool, bool], float], start_stopped: bool, end_stopped: bool) -> float:
+    """The largest time over the leg's stopping context and every context with fewer stops."""
+    return max(time_of(s, e) for s in {False, start_stopped} for e in {False, end_stopped})
+
+
+def leg_key(a: str, b: str, start_stopped: bool, end_stopped: bool) -> str:
+    """Supplement key of a leg in one stopping context, e.g. ``"PUN-PSA/pass-stop"`` (issue #137)."""
+    return f"{a}-{b}/{'stop' if start_stopped else 'pass'}-{'stop' if end_stopped else 'pass'}"
+
+
+def _train_legs(timetable: Timetable, km: dict[str, float]) -> list[tuple[str, int, list[Leg | None]]]:
+    """Every train's legs in order (None where a point lies off the section)."""
+    out = []
     for svc in timetable.services:
         pts = sorted(timetable.points_of(svc.train_id), key=lambda p: p.seq)
+        legs: list[Leg | None] = []
         for p, q in itertools.pairwise(pts):
-            if p.is_stop or q.is_stop or p.op_code not in km or q.op_code not in km:
+            if p.op_code not in km or q.op_code not in km:
+                legs.append(None)
                 continue
-            legs[f"{p.op_code}-{q.op_code}"].append(
-                q.arr_s - p.dep_s - p.eng_allowance_s - p.traffic_allowance_s
+            legs.append(
+                Leg(
+                    p.op_code,
+                    q.op_code,
+                    p.is_stop,
+                    q.is_stop,
+                    q.arr_s - p.dep_s - p.eng_allowance_s - p.traffic_allowance_s,
+                    booked_platform(p.planned_line) if p.is_stop else None,
+                    booked_platform(q.planned_line) if q.is_stop else None,
+                )
             )
-    return legs
+        out.append((svc.train_no, svc.coaches or 0, legs))
+    return out
 
 
 def _spans(timetable: Timetable, km: dict[str, float], min_legs: int) -> list[Span]:
+    """Stop-to-stop spans of at least ``min_legs`` legs; each is its train's own reference (issue #137)."""
     spans = []
-    for svc in timetable.services:
-        pts = sorted(timetable.points_of(svc.train_id), key=lambda p: p.seq)
-        stops = [i for i, p in enumerate(pts) if p.is_stop]
-        for i, j in itertools.pairwise(stops):
-            seg = pts[i : j + 1]
-            if j - i < min_legs or any(p.op_code not in km for p in seg):
+    for no, coaches, legs in _train_legs(timetable, km):
+        start = None
+        for k, leg in enumerate(legs):
+            if leg is None:
+                start = None
                 continue
-            net = (
-                pts[j].arr_s - pts[i].dep_s - sum(p.eng_allowance_s + p.traffic_allowance_s for p in pts[i:j])
-            )
-            spans.append(
-                Span(
-                    svc.train_no,
-                    svc.coaches or 0,
-                    tuple(p.op_code for p in seg),
-                    net,
-                    booked_platform(pts[i].planned_line),
-                    booked_platform(pts[j].planned_line),
-                )
-            )
+            if leg.start_stopped:
+                start = k
+            if leg.end_stopped and start is not None:
+                seg = legs[start : k + 1]
+                if len(seg) >= min_legs and all(x is not None for x in seg):
+                    run = tuple(x for x in seg if x is not None)
+                    spans.append(
+                        Span(
+                            no,
+                            coaches,
+                            (run[0].a, *(x.b for x in run)),
+                            sum(x.net_s for x in run),
+                            run[0].dep_platform,
+                            run[-1].arr_platform,
+                            run,
+                        )
+                    )
+                start = k if leg.end_stopped else None
     return spans
+
+
+def fit_supplements(
+    rows: Sequence[tuple[list[str], float]],
+    lower: dict[str, float],
+    rounds: int,
+    iterations: int,
+    robust_s: float,
+) -> dict[str, float]:
+    """Supplements ``x`` per key minimising sum |sum(x[k] for k in keys) - target| over ``rows``, with
+    ``x[k] >= lower[k]``: projected gradient on the least-squares problem, reweighted ``rounds`` times
+    towards the absolute error (weights 1 / max(|residual|, robust_s)), so trains carrying extra booked
+    time do not pull every supplement up."""
+    keys = sorted({k for ks, _ in rows for k in ks})
+    idx = {k: i for i, k in enumerate(keys)}
+    a = np.zeros((len(rows), len(keys)))
+    y = np.array([t for _, t in rows], dtype=float)
+    for r, (ks, _) in enumerate(rows):
+        for k in ks:
+            a[r, idx[k]] += 1
+    lo = np.array([lower.get(k, -math.inf) for k in keys])
+    x = np.maximum(np.zeros(len(keys)), lo)
+    w = np.ones(len(rows))
+    for _ in range(rounds):
+        aw = a * w[:, None]
+        step = 1.0 / np.linalg.norm(aw.T @ a, 2)
+        for _ in range(iterations):
+            x = np.maximum(x - step * (aw.T @ (a @ x - y)), lo)
+        w = 1.0 / np.maximum(np.abs(a @ x - y), robust_s)
+    return {k: round(float(x[i]), 1) for k, i in idx.items()}
 
 
 def booked_platform(planned: Sequence[str | None]) -> str | None:
@@ -494,72 +586,84 @@ def booked_platform(planned: Sequence[str | None]) -> str | None:
     return min(counts, key=lambda k: (-counts[k], k)) if counts else None
 
 
-def _modal(values: list[int]) -> int:
-    counts = Counter(values)
-    top = max(counts.values())
-    return min(v for v, n in counts.items() if n == top)
-
-
 def _passenger(
     runner: Runner, timetable: Timetable, rs: RollingStock, cfg: dict[str, Any]
 ) -> tuple[float, dict[str, float], list[Residual], dict[str, int]]:
     km = runner.net.km
-    band = float(cfg["padding_band_s"])
     tol = float(cfg["span_tolerance_s"])
     default_coaches = int(cfg["passenger_coaches_default"])
-    legs = _legs(timetable, km)
+    fit_cfg = cfg["supplement_fit"]
+    segments = _spans(timetable, km, 1)  # every stop-to-stop segment: the supplements are fitted on them
     spans = _spans(timetable, km, int(cfg["span_min_legs"]))
-    groups: dict[tuple[str, ...], list[Span]] = defaultdict(list)
-    for sp in spans:
-        groups[sp.stops].append(sp)
-    standard = {k: _modal([s.net_s for s in v]) for k, v in groups.items()}
-    scored = [s for s in spans if s.net_s <= standard[s.stops] + band]
-    reference_tpl = rs.passenger(default_coaches)
 
-    min_legs = int(cfg["supplement_min_legs"])
+    def physics(coaches: int, leg: Leg, cap: float, use_approach: bool) -> int:
+        dep = runner.net.approach(leg.a, leg.dep_platform) if use_approach else None
+        arr = runner.net.approach(leg.b, leg.arr_platform) if use_approach else None
+        tpl = rs.passenger(coaches or default_coaches)
+        return runner.time(tpl, leg.a, leg.b, leg.start_stopped, leg.end_stopped, cap, dep, arr)
 
-    def supplements(cap: float) -> dict[str, float]:
-        # A leg is supplemented only on enough non-stop runs: a handful of trains passing a station
-        # where nearly all stop (NML-VZM: 5) do not represent the stopping trains (issue #59).
-        out = {}
-        for key, times in legs.items():
-            a, b = key.split("-")
-            if len(times) < min_legs:
-                continue
-            unpadded = [t for t in times if t <= min(times) + band]
-            out[key] = round(
-                max(0.0, statistics.mean(unpadded) - runner.time(reference_tpl, a, b, False, False, cap)), 1
-            )
-        return out
-
-    def approaches(sp: Span, use: bool) -> tuple[Approach | None, Approach | None]:
-        if not use:
-            return None, None
-        return runner.net.approach(sp.stops[0], sp.dep_platform), runner.net.approach(
-            sp.stops[-1], sp.arr_platform
+    def supplements(cap: float, use_approach: bool = True) -> dict[str, float]:
+        # One supplement per leg, direction and stopping context, fitted jointly on every train's
+        # stop-to-stop segments (the WTT's minute rounding shifts time between neighbouring legs, so a
+        # leg alone is not a reference). Each leg is bounded below by its physics at line speed, so a
+        # negative supplement never beats a speed limit. Per leg, never per span or train (issue #137).
+        rows = []
+        bound: dict[str, float] = {}
+        for sp in segments:
+            keys = [leg_key(x.a, x.b, x.start_stopped, x.end_stopped) for x in sp.legs]
+            caps = [physics(sp.coaches, x, cap, use_approach) for x in sp.legs]
+            fastest = [physics(sp.coaches, x, math.inf, use_approach) for x in sp.legs]
+            for k, c, f in zip(keys, caps, fastest, strict=True):
+                bound[k] = max(bound.get(k, -math.inf), f - c)
+            rows.append((keys, sp.net_s - sum(caps)))
+        return fit_supplements(
+            rows,
+            bound,
+            rounds=int(fit_cfg["rounds"]),
+            iterations=int(fit_cfg["iterations"]),
+            robust_s=float(fit_cfg["robust_s"]),
         )
 
     def evaluate(
         cap: float, sup: dict[str, float], use_sup: bool, use_approach: bool = True
     ) -> list[Residual]:
         rows = []
-        for sp in scored:
-            no, coaches, seq = sp.train_no, sp.coaches, sp.stops
-            tpl = rs.passenger(coaches or default_coaches)
-            dep, arr = approaches(sp, use_approach)
-            phys = runner.time(tpl, seq[0], seq[-1], True, True, cap, dep, arr)
-            s = sum(sup.get(f"{a}-{b}", 0.0) for a, b in itertools.pairwise(seq)) if use_sup else 0.0
-            ref = float(standard[seq])
+        for sp in spans:
+            seq = sp.stops
+            phys = sum(physics(sp.coaches, leg, cap, use_approach) for leg in sp.legs)
+            # The calibrated leg time is the twin's (calibrated_leg): bounded by line-speed physics and
+            # monotone in stopping (issue #137).
+            tpl = rs.passenger(sp.coaches or default_coaches)
+            s = (
+                sum(
+                    calibrated_leg(
+                        runner,
+                        tpl,
+                        x,
+                        cap,
+                        sup,
+                        runner.net.approach(x.a, x.dep_platform) if use_approach else None,
+                        runner.net.approach(x.b, x.arr_platform) if use_approach else None,
+                    )
+                    for x in sp.legs
+                )
+                - phys
+                if use_sup
+                else 0.0
+            )
+            ref = float(sp.net_s)
             r = phys + s - ref
+            dep = runner.net.approach(seq[0], sp.dep_platform) if use_approach else None
+            arr = runner.net.approach(seq[-1], sp.arr_platform) if use_approach else None
             rows.append(
                 Residual(
-                    ref=f"{seq[0]}-{seq[-1]} ({len(seq) - 1} legs) {no}",
+                    ref=f"{seq[0]}-{seq[-1]} ({len(seq) - 1} legs) {sp.train_no}",
                     direction=runner.net.direction(seq[0], seq[-1]),
                     kind="span",
                     reference_s=ref,
                     physics_s=phys,
                     supplement_s=round(s, 1),
-                    simulated_s=phys + s,
+                    simulated_s=round(phys + s, 1),
                     residual=round(r, 1),
                     within=abs(r) <= tol,
                     approach=" / ".join(
@@ -570,28 +674,15 @@ def _passenger(
         return rows
 
     caps = [float(c) for c in cfg["passenger_caps_kmh"]]
-    # The leg supplements depend on the cap, so the cap is chosen on the calibrated fit.
-    best = max(caps, key=lambda c: (sum(r.within for r in evaluate(c, supplements(c), True)), c))
+    # As for freight, the cap is chosen on the physics-only fit: signed supplements make the calibrated
+    # share almost flat in the cap, so it would not identify a physical cruise speed (issue #137).
+    best = max(caps, key=lambda c: (sum(r.within for r in evaluate(c, {}, False)), c))
     sup = supplements(best)
     rows = evaluate(best, sup, True)
     physics_within = sum(r.within for r in evaluate(best, sup, False))
-    no_approach_within = sum(r.within for r in evaluate(best, sup, True, use_approach=False))
-    within_all = 0
-    for sp in spans:
-        seq = sp.stops
-        tpl = rs.passenger(sp.coaches or default_coaches)
-        dep, arr = approaches(sp, True)
-        sim = runner.time(tpl, seq[0], seq[-1], True, True, best, dep, arr) + sum(
-            sup.get(f"{a}-{b}", 0.0) for a, b in itertools.pairwise(seq)
-        )
-        within_all += abs(sim - sp.net_s) <= tol
-    counts = {
-        "total": len(spans),
-        "padded": len(spans) - len(scored),
-        "physics": physics_within,
-        "no_approach": no_approach_within,
-        "all": within_all,
-    }
+    no_approach = supplements(best, use_approach=False)
+    no_approach_within = sum(r.within for r in evaluate(best, no_approach, True, use_approach=False))
+    counts = {"total": len(spans), "physics": physics_within, "no_approach": no_approach_within}
     return best, sup, rows, counts
 
 
@@ -718,13 +809,11 @@ def calibrate(
         freight_within=f_within,
         freight_share=round(f_within / len(f_rows), 4) if f_rows else 0.0,
         spans_total=counts["total"],
-        spans_padded=counts["padded"],
         spans_scored=len(p_rows),
         spans_physics_within=counts["physics"],
         spans_no_approach_within=counts["no_approach"],
         spans_within=s_within,
         spans_share=round(s_within / len(p_rows), 4) if p_rows else 0.0,
-        spans_within_all=counts["all"],
         freight_target_met=bool(f_rows) and f_within / len(f_rows) >= float(cfg["freight_share"]),
         passenger_target_met=bool(p_rows) and s_within / len(p_rows) >= float(cfg["span_share"]),
         pass_slower_than_stop=bad,
@@ -790,14 +879,12 @@ def render_markdown(report: CalibrationReport) -> str:
         f"- Freight blocks (>= 30 samples): {report.freight_within}/{report.freight_blocks} "
         f"within +-15 % of the log p10 ({report.freight_share:.1%}); "
         f"physics alone {report.freight_physics_within}.",
-        f"- Passenger spans (>= 3 legs): {report.spans_total} in the WTT, "
-        f"{report.spans_padded} padded (more than 1 min above their standard time), "
-        f"{report.spans_scored} scored. Within +-1 min: {report.spans_within} "
+        f"- Passenger spans (>= 3 legs): {report.spans_scored} in the WTT, each scored against its own "
+        f"train's booked net time (DR-0005, issue #137). Within +-1 min: {report.spans_within} "
         f"({report.spans_share:.1%}); physics alone {report.spans_physics_within}; "
-        f"without the station-line approach {report.spans_no_approach_within}; "
-        f"against every span, standard or padded: {report.spans_within_all}/{report.spans_total}. "
+        f"without the station-line approach {report.spans_no_approach_within}. "
         f"Target {'met' if report.passenger_target_met else 'not met'}: the residual is explained "
-        "in [passenger-residual.md](passenger-residual.md) (issue #59).",
+        "in [passenger-residual.md](passenger-residual.md).",
         f"- Pass-through slower than stop-start: {len(report.pass_slower_than_stop)} blocks. "
         f"Physics reproduces the {report.reference_runs} recorded reference runs "
         f"(`{REFERENCE_FILE.name}`) to {REFERENCE_TOLERANCE_S} s: {'yes' if report.reproducible else 'no'}.",
@@ -822,7 +909,9 @@ def render_markdown(report: CalibrationReport) -> str:
         "",
         "Stop-to-stop runs leave from and are received on the booked platform's station line (WTT planned "
         "line, via the platform table) at its line speed: reception over the line's CSR before the stop, "
-        "departure until the rear clears (issue #59). One reference per stop pattern: the modal net time.",
+        "departure until the rear clears (issue #59). Each span's reference is its own train's booked net "
+        "time; a span is the sum of its legs, each physics plus the signed supplement of the leg, direction "
+        "and stopping context (issue #137).",
         "",
         *_span_groups(report.span_rows),
         "",
@@ -849,13 +938,14 @@ def _span_groups(rows: list[Residual]) -> list[str]:
     for r in rows:
         groups[(r.ref.rsplit(" ", 1)[0], r.direction)].append(r)
     out = [
-        "| Span | Dir | Reference (s) | Spans | Within | Mean residual (s) | Range (s) |",
+        "| Span | Dir | Booked net (s) | Spans | Within | Mean residual (s) | Range (s) |",
         "|---|---|---:|---:|---:|---:|---|",
     ]
     for (span, direction), rs in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
         res = [r.residual for r in rs]
         out.append(
-            f"| {span} | {direction} | {rs[0].reference_s:.0f} | {len(rs)} | {sum(r.within for r in rs)} | "
+            f"| {span} | {direction} | {min(r.reference_s for r in rs):.0f} .. "
+            f"{max(r.reference_s for r in rs):.0f} | {len(rs)} | {sum(r.within for r in rs)} | "
             f"{statistics.mean(res):+.0f} | {min(res):+.0f} .. {max(res):+.0f} |"
         )
     return out

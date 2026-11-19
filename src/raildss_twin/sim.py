@@ -248,6 +248,7 @@ class Sim:
         self.min_dwell = float(cfg["min_dwell_s"])
         self.clearing_mps = float(cfg["clearing_speed_kmh"]) / KMH_PER_MPS
         self.exit_clear = float(cfg["exit_clear_s"])
+        self.hold_stand_s = float(cfg["hold_stand_s"])
         self.grace_s = float(cfg["horizon_grace_h"]) * SECONDS_PER_HOUR
         self.monitor_every = max(1, round(float(cfg["monitor_period_s"]) / self.state_period))
         self.adequate_m = float(register.value("block.adequate_distance_m.macls"))
@@ -725,9 +726,16 @@ class Sim:
                     t.status = "running"
                 hold = self.directives.holds.get((plan.run_id, node.op))
                 if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)
-                    t.status, t.stood = "dwelling", True  # a held train starts from rest
-                    yield self.env.timeout(hold - self.env.now)
+                    # A held train starts from rest; a hold that only rounds the recorded time does not
+                    # stop a passing train. It joins the queue for its block line hold_stand_s before the
+                    # hold and leaves at the hold, so a replan with frozen decisions keeps the queue order
+                    # of the plan they come from (VER-FRZ-01).
+                    t.status = "dwelling"
+                    t.stood = t.stood or hold - self.env.now >= self.hold_stand_s
+                    yield self.env.timeout(max(0.0, hold - self.hold_stand_s - self.env.now))
                     t.status = "running"
+                else:
+                    hold = None
                 if plan.timetabled and node.stop:
                     self._delay(t, node, "departure", self.env.now - node.dep)
                 # ---- despatch: take a block line, then free the station line
@@ -740,6 +748,10 @@ class Sim:
                 lines = yield from self._open_lines(t, k, idx, node, lines)
                 first = [self._line_resource(ln, hop) for ln in lines]
                 j = yield from self.acquire(t, first)
+                if hold is not None and hold > self.env.now:  # line taken early: leave at the hold
+                    t.status = "dwelling"
+                    yield self.env.timeout(hold - self.env.now)
+                    t.status = "running"
                 chosen = lines[j]
                 self.emit(
                     "gt.signal",

@@ -434,8 +434,9 @@ parameters:
       monitor_period_s: 300
       max_speed_factor: 60
       default_seed: 0
+      hold_stand_s: 1
     unit: null
-    source: "spec FR-TWIN-10, FR-TWIN-12, FR-TWIN-14; issue #20"
+    source: "spec FR-TWIN-10, FR-TWIN-12, FR-TWIN-14; issues #20, #137"
     status: SA
     owner: twin
     valid_from: 2026-11-08
@@ -452,7 +453,9 @@ parameters:
       too heavy to keep in memory or send to Kafka for every run). Set to 30 s (issue #56): it is a multiple of
       rtis.position_interval_s, so every ground-truth sample has a position fix to compare with (the DSS never
       extrapolates; at 10 s the D0 estimator test of #71 finds 76 k samples between fixes). Use 1 s for a
-      recorded evaluation run.
+      recorded evaluation run. hold_stand_s: a plan hold shorter than this (rounding of a recorded decision
+      time) delays a train without making it stand; a held train also joins the queue for its block line
+      this long before the hold and leaves at the hold, so a replan reproduces the frozen plan (issue #137).
   - key: runtime.model
     value: {step_m: 10, rotational_mass_factor: {passenger: 1.06, freight: 1.04}}
     unit: null
@@ -475,21 +478,22 @@ parameters:
       passenger_coaches_default: 22
       span_min_legs: 3
       span_tolerance_s: 60
-      padding_band_s: 60
-      supplement_min_legs: 30
+      supplement_fit: {rounds: 6, iterations: 4000, robust_s: 30}
     unit: null
-    source: "spec DSC-10, REC-08; issues #16, #59"
+    source: "spec DSC-10 (rev. v1.7), REC-08; issues #16, #59, #137; DR-0005"
     status: SA
     owner: twin
-    valid_from: 2026-11-05
+    valid_from: 2026-11-19
     notes: >-
       Calibration search space and acceptance tolerances. Caps are the speed actually held by
-      freight (loaded / empty) and passenger trains; the cap pair is chosen on the physics-only fit,
-      then non-negative block (freight) or leg (passenger) supplements absorb location effects.
-      WTT spans or legs more than padding_band_s above their standard (modal / minimum) time are
-      padded and reported, not scored. A passenger leg is supplemented only when at least
-      supplement_min_legs non-stop runs cross it (issue #59). Stop-to-stop runs leave from and are
-      received on the booked platform's station line at station_line.speed_kmh.
+      freight (loaded / empty) and passenger trains, chosen on the physics-only fit. Freight:
+      non-negative block supplements absorb location effects. Passenger: each stop-to-stop span is
+      scored against its own train's booked net WTT time (DR-0005); a span is the sum of its legs,
+      each physics plus one supplement per leg, direction and stopping context. The supplements are
+      fitted jointly on every stop-to-stop segment (projected gradient, reweighted rounds times
+      towards the absolute error with weights 1 / max(|residual|, robust_s)), each leg bounded below
+      by its physics at line speed. Stop-to-stop runs leave from and are received on the booked
+      platform's station line at station_line.speed_kmh (issue #59).
 
   # ------------------------------------------------------------------ timetable
   - key: wtt.time_tolerance_s

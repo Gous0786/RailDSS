@@ -20,5 +20,5 @@ disruptions:
     duration_min: {low_min: 240, high_min: 480}
     etr: {offset_min: 0, sigma_min: 30}
 requires: []
-expected_gt_hash: "1d2b5763def3790600e150fef1b5870248460766f5161ea9c3dd0bb9ab63d94f"
+expected_gt_hash: "c749af5f99d08679aa27c49b1501caf17522bcb611e13e607b7ca3e8314e61a8"
 notes: "Caution order on the DN line of SGDM-PDU."

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import itertools
 import json
+import math
 
 import pytest
 
@@ -15,6 +17,7 @@ from raildss_twin.calibration import (
     Runner,
     booked_platform,
     check_reference,
+    leg_key,
     read_reference,
     render_markdown,
     run,
@@ -183,13 +186,25 @@ def test_reference_check_fails_when_the_physics_changes(report: CalibrationRepor
     assert len(check_reference(perturbed, templates, recorded)) > 0
 
 
-def test_passenger_spans_reported_for_sme_review(report: CalibrationReport) -> None:
-    # Approved definition: standard (modal) WTT time per stop pattern; padded spans reported only.
-    assert report.spans_scored + report.spans_padded == report.spans_total
+def test_passenger_spans_scored_against_their_own_booked_time(report: CalibrationReport) -> None:
+    # DR-0005 (issue #137): every span is scored against its own train's booked net time; no padded class.
+    assert report.spans_scored == report.spans_total == len(report.span_rows)
     assert 0 < report.spans_within <= report.spans_scored
-    assert report.spans_within_all <= report.spans_total
     assert len(report.worst_blocks) == 10 and len(report.worst_spans) == 10
     assert report.passenger_target_met == (report.spans_share >= 0.95)
+    che_psa = {r.reference_s for r in report.span_rows if r.ref.startswith("CHE-PSA (9 legs)")}
+    assert len(che_psa) > 5  # one reference per train, not one per stop pattern
+    for r in report.span_rows:
+        assert r.within == (abs(r.simulated_s - r.reference_s) <= 60), r
+
+
+def test_leg_supplements_are_keyed_by_stopping_context() -> None:
+    cal = json.loads(CALIBRATION_FILE.read_text(encoding="utf-8"))["calibration"]
+    keys = set(cal["leg_supplement_s"])
+    assert leg_key("PUN", "PSA", False, True) == "PUN-PSA/pass-stop"
+    assert all(k.rsplit("/", 1)[1] in {"pass-pass", "pass-stop", "stop-pass", "stop-stop"} for k in keys)
+    assert "PUN-PSA/pass-stop" in keys and "CHE-ULM/stop-pass" in keys
+    assert any(v < 0 for v in cal["leg_supplement_s"].values())  # signed: physics may be too slow
 
 
 def test_committed_calibration_matches_a_fresh_run(report: CalibrationReport) -> None:
@@ -276,3 +291,19 @@ def test_twin_timing_uses_the_booked_platform() -> None:
     )
     base = timing.leg(plan, "PUN", "PSA", True, True)
     assert timing.leg(plan, "PUN", "PSA", True, True, None, "PF-3") > base
+    # the supplement follows the stopping context of the leg (issue #137)
+    sup = timing.calibration.leg_supplement_s
+    phys = timing.runner.time(plan.template, "PUN", "PSA", False, True, timing.calibration.passenger_cap_kmh)
+    fastest = timing.runner.time(plan.template, "PUN", "PSA", False, True, math.inf)
+    assert timing.leg(plan, "PUN", "PSA", False, True) >= max(phys + sup["PUN-PSA/pass-stop"], fastest)
+    # stopping never shortens a leg: the IR minimum durations and the planners rely on it
+    for x, y in itertools.pairwise(("KTV", "KPL", "ALM", "KUK", "VZM", "NML", "GVI")):
+        both = timing.leg(plan, x, y, True, True)
+        assert both >= timing.leg(plan, x, y, True, False) >= timing.leg(plan, x, y, False, False)
+        assert both >= timing.leg(plan, x, y, False, True) >= timing.leg(plan, x, y, False, False)
+    # a negative supplement never makes a leg faster than physics at line speed (VER-LSP-01)
+    neg = next(k for k, v in sup.items() if v < 0 and k.endswith("/pass-pass"))
+    a, b = neg.split("/")[0].split("-")
+    assert timing.leg(plan, a, b, False, False) >= timing.runner.time(
+        plan.template, a, b, False, False, math.inf
+    )

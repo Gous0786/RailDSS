@@ -12,12 +12,12 @@ dataset has **no passenger actuals**, so BL-0 passenger delay cannot be checked 
 
 | Measure | BL-0 |
 |---|---|
-| Mean exit delay (min) | 16.9 |
-| Median exit delay (min) | 0.8 |
-| Longest exit delay (min) | 158.9 |
-| Trains more than 60 min late | 13 |
-| Longest arrival delay at any station (min) | 173.31 |
-| Section punctuality (%) | 64.65 |
+| Mean exit delay (min) | 24.4 |
+| Median exit delay (min) | 4.2 |
+| Longest exit delay (min) | 172.7 |
+| Trains more than 60 min late | 16 |
+| Longest arrival delay at any station (min) | 182.01 |
+| Section punctuality (%) | 62.63 |
 
 The median is under a minute: most trains run on time and a few queue for a long time behind others. The mean
 and the 2.9 h maximum come from that tail.
@@ -29,12 +29,12 @@ and the 2.9 h maximum come from that tail.
 
 | Section time per load (h) | History | BL-0 |
 |---|---|---|
-| Median | 6.22 | 0.88 |
-| Mean | 6.79 | 2.10 |
-| p90 | 11.63 | 3.64 |
+| Median | 6.22 | 0.93 |
+| Mean | 6.79 | 2.15 |
+| p90 | 11.63 | 3.81 |
 
 History, whole day: detention 220.02 h (dwell above 30 min) and running time above the
-block p10 172.09 h. BL-0 freight standing: 13.42 h.
+block p10 172.09 h. BL-0 freight standing: 18.27 h.
 
 ## Reading the gap
 
@@ -46,7 +46,7 @@ block p10 172.09 h. BL-0 freight standing: 13.42 h.
    dataset has no passenger log, so how far its passenger delay is from what passengers experienced is
    unknown; this check cannot measure it.
 3. **The tail is a property of the rule, not a measured fact.** The median is under a minute and
-   13 trains are over 60 min late. That is the do-nothing behaviour the
+   16 trains are over 60 min late. That is the do-nothing behaviour the
    DSS has to improve on, which is the use BL-0 is accepted for.
 
 ## Decision
