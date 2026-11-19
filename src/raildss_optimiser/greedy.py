@@ -148,20 +148,23 @@ class GreedyDispatcher:
         closures: Sequence[Closure] = (),
         exit_windows: Mapping[str, list[tuple[float, float]]] | None = None,
         frozen: Sequence[Decision] = (),
+        committed: Sequence[Decision] = (),
         plan_id: str = "greedy",
         policy_from_s: float | None = None,
         seed: int | None = None,
     ) -> GreedyPlan:
         """Plan from ``start_s``. ``policy_from_s`` (rolling horizon) is when the dispatcher took over: the
-        history since then ran under the policy, not BL-0. Trains with a frozen decision go first, so no
-        other train can take their line before the frozen departure."""
+        history since then ran under the policy, not BL-0. A frozen decision fixes its own line and
+        departure (a hold and a line directive) and nothing else: the train keeps its class priority in
+        every other queue, so re-planning with the decisions of the last plan reproduces that plan.
+
+        ``committed`` decisions (accepted orders beyond the commit window) are only checked, not imposed:
+        the plan is a pure function of the day and its directives, so an unchanged world reproduces them,
+        whereas a hold directive would send a train that was queueing to the back of that queue."""
         end_s = start_s + (horizon_s if horizon_s is not None else self.horizon_s)
         plans, _, inst = run.plans_for(self.world, day)
         rid = {token(p.run_id): p.run_id for p in plans}
         priority = self.priorities(plans)
-        first = min(priority.values(), default=0) - 1
-        for f in frozen:
-            priority[rid.get(f.run_id, f.run_id)] = first
         directives = Directives(
             holds={(rid.get(f.run_id, f.run_id), f.station): f.dep_s for f in frozen},
             lines={(rid.get(f.run_id, f.run_id), f.station): f.line_no for f in frozen},
@@ -192,7 +195,8 @@ class GreedyDispatcher:
                 for c in closures
             ],
             frozen=[
-                FrozenCall(run_id=f.run_id, op=f.station, line_no=f.line_no, dep_s=f.dep_s) for f in frozen
+                FrozenCall(run_id=f.run_id, op=f.station, line_no=f.line_no, dep_s=f.dep_s)
+                for f in (*frozen, *committed)
             ],
         )
         cand = plan_from_trace(

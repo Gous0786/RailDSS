@@ -137,3 +137,16 @@ def test_v0_scenarios_have_no_g2_fail_and_no_stuck_train(dispatcher: GreedyDispa
     if scenario.disruptions:
         mnt = next(r for r in p.g2.results if r.rule_id == "VER-MNT-01")
         assert mnt.status.value == "PASS"
+
+
+def test_a_committed_decision_is_checked_but_not_imposed(dispatcher: GreedyDispatcher) -> None:
+    """Issue #127: re-planning an unchanged world reproduces the last plan. A hold directive on a train
+    that was queueing sends it to the back of the queue, so far decisions are only checked (G2 FRZ)."""
+    a = dispatcher.plan(DAY, START, plan_id="a")
+    far = [d for d in a.decisions if d.dep_s > START + 3600][:20]
+    assert far
+    b = dispatcher.plan(DAY, START + 120, committed=far, policy_from_s=START, plan_id="b")
+    frz = next(r for r in b.g2.results if r.rule_id == "VER-FRZ-01")
+    assert frz.status.value == "PASS", frz.violations[:2]
+    later = {(d.run_id, d.station): d.dep_s for d in b.decisions}
+    assert all(later.get((d.run_id, d.station)) == d.dep_s for d in far)

@@ -47,6 +47,7 @@ class PlanContext:
     plan_id: str
     triggers: list[str]
     frozen: list[Decision]
+    committed: list[Decision]  # accepted orders beyond the commit window: checked, not imposed
     history: list[Decision]  # decisions that have started: fixed, as they happened
     closures: list[Closure]
     exit_windows: Mapping[str, list[tuple[float, float]]]
