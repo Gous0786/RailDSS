@@ -101,8 +101,9 @@ def render(
         "## Decision loop on the line-block scenarios",
         "",
         "The loop plans for the blocked line in a window around it, with greedy options verified by gates "
-        "G0-G3 and accepted by the evaluation policy; both arms of the day run under the same closure. The closure is a twin directive, not the injector's single-line "
-        "working, so the BL-0 column here differs from the BL-0 table above.",
+        "G0-G3 and accepted by the evaluation policy; both arms of the day run under the same closure. "
+        "The closure is a twin directive, not the injector's single-line working, so the BL-0 column "
+        "here differs from the BL-0 table above.",
     ]
     for sc, summary, comp in loops:
         verified = sum(c.verified for cy in summary.cycles for c in cy.candidates)
