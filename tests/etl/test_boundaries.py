@@ -298,3 +298,19 @@ def test_bad_weekdays_or_dates_are_rejected(window: dict[str, Any]) -> None:
 
 def test_the_committed_config_still_loads_with_no_windows() -> None:
     assert load_config().acceptance_windows == {}
+
+
+def test_boundary_review_findings_hold(built: Built) -> None:
+    """Issue #68 (DR-0002 F12): the review's changes to config/boundaries.yaml and what is left open."""
+    _, freight, report, _ = built
+    cfg = load_config()
+    # The KK line stations the log shows next to KTV and the Rayagada line stations are listed.
+    assert {"MVW", "MKRD", "CMDP"} <= set(cfg.boundaries["KTV-KK"].via)
+    assert {"SPRD", "KNRT", "PVP", "VBL"} <= set(cfg.boundaries["VZM-RGDA"].via)
+    # Four loads from the Rayagada line that skip VZM are no longer filled in by direction.
+    kuk = [f for f in freight.values() if f.entry_station == "KUK" and f.entry == "VZM-RGDA"]
+    assert len(kuk) >= 4
+    # What still defaults (all in the review note): 9 at KTV, 3 at VZM.
+    d = report.freight_default_neighbours
+    assert sum(v for k, v in d.items() if k.startswith("KTV<-")) == 9
+    assert sum(v for k, v in d.items() if k.startswith("VZM<-")) == 3

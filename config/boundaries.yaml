@@ -35,12 +35,12 @@ boundaries:
     station: KTV
     towards: Kirandul (KK line)
     blocks: [KTV-MVW, MVW-KTV]
-    via: [MVW]
-  VZM-RGDA:
+    via: [MVW, MKRD, CMDP]   # KK-line stations seen next to KTV; reviewed in docs/etl/boundary-review-ktv-psa.md (issue #68)
+  VZM-RGDA:   # via = the Vizianagaram-Rayagada line stations of the log; see docs/etl/boundary-review-ktv-psa.md
     station: VZM
     towards: Rayagada branch (Gotlam)
     blocks: [VZM-GTLM, GTLM-VZM]
-    via: [GTLM, GRBL, RGDA]
+    via: [GTLM, GRBL, GPI, KMX, DNV, VBL, SNM, PVP, GMDA, KNRT, JMPT, LDX, RGDA, SPRD]
     default: true
   NWP-GNPR:
     station: NWP
