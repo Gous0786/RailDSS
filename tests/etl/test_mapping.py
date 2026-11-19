@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from raildss_etl.mapping import (
     ENTITY_FIELDS,
@@ -84,3 +85,26 @@ def test_mapping_doc_is_up_to_date() -> None:
     assert MAPPING_DOC.read_text(encoding="utf-8") == render_markdown(load_mapping()), (
         "run: python -m raildss_etl mapping-doc --write"
     )
+
+
+def test_fidelity_notes_are_recorded_and_match_the_published_data() -> None:
+    """Issue #69 (DR-0002 F17): each item is confirmed or corrected in the mapping spec, and the
+    figures it quotes are the published ones."""
+    from raildss_etl import publish
+
+    notes = {n.id: n for n in load_mapping().fidelity_notes}
+    assert set(notes) == {"HCM-CROSSING-FLAG", "FREIGHT-SKIPPING-LEGS"}
+    assert all(n.status in ("confirmed", "corrected") and n.decision for n in notes.values())
+    _, published, _ = publish.read_export(publish.default_dir("KTV-PSA-2025-08"))
+    tables: dict[str, Any] = dict(published)
+    hcm = next(o for o in tables["operational_point"] if o.code == "HCM")
+    assert hcm.is_halt and hcm.crossing_facility
+    lines = [x for x in tables["station_line"] if x.op_code == "HCM"]
+    assert lines
+    assert not [x for x in lines if x.kind == "loop"]
+    blocks = {b.id for b in tables["block_section"]}
+    legs = [b for ld in tables["freight_load"] for b in ld.path if b not in blocks]
+    assert len(legs) == 1029
+    assert "1,029" in notes["FREIGHT-SKIPPING-LEGS"].finding
+    on_loads = sum(1 for ld in tables["freight_load"] if any(b not in blocks for b in ld.path))
+    assert on_loads == 731

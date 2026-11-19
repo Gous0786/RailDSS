@@ -27,6 +27,24 @@ Null tokens: '', 'NA'.
 | `platform_side` | `U` -> `UP`, `D` -> `DN` |
 | `loaded_empty` | `L` -> `True`, `E` -> `False` |
 
+## Data-fidelity notes
+
+### HCM-CROSSING-FLAG (confirmed)
+
+**HCM (Harischandrapuram) is a halt that the COA data flags as a crossing facility.** HCM is a halt, not a crossing station. The flag MACPRCDCROSSFCLTY=Y is kept as observed in the published operational point and the crossing rule ignores it (validator: crossing stations are block stations with a loop).
+
+Evidence: In the data HCM has two main lines and no loop, no block instrument or interlocking standard and is not a COA reporting point (MACCOARPTNGFLAG=N). Public sources describe a small station with two platforms and two tracks, where only a passenger train stopped until recently (Wikipedia "Harishchandrapuram railway station"; RailYatri station page). No source shows a crossing loop.
+
+Decision: no change to the data; HCM stays a halt and is excluded from the crossing rule (no crossing at HCM in the twin or the verifier).
+
+### FREIGHT-SKIPPING-LEGS (confirmed)
+
+**freight path legs that name a block that skips stations.** 1,029 path legs in the freight log, on 731 of the 2,604 loads, name a block (such as VZM-KTV) that is not a block section of the network because it skips stations. They are kept as observed in FreightLoad.path and are not expanded to the stations between.
+
+Evidence: The log records only the stations a load called at, so an expansion would invent times at stations it did not stop at. The twin does not need the expansion: it routes a load through every block station between its entry and exit point from its logged entry time, and the run-time quantiles use only adjacent blocks, so a skipping leg adds nothing to them.
+
+Decision: keep as observed (published table and validator note unchanged); do not expand.
+
 ## ROUTE_DN
 
 `RouteSttnInfo/KTV-PSA-Table 1.csv` · Ordered route KTV->PSA (DN) · entity: `—` · expected rows after cleaning: 22 · dedupe: none
