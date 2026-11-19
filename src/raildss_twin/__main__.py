@@ -240,6 +240,22 @@ def _chart(args: argparse.Namespace) -> int:
     return 0
 
 
+def _bl0_check(args: argparse.Namespace) -> int:
+    from raildss_twin import bl0_check
+
+    day = dt.date.fromisoformat(args.date)
+    text = bl0_check.run_check(day)
+    path = bl0_check.OUT_DIR / bl0_check.note_name(day)
+    if args.write:
+        print(f"wrote {bl0_check.write(day, text)}")
+        return 0
+    if not path.exists() or path.read_text(encoding="utf-8") != text:
+        print(f"{path} is out of date; run: python -m raildss_twin bl0-check --write")
+        return 1
+    print(f"{path.name} is up to date")
+    return 0
+
+
 def _scenario(args: argparse.Namespace) -> int:
     from raildss_etl.publish import PUBLISHED_DIR, read_export
     from raildss_twin import run, scenario
@@ -310,6 +326,11 @@ def main(argv: list[str] | None = None) -> int:
     p_ch = sub.add_parser("chart", help="export the control-chart data of a day for the web UI (issue #86)")
     p_ch.add_argument("--date", default="2025-08-20")
     p_ch.add_argument("--out", type=Path, default=None, help="directory (default web/public/data)")
+    p_bl = sub.add_parser(
+        "bl0-check", help="BL-0 against the historical day, the K1 reference check (issue #93)"
+    )
+    p_bl.add_argument("--date", default="2025-08-20")
+    p_bl.add_argument("--write", action="store_true", help="write the note instead of checking it")
     p_sc = sub.add_parser("scenario", help="check, index or run the scenario library (issue #21)")
     p_sc.add_argument("action", choices=["check", "index", "run"])
     p_sc.add_argument("ids", nargs="*", help="scenario ids to run (default: every executable one)")
@@ -325,6 +346,8 @@ def main(argv: list[str] | None = None) -> int:
         return _displib(args)
     if args.cmd == "chart":
         return _chart(args)
+    if args.cmd == "bl0-check":
+        return _bl0_check(args)
     cal, report = calibration.run(record_reference=args.write)
     doc = calibration.render_markdown(report)
     if args.write:

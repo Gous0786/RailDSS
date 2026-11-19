@@ -171,3 +171,7 @@ src/raildss_orchestrator/report.py: 3600  # seconds per hour (unit conversion), 
 src/raildss_orchestrator/report.py: 60  # seconds per minute (unit conversion), not a rule value
 src/raildss_orchestrator/__main__.py: 8  # default replay window start hour in the demo CLI, not a rule value
 src/raildss_orchestrator/__main__.py: 10  # default replay window end hour in the demo CLI, not a rule value
+src/raildss_twin/bl0_check.py: 3600  # seconds per hour in a report table, not a rule value
+src/raildss_twin/bl0_check.py: 60  # reporting threshold of the check note (minutes late), not a rule value
+src/raildss_twin/bl0_check.py: 0.9  # the p90 quantile of the report table, not a rule value
+src/raildss_twin/bl0_check.py: 2  # index of the stabled flag in a report tuple, and the repository depth from the package
