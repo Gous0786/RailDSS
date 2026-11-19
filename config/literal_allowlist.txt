@@ -175,3 +175,8 @@ src/raildss_twin/bl0_check.py: 3600  # seconds per hour in a report table, not a
 src/raildss_twin/bl0_check.py: 60  # reporting threshold of the check note (minutes late), not a rule value
 src/raildss_twin/bl0_check.py: 0.9  # the p90 quantile of the report table, not a rule value
 src/raildss_twin/bl0_check.py: 2  # index of the stabled flag in a report tuple, and the repository depth from the package
+src/raildss_audit/chain.py: 64  # length of a SHA-256 hex digest (the genesis hash), not a rule value
+src/raildss_audit/chain.py: 12  # length of a pseudonym in hex characters, not a rule value
+src/raildss_orchestrator/auditing.py: 2  # tuple indexes of a serialised decision (run, station, line, dep), not a rule value
+src/raildss_orchestrator/auditing.py: 3  # tuple indexes of a serialised decision (run, station, line, dep), not a rule value
+src/raildss_orchestrator/auditing.py: 8  # length of an incident id hash prefix, not a rule value

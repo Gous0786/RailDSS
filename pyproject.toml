@@ -50,6 +50,7 @@ packages = [
     "src/raildss_hitl",
     "src/raildss_dss",
     "src/raildss_orchestrator",
+    "src/raildss_audit",
 ]
 
 # ---------------------------------------------------------------- ruff
@@ -77,6 +78,7 @@ packages = [
     "raildss_hitl",
     "raildss_dss",
     "raildss_orchestrator",
+    "raildss_audit",
 ]
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -126,6 +128,7 @@ root_packages = [
     "raildss_hitl",
     "raildss_dss",
     "raildss_orchestrator",
+    "raildss_audit",
 ]
 
 [[tool.importlinter.contracts]]
@@ -146,6 +149,7 @@ forbidden_modules = [
     "raildss_hitl",
     "raildss_dss",
     "raildss_orchestrator",
+    "raildss_audit",
 ]
 
 [[tool.importlinter.contracts]]

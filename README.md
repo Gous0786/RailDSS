@@ -286,6 +286,28 @@ day and its directives, so an unchanged world reproduces the decisions of earlie
 only when the world changes (a closure or a closed exit): a hold sends a train that was queueing to the
 back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
 
+## Audit and replay (issue #85)
+
+`python -m raildss_orchestrator run --from-h 8 --to-h 9 --audit-dir audit` records the loop in an
+append-only, hash-chained audit log (`raildss_audit`, one chain per section and day, the head anchored
+daily): every alert and conflict, every planning cycle (`plan_run`: context, state hash and version, register,
+network and rule-catalogue versions, seed, solver settings, all candidates with their G0-G3 results), every
+option shown for a decision with its explanation text, every decision (accept, reject with a reason code, or
+the declared evaluation policy, with the time to decision and the KPI delta), every control order and
+acknowledgement, and every outcome. Controllers appear only as pseudonyms; `AuditLog.config_change` records
+policy, rule-catalogue, threshold and user changes with before, after and approvers (FR-AUD-07).
+
+- `python -m raildss_audit verify --dir audit` checks the chain (a changed, deleted, inserted or reordered
+  record, or a truncated day, fails); `query` filters by kind, train, time window, controller, incident and
+  recommendation; `export --out web/public/data/audit.json` feeds the web UI.
+- `python -m raildss_orchestrator audit-replay --audit-dir audit --rec REC-0001` replays a recommendation
+  from its record and compares the canonical JSON byte for byte: the greedy plan is recomputed, a CP-SAT plan
+  is re-verified by the G3 sandbox replay (it is not solved again, G1 is carried from the record), and the
+  recommended orders are derived again.
+- Web UI: `L` (or the Audit button) opens the audit and replay view: filterable log, a timeline scrubber that
+  moves the chart to that time under the REPLAY banner, and each recommendation card as it was shown. The
+  committed `web/public/data/audit.json` is a short demo run.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under

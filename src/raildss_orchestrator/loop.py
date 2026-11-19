@@ -29,6 +29,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from raildss_audit.chain import pseudonym
 from raildss_hitl.executor import Executor, Option, PlanAction, ReplanRecord, Verdict
 from raildss_hitl.lifecycle import COMMITTED, Lifecycle, Status
 from raildss_optimiser.greedy import Decision
@@ -36,6 +37,7 @@ from raildss_params import Register
 from raildss_twin.sim import Closure
 from raildss_verifier import gates
 
+from .auditing import EVALUATION_POLICY, AuditRecorder
 from .cadence import Cadence
 from .model import KPI_RANK, MAX_OPTIONS, Candidate, Dss, DssView, PlanContext, Planner, PlanSet
 
@@ -127,6 +129,7 @@ class Orchestrator:
     auto_accept: bool = True  # headless evaluation: the controller accepts the best option
     decline: Callable[[dict[str, Any]], bool] | None = None  # a station master declines this order
     max_conflicts: int = 6  # conflicts released per cycle, most urgent first
+    audit: AuditRecorder | None = None  # the tamper-evident trail (FR-AUD-01)
 
     def __post_init__(self) -> None:
         self.cadence = Cadence(self.register)
@@ -158,6 +161,11 @@ class Orchestrator:
         self._cycle_expired: list[str] = []
         self.ticks = 0
         self.max_options = 0
+        self._run_id = ""
+        self._presented_s: dict[str, float] = {}
+        self._executor_alerts = 0
+        self._rec_trains: dict[str, tuple[str, ...]] = {}
+        self._audited: set[tuple[Any, ...]] = set()
 
     # ------------------------------------------------------------------ the loop
     def run(self, from_s: float, to_s: float, tick_s: float = 60.0) -> RunSummary:
@@ -174,16 +182,19 @@ class Orchestrator:
         self._answer_acks()
         view = self.dss.advance(now_s)
         self._view = view
+        self._audit_view(view)
         if self._version is not None and view.version != self._version:
             self.executor.state_changed()  # a material change: plans in force diverge
         self._version = view.version
         self._cycle_expired += [str(r) for r in self.lc.expire_due()]
         events = self._detect_triggers(view)
         if not self.cadence.due(now_s, events):
+            self._audit_sweep()
             return None
         handled = set(events)  # what this cycle answers; events its own actions raise wait for the next one
         record = self._cycle(view, self.cadence.fired(events))
         self._events -= handled
+        self._audit_sweep()
         return record
 
     # ------------------------------------------------------------------ triggers
@@ -240,6 +251,8 @@ class Orchestrator:
             time_limit_s=float(limits["disruption" if disruption else "routine"]),
         )
         planned = self.planner.plan(ctx)
+        if self.audit is not None:
+            self._run_id = self.audit.plan_run(ctx, view, planned.candidates)
         self.cadence.mark(now)
         self._last_plan = planned.decisions
         released = self._release(targets, planned, view, closures) if targets else []
@@ -354,7 +367,7 @@ class Orchestrator:
                     options.append((cand, actions))
             options = options[:MAX_OPTIONS]
             self.max_options = max(self.max_options, len(options))
-            built = []
+            built: list[tuple[int, Candidate, Option]] = []
             for rank, (cand, actions) in enumerate(options, start=1):
                 option = Option(
                     option_id=f"{cand.plan_id}:{cand.name}:{conflict.trains[0]}",
@@ -386,6 +399,7 @@ class Orchestrator:
                         warn=verdict.warn,
                     )
                 )
+            self._audit_recommendations(conflict, built, ids, out, view)
             if self.auto_accept and 1 in ids and self.lc.recs[ids[1]].status is Status.PRESENTED:
                 self._accept(ids[1], out)
         return out
@@ -398,9 +412,42 @@ class Orchestrator:
         key = (a.run_id, a.station)
         return holds.get(key) == a.until_s if a.kind == "hold_until" else lines.get(key) == a.line_no
 
-    def _accept(self, rec_id: str, out: list[OptionRecord]) -> None:
+    def accept(self, rec_id: str, controller: str, warn_reason: str | None = None) -> Status:
+        """A controller accepts (FR-HITL-03); the audit trail names them only by pseudonym."""
+        return self._accept(rec_id, [], actor=self._who(controller), warn_reason=warn_reason)
+
+    def reject(self, rec_id: str, reason_code: str, controller: str, note: str = "") -> None:
+        """A controller rejects with a reason code (FR-HITL-05)."""
+        self.lc.advance(self.now_s)
+        self.executor.reject(rec_id, reason_code, note)
+        self._events.add("controller_action")
+        self._audit_decision(
+            rec_id, "reject", self._who(controller), f"{reason_code} {note}".strip(), "REJECTED"
+        )
+
+    def _who(self, controller: str) -> str:
+        return pseudonym(controller, self.audit.log.salt if self.audit is not None else "raildss")
+
+    def _accept(
+        self,
+        rec_id: str,
+        out: list[OptionRecord],
+        *,
+        actor: str = EVALUATION_POLICY,
+        warn_reason: str | None = None,
+    ) -> Status:
         verdict = self.executor.verdicts[rec_id]
-        status = self.executor.accept(rec_id, "auto-accept (evaluation)" if verdict.warn else None)
+        reason = warn_reason or (
+            "auto-accept (evaluation)" if verdict.warn and actor == EVALUATION_POLICY else None
+        )
+        status = self.executor.accept(rec_id, reason)
+        self._audit_decision(
+            rec_id,
+            "accept",
+            actor,
+            reason or ("evaluation policy: best option" if actor == EVALUATION_POLICY else "accepted"),
+            str(status),
+        )
         for o in out:
             if o.rec_id == rec_id:
                 o.status = str(status)
@@ -420,6 +467,84 @@ class Orchestrator:
                     self._decisions[oid] = Decision(d.run_id, d.station, d.line_no, d.dep_s)
             holds, lines = self.commitments()
             self.dss.commit(holds, lines)
+        return status
+
+    # ------------------------------------------------------------------ the audit trail
+    def _audit_view(self, view: DssView) -> None:
+        if self.audit is None:
+            return
+        for c in view.conflicts:
+            if c.priority in OPEN_CONFLICT_PRIORITIES and c.key not in self._audited:
+                self._audited.add(c.key)
+                self.audit.conflict(self.now_s, c)
+        for a in view.alerts:
+            self.audit.alert(self.now_s, str(a["kind"]), str(a["detail"]), str(a["priority"]))
+
+    def _audit_sweep(self) -> None:
+        if self.audit is None:
+            return
+        for a in self.executor.alerts[self._executor_alerts :]:
+            self.audit.alert(self.now_s, "executor", a.text, a.priority)
+        self._executor_alerts = len(self.executor.alerts)
+        self.audit.outcomes(self.now_s, self.lc, self._rec_trains)
+
+    def _audit_recommendations(
+        self,
+        conflict: Any,
+        built: list[tuple[int, Candidate, Option]],
+        ids: dict[int, str],
+        out: list[OptionRecord],
+        view: DssView,
+    ) -> None:
+        if self.audit is None:
+            return
+        shown = [
+            {
+                "rec_id": ids[rank],
+                "rank": rank,
+                "candidate": cand.name,
+                "explanation": [a.phrase() for a in option.actions],
+                "kpi_delta": cand.delta,
+            }
+            for rank, cand, option in built
+        ]
+        for rank, cand, option in built:
+            rec_id = ids[rank]
+            self._presented_s[rec_id] = self.now_s
+            self._rec_trains[rec_id] = tuple(conflict.trains)
+            self.audit.recommendation(
+                self.now_s,
+                rec_id=rec_id,
+                run_id=self._run_id,
+                conflict=conflict,
+                rank=rank,
+                cand=cand,
+                actions=option.actions,
+                shown=shown,
+                view=view,
+                verdict_warn=self.executor.verdicts[rec_id].warn,
+                valid_until_s=self.lc.recs[rec_id].valid_until,
+            )
+
+    def _audit_decision(self, rec_id: str, action: str, actor: str, reason: str, status: str) -> None:
+        if self.audit is None:
+            return
+        option = self.executor.options[rec_id]
+        entry = self._entries.get(option.option_id)
+        diff: dict[str, Any] = {"actions": [a.phrase() for a in option.actions]}
+        if entry is not None:
+            diff["kpi_delta"] = entry.candidate.delta
+        self.audit.decision(
+            self.now_s,
+            rec_id=rec_id,
+            action=action,
+            actor=actor,
+            trains=self._rec_trains.get(rec_id, ()),
+            reason=reason,
+            presented_s=self._presented_s.get(rec_id),
+            diff=diff,
+            status=status,
+        )
 
     # ------------------------------------------------------------------ the executor's callbacks
     def _verify(self, option: Option) -> Verdict:
@@ -452,6 +577,8 @@ class Orchestrator:
 
     def _publish(self, topic: str, payload: dict[str, Any]) -> None:
         self.published.append((topic, payload))
+        if self.audit is not None and topic == "ctrl.orders":
+            self.audit.order(self.now_s, payload)
         if topic == "ctrl.orders":
             self._acks.append((self.now_s + self.ack_latency_s, str(payload["order_id"])))
 
@@ -464,6 +591,14 @@ class Orchestrator:
                 continue
             payload = self.published_order(order_id)
             declined = self.decline is not None and self.decline(payload)
+            if self.audit is not None:
+                self.audit.ack(
+                    self.now_s,
+                    order_id,
+                    "DECLINED" if declined else "ACKNOWLEDGED",
+                    "SM_DECLINE" if declined else None,
+                    payload,
+                )
             self.executor.on_ack(
                 {
                     "order_id": order_id,

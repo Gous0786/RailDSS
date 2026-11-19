@@ -25,6 +25,7 @@ from raildss_twin import run
 from raildss_twin.sim import Closure
 
 SECONDS_PER_HOUR = 3600
+SECTION = "KTV-PSA"
 SECONDS_PER_MIN = 60
 NEWLINE = "\n"
 
@@ -50,6 +51,7 @@ def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
     )
     r.add_argument("--alternatives", type=int, default=1, help="extra CP-SAT solutions (other seeds)")
     r.add_argument("--out", type=Path, default=None, help="write the run summary as JSON")
+    r.add_argument("--audit-dir", type=Path, default=None, help="record the audit trail here (FR-AUD-01)")
     if replay:
         r.add_argument(
             "--cpsat", action="store_true", help="add warm-started CP-SAT options to the greedy ones"
@@ -63,6 +65,22 @@ def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
         )
 
 
+def _audit_replay(args: argparse.Namespace) -> int:
+    from raildss_audit.chain import AuditLog
+    from raildss_orchestrator.replay import replay_recommendation
+
+    log = AuditLog(args.audit_dir, args.section)
+    intact = log.verify()
+    print(f"audit chain: {'intact' if intact.ok else 'TAMPERED'} ({intact.records} records)")
+    if not intact.ok:
+        return 1
+    run_rec = log.query(kind="plan_run")[0]
+    day = dt.date.fromisoformat(run_rec.payload["day"])
+    result = replay_recommendation(log, args.rec, TwinPlanner(run.load_world(), day, cpsat_enabled=False))
+    print(json.dumps(result.model_dump(), indent=1))
+    return 0 if result.identical else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m raildss_orchestrator")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -73,7 +91,15 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_parser("replay", help="closed-loop replay of a real day with KPIs vs BL-0 (issue #90)"),
         replay=True,
     )
+    ar = sub.add_parser(
+        "audit-replay", help="replay a recorded recommendation from its audit record (issue #85)"
+    )
+    ar.add_argument("--audit-dir", type=Path, required=True)
+    ar.add_argument("--rec", required=True, help="recommendation id, e.g. REC-0001")
+    ar.add_argument("--section", default="KTV-PSA")
     args = ap.parse_args(argv)
+    if args.cmd == "audit-replay":
+        return _audit_replay(args)
     replay = args.cmd == "replay"
     if replay:  # the M1 demo: greedy recommendations, evaluation auto-accept, KPIs against BL-0
         args.no_cpsat, args.no_auto_accept, args.kpis = not args.cpsat, False, True
@@ -94,6 +120,19 @@ def main(argv: list[str] | None = None) -> int:
         exits.setdefault(op, []).append((a, b))
     dss = TwinDss(world, day, profile=args.profile, until_s=to_s, closures=closures, exit_windows=exits)
     planner = TwinPlanner(world, day, cpsat_enabled=not args.no_cpsat, alternatives=args.alternatives)
+    recorder = None
+    if args.audit_dir is not None:
+        from raildss_audit.chain import AuditLog
+        from raildss_orchestrator.auditing import AuditRecorder
+        from raildss_twin.plans import day_start
+
+        recorder = AuditRecorder(
+            AuditLog(args.audit_dir, SECTION),
+            world.register,
+            day_start(day),
+            day=day,
+            solver=planner.solver_info(),
+        )
     loop = Orchestrator(
         world.register,
         dss,
@@ -101,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         disruptions=tuple(disruptions),
         exit_windows=exits,
         auto_accept=not args.no_auto_accept,
+        audit=recorder,
     )
     summary = loop.run(from_s, to_s, args.tick_s)
     for c in summary.cycles:

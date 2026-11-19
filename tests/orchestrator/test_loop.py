@@ -8,8 +8,10 @@ from typing import Any
 
 import pytest
 
+from raildss_audit.chain import AuditLog, pseudonym
 from raildss_hitl.lifecycle import Status
 from raildss_optimiser.greedy import Decision, Hold
+from raildss_orchestrator.auditing import AuditRecorder
 from raildss_orchestrator.loop import Disruption, Orchestrator
 from raildss_orchestrator.model import (
     KPI_RANK,
@@ -91,7 +93,9 @@ class FakeDss:
         snap = gates.StateSnapshot(
             snapshot_hash="x", network_version="N", taken_at_s=now_s, train_last_fix_s=fixes
         )
-        return DssView(now_s, self.version, snap, frozenset(fixes), conflicts)  # type: ignore[arg-type]
+        return DssView(
+            now_s, self.version, snap, frozenset(fixes), conflicts, state_hash=f"hash-v{self.version}"
+        )  # type: ignore[arg-type]
 
     def commit(self, holds: Any, lines: Any) -> None:
         self.commits += 1
@@ -223,3 +227,63 @@ def test_released_options_always_carry_a_verdict_without_fail(auto: bool) -> Non
     dss.script = {NOW0: [FakeConflict(2, ("A", "B"), "S1~S2")]}
     cycle = orch.tick(NOW0)
     assert cycle is not None and cycle.released == [] and orch.lc.recs == {}
+
+
+def audited(cands: list[Candidate], **kw: Any) -> tuple[Orchestrator, FakeDss, AuditLog]:
+    log = AuditLog(None, "KTV-PSA")
+    rec = AuditRecorder(log, load(), T0, day=dt.date(2025, 8, 20))
+    orch, dss, _ = make(cands, audit=rec, **kw)
+    dss.script = {NOW0: [FakeConflict(2, ("A", "B"), "S1~S2")]}
+    return orch, dss, log
+
+
+def test_the_loop_audits_alerts_recommendations_decisions_orders_acks_and_outcomes() -> None:
+    orch, _, log = audited([candidate("greedy", -5.0, hold_until=NOW0 + 600)])
+    orch.tick(NOW0)
+    orch.tick(NOW0 + 2 * MIN)  # the acknowledgement
+    kinds = {r.kind for r in log.records()}
+    assert {"alert", "plan_run", "recommendation", "decision", "order", "ack"} <= kinds
+    assert log.verify().ok
+    decision = log.query(kind="decision")[0]
+    assert decision.actor == "evaluation-policy" and decision.payload["action"] == "accept"  # NFR-AUD-02
+    assert decision.payload["time_to_decision_s"] == 0.0 and decision.payload["diff"]["actions"]
+    rec = log.query(kind="recommendation")[0]
+    for key in ("options", "state", "versions", "verification", "explanation", "plan_run"):
+        assert rec.payload[key], key
+    assert rec.payload["seed"] == 0  # the twin seed (twin.sim.default_seed)
+    assert rec.payload["state"]["hash"] == "hash-v1"
+    assert log.query(train="A")  # by train
+    assert log.query(incident=rec.refs["incident"])  # by incident
+    assert len(log.query(rec_id=rec.refs["rec_id"])) >= 3  # recommendation, decision, order, ack, outcome
+
+
+def test_every_presented_recommendation_has_a_full_record() -> None:
+    cands = [
+        candidate("greedy", -5.0, hold_until=NOW0 + 600),
+        candidate("cpsat", -9.0, hold_until=NOW0 + 700),
+    ]
+    orch, _, _ = audited(cands, auto_accept=False)
+    orch.tick(NOW0)
+    assert len(orch.lc.recs) == 2
+    assert orch.audit is not None and orch.audit.completeness(orch.lc) == []
+    plan_run = orch.audit.log.query(kind="plan_run")[0]
+    assert plan_run.payload["digest"] and plan_run.payload["context"]["now_s"] == NOW0
+
+
+def test_a_controller_reject_and_accept_are_audited_under_a_pseudonym() -> None:
+    cands = [
+        candidate("greedy", -5.0, hold_until=NOW0 + 600),
+        candidate("cpsat", -9.0, hold_until=NOW0 + 700),
+    ]
+    orch, _, log = audited(cands, auto_accept=False)
+    orch.tick(NOW0)
+    first, second = list(orch.lc.recs)
+    orch.now_s = NOW0 + 30
+    orch.reject(first, "UNSAFE_LOCAL", "ravi", "single line occupied")
+    orch.accept(second, "ravi")
+    decisions = log.query(kind="decision")
+    assert [d.payload["action"] for d in decisions] == ["reject", "accept"]
+    assert {d.actor for d in decisions} == {pseudonym("ravi", log.salt)}
+    assert decisions[0].payload["time_to_decision_s"] == 30.0
+    assert "ravi" not in "".join(r.model_dump_json() for r in log.records())
+    assert log.query(controller="ravi") == decisions

@@ -17,6 +17,7 @@ PACKAGES = [
     "raildss_hitl",
     "raildss_dss",
     "raildss_orchestrator",
+    "raildss_audit",
 ]
 
 

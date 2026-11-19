@@ -39,6 +39,8 @@ class DssView:
     snapshot: StateSnapshot
     known_trains: frozenset[str]
     conflicts: list[ConflictLike]
+    state_hash: str = ""  # hash of the estimated state S_t (FR-PRED-02)
+    alerts: list[dict[str, Any]] = field(default_factory=list)  # data-quality alerts new at this tick
 
 
 @dataclass
@@ -98,19 +100,26 @@ class Candidate:
     def actions_for(self, trains: Sequence[str], resource: str) -> list[PlanAction]:
         """The orders this plan gives for one conflict: holds of its trains at the resource's stations,
         and for a station conflict the line each train is received on."""
-        stations = set(resource.split("~"))
-        out = [
-            PlanAction(kind="hold_until", run_id=h.run_id, station=h.station, until_s=h.until_s)
-            for h in self.holds
-            if h.run_id in trains and h.station in stations
+        return actions_for(self.decisions, self.holds, trains, resource)
+
+
+def actions_for(
+    decisions: Sequence[Decision], holds: Sequence[Hold], trains: Sequence[str], resource: str
+) -> list[PlanAction]:
+    """The orders a plan gives for one conflict (also used to replay a recommendation from its record)."""
+    stations = set(resource.split("~"))
+    out = [
+        PlanAction(kind="hold_until", run_id=h.run_id, station=h.station, until_s=h.until_s)
+        for h in holds
+        if h.run_id in trains and h.station in stations
+    ]
+    if "~" not in resource:
+        out += [
+            PlanAction(kind="receive_on_line", run_id=d.run_id, station=d.station, line_no=d.line_no)
+            for d in decisions
+            if d.run_id in trains and d.station == resource
         ]
-        if "~" not in resource:
-            out += [
-                PlanAction(kind="receive_on_line", run_id=d.run_id, station=d.station, line_no=d.line_no)
-                for d in self.decisions
-                if d.run_id in trains and d.station == resource
-            ]
-        return out
+    return out
 
 
 @dataclass
