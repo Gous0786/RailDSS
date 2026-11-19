@@ -478,7 +478,7 @@ def calibrated_leg(
 
     def one(start: bool, end: bool) -> float:
         d, r = (dep if start else None), (arr if end else None)
-        run = runner.time(template, leg.a, leg.b, start, end, cap, d, r)
+        run: float = runner.time(template, leg.a, leg.b, start, end, cap, d, r)
         run += supplements.get(leg_key(leg.a, leg.b, start, end), 0.0)
         return max(run, runner.time(template, leg.a, leg.b, start, end, math.inf, d, r))
 
