@@ -54,6 +54,13 @@ def cmd_publish(args: argparse.Namespace) -> int:
             else f"network publication: OK ({out.relative_to(REPO) if out.is_relative_to(REPO) else out})"
         )
         return 1 if problems else 0
+    changed = publish.changed_content(files, out)
+    if changed:
+        print(
+            f"FAIL  the content of {assembled.network_version} changed ({', '.join(changed)}); a content "
+            "change needs a new network.version in the parameter register (DR-0006)"
+        )
+        return 1
     paths = publish.write(files, out)
     print(f"wrote {len(paths)} files to {out}")
     url = _db_url(args.db_url)
