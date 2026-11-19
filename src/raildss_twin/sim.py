@@ -248,6 +248,7 @@ class Sim:
         self.min_dwell = float(cfg["min_dwell_s"])
         self.clearing_mps = float(cfg["clearing_speed_kmh"]) / KMH_PER_MPS
         self.exit_clear = float(cfg["exit_clear_s"])
+        self.hold_stand_s = float(cfg["hold_stand_s"])
         self.grace_s = float(cfg["horizon_grace_h"]) * SECONDS_PER_HOUR
         self.monitor_every = max(1, round(float(cfg["monitor_period_s"]) / self.state_period))
         self.adequate_m = float(register.value("block.adequate_distance_m.macls"))
@@ -725,7 +726,10 @@ class Sim:
                     t.status = "running"
                 hold = self.directives.holds.get((plan.run_id, node.op))
                 if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)
-                    t.status, t.stood = "dwelling", True  # a held train starts from rest
+                    # A held train starts from rest; a hold that only rounds the recorded time does not
+                    # stop a passing train (rolling-horizon replans must reproduce the frozen plan).
+                    t.status = "dwelling"
+                    t.stood = t.stood or hold - self.env.now >= self.hold_stand_s
                     yield self.env.timeout(hold - self.env.now)
                     t.status = "running"
                 if plan.timetabled and node.stop:

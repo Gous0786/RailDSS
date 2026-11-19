@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,7 +23,7 @@ from raildss_etl.timetable import Timetable, ist
 from raildss_params import Register
 from raildss_schema.base import Stamped
 from raildss_schema.entities import DayInstance, FreightLoad, Service, TimetablePoint
-from raildss_twin.calibration import CALIBRATION_FILE, Calibration, Network, Runner, booked_platform
+from raildss_twin.calibration import CALIBRATION_FILE, Calibration, Network, Runner, booked_platform, leg_key
 from raildss_twin.layout import Layout
 from raildss_twin.rolling_stock import ConsistTemplate, RollingStock
 
@@ -108,12 +109,15 @@ class Timing:
             cal, tpl = self.calibration, plan.template
             if passenger:
                 cap = cal.passenger_cap_kmh
-                extra = cal.leg_supplement_s.get(f"{a}-{b}", 0.0)
+                extra = cal.leg_supplement_s.get(leg_key(a, b, start_stopped, end_stopped), 0.0)
             else:
                 cap = cal.freight_caps_kmh["loaded" if tpl.consist_type == "freight_loaded" else "empty"]
                 direction = self.runner.net.direction(a, b)
                 extra = cal.block_allowance_s.get(f"{a}-{b}/{direction}", 0.0)
-            self._cache[key] = self.runner.time(tpl, a, b, start_stopped, end_stopped, cap, dep, arr) + extra
+            run = self.runner.time(tpl, a, b, start_stopped, end_stopped, cap, dep, arr) + extra
+            if plan.kind == "passenger":  # a signed supplement never beats the line speed (issue #137)
+                run = max(run, self.runner.time(tpl, a, b, start_stopped, end_stopped, math.inf, dep, arr))
+            self._cache[key] = run
         return self._cache[key]
 
 
