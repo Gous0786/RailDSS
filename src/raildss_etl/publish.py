@@ -63,6 +63,13 @@ SOURCE_DIRS = (
     REPO / "data" / "external" / "osm-dem",
 )
 EXCLUDED_NAMES = {MANIFEST_FILE, CARD_FILE}
+# Version governance (DR-0006, issue #63): the network hash covers the network content only. The
+# ``network_version`` record is metadata about the publication (validator and DQ reports, source hashes),
+# so a register edit or a regenerated report does not change the hash; a content change does, and needs a
+# new ``network.version``.
+METADATA_TABLES = frozenset({"network_version"})
+# Twin outputs kept next to the derived inputs; they are computed from the network, not inputs to it.
+NOT_SOURCES = frozenset({"ktv_psa_runtime_calibration.json", "ktv_psa_runtime_reference_seconds.json"})
 ATTRIBUTION = (
     "Contains information from OpenStreetMap: © OpenStreetMap contributors, available under the Open "
     "Database License (ODbL) 1.0 (https://opendatacommons.org/licenses/odbl/1-0/); see "
@@ -106,7 +113,7 @@ def source_hashes() -> dict[str, str]:
     out: dict[str, str] = {}
     for root in SOURCE_DIRS:
         for p in sorted(root.rglob("*"), key=lambda q: q.relative_to(REPO).as_posix()):
-            if p.is_file() and p.name not in EXCLUDED_NAMES:
+            if p.is_file() and p.name not in EXCLUDED_NAMES and p.name not in NOT_SOURCES:
                 out[p.relative_to(REPO).as_posix()] = sha256_bytes(p.read_bytes())
     return out
 
@@ -222,9 +229,12 @@ def table_file(records: list[Stamped]) -> str:
 
 
 def network_hash(files: dict[str, str]) -> str:
-    """SHA-256 over the entity files in schema order, each prefixed by its table name."""
+    """SHA-256 over the network content files in schema order, each prefixed by its table name. The
+    ``network_version`` metadata record is not part of it (DR-0006)."""
     h = hashlib.sha256()
     for model in ENTITIES:
+        if model.__table__ in METADATA_TABLES:
+            continue
         h.update(model.__table__.encode("utf-8") + b"\0")
         h.update(files[f"{model.__table__}.json"].encode("utf-8"))
     return h.hexdigest()
@@ -258,7 +268,9 @@ def render_card(a: Assembled, digest: str) -> str:
         "| Real / synthetic | **Mixed.** Infrastructure, timetable and freight demand are real "
         "(`source = data`). Sub-blocks, signals, gradients and curves are synthetic; PSA station-line "
         "CSR values are estimates (see the table below) |",
-        f"| Network hash | `{digest}` (SHA-256 over the entity files in schema order) |",
+        f"| Network hash | `{digest}` (SHA-256 over the network content files in schema order; the "
+        "`network_version` metadata record is not hashed, and a content change needs a new version: "
+        "DR-0006) |",
         f"| `network_version` | `{a.network_version}` |",
         f"| `timetable_version` | `{a.timetable_version}` (on services, timetable points, freight loads, "
         "day instances) |",
@@ -346,6 +358,24 @@ def render(a: Assembled) -> dict[str, str]:
     manifest = {k: sha256_bytes(v.encode("utf-8")) for k, v in files.items() if k not in EXCLUDED_NAMES}
     files[MANIFEST_FILE] = "".join(f"{h}  {k}\n" for k, h in sorted(manifest.items()))
     return files
+
+
+def changed_content(files: dict[str, str], out_dir: Path) -> list[str]:
+    """Content files that differ from a committed publication of the same label (DR-0006).
+
+    Empty when nothing is published there yet or only metadata changed. Otherwise the content changed
+    under the same ``network_version``, which publishing must refuse: a new label is needed."""
+    if not (out_dir / NETWORK_FILE).exists():
+        return []
+    changed = []
+    for model in ENTITIES:
+        name = f"{model.__table__}.json"
+        path = out_dir / name
+        if model.__table__ in METADATA_TABLES:
+            continue
+        if not path.exists() or path.read_text(encoding="utf-8") != files[name]:
+            changed.append(name)
+    return changed
 
 
 def default_dir(network_version: str) -> Path:

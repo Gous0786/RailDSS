@@ -7,12 +7,15 @@ ETL and compares it with the committed files, which is also what CI's ``publish 
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from raildss_etl import cli, publish, validator
+from raildss_etl import cli, dq, publish, validator
 from raildss_params import load
+from raildss_params.register import default_path
 from raildss_schema.entities import ENTITIES
 
 VERSION = "KTV-PSA-2025-08"
@@ -195,3 +198,57 @@ def test_rebuild_is_byte_identical() -> None:
     assert publish.diff(files, DIR) == []
     committed = json.loads((DIR / publish.NETWORK_FILE).read_text(encoding="utf-8"))
     assert publish.network_hash(files) == committed["network_hash"]
+
+
+# ---------------------------------------------------------------- version governance (DR-0006, issue #63)
+
+
+def test_the_network_hash_covers_content_not_the_metadata_record(export: Any) -> None:
+    texts = dict(export[2])
+    base = publish.network_hash(texts)
+    meta = dict(texts)
+    meta["network_version.json"] = texts["network_version.json"].replace(
+        '"created_at":"2026-11-03', '"created_at":"2026-11-04'
+    )
+    assert meta != texts and publish.network_hash(meta) == base
+    content = dict(texts)
+    content["block_section.json"] = texts["block_section.json"].replace('"KTV"', '"KTX"', 1)
+    assert content != texts and publish.network_hash(content) != base
+
+
+def test_a_parameter_edit_that_touches_no_network_record_keeps_the_hash(tmp_path: Path) -> None:
+    # PR #50 changed the hash with a parameter edit; the register is metadata (DR-0006 acceptance 1).
+    text = default_path().read_text(encoding="utf-8")
+    edited = text.replace("      span_tolerance_s: 60\n", "      span_tolerance_s: 61\n", 1)
+    assert edited != text
+    path = tmp_path / "parameters.yaml"
+    path.write_text(edited, encoding="utf-8")
+    reg = load(path)
+    files = publish.render(publish.assemble(dq.run_stages(register=reg)))
+    committed = json.loads((DIR / publish.NETWORK_FILE).read_text(encoding="utf-8"))
+    assert json.loads(files[publish.NETWORK_FILE])["register_version"] != committed["register_version"]
+    assert publish.network_hash(files) == committed["network_hash"]
+    assert publish.changed_content(files, DIR) == []
+
+
+def test_publish_refuses_a_content_change_under_the_same_label(
+    export: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # DR-0006 acceptance 2: a content change needs a new network.version.
+    for name in [*export[2], publish.NETWORK_FILE]:
+        (tmp_path / name).write_text((DIR / name).read_text(encoding="utf-8"), encoding="utf-8")
+    files = dict(export[2])
+    assert publish.changed_content(files, tmp_path) == []
+    meta_only = dict(files, **{"network_version.json": files["network_version.json"].replace("1", "2", 1)})
+    assert publish.changed_content(meta_only, tmp_path) == []
+    files["block_section.json"] = files["block_section.json"].replace('"KTV"', '"KTX"', 1)
+    assert publish.changed_content(files, tmp_path) == ["block_section.json"]
+    assert publish.changed_content(files, tmp_path / "NEW-LABEL") == []  # a new label publishes freely
+
+    stub = SimpleNamespace(network_version=VERSION, validation=SimpleNamespace(rules=[]))
+    monkeypatch.setattr(publish, "assemble", lambda: stub)
+    monkeypatch.setattr(publish, "render", lambda _a: files)
+    before = (tmp_path / "block_section.json").read_text(encoding="utf-8")
+    assert cli.main(["network", "publish", "--out", str(tmp_path)]) == 1
+    assert "needs a new network.version" in capsys.readouterr().out
+    assert (tmp_path / "block_section.json").read_text(encoding="utf-8") == before  # nothing written

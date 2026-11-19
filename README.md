@@ -155,7 +155,9 @@ loops with CSR > 0, block sections have a system and a length, routes are consis
 version stamps) and writes `data/published/KTV-PSA-2025-08/`: one JSON file per canonical entity,
 `network.json` (versions, counts per layer, **network hash**), a provenance card and a manifest. It
 refuses to publish while the validator reports an error. Re-run it (and `dq --update-baseline`)
-after changing inputs or `config/parameters.yaml`; CI fails on any difference.
+after changing inputs or `config/parameters.yaml`; CI fails on any difference. The network hash covers
+the network content only, so a register edit keeps it; a content change under an existing
+`network_version` is refused and needs a new `network.version` (DR-0006).
 
 ```bash
 uv run raildss network publish --check              # CI gate: rebuild and compare byte for byte
