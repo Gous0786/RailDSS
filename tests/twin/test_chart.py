@@ -50,3 +50,36 @@ def test_the_committed_ui_data_is_current(data: dict[str, Any]) -> None:
     """web/public/data is regenerated with `python -m raildss_twin chart --date 2025-08-20`."""
     committed = json.loads(COMMITTED.read_text(encoding="utf-8"))
     assert committed == json.loads(json.dumps(data))
+
+
+# ---------------------------------------------------------------- schematic mimic (FR-UI-06, issue #87)
+
+
+def test_the_mimic_is_generated_from_the_published_network(data: dict[str, Any]) -> None:
+    world = run.load_world()
+    m = data["mimic"]
+    assert data["version"] >= 3
+    assert [s["code"] for s in m["stations"]] == world.layout.order
+    published_lines = {(sl.op_code, sl.line_no) for sl in world.tables["station_line"]}  # type: ignore[attr-defined]
+    assert {(s["code"], ln["no"]) for s in m["stations"] for ln in s["lines"]} == published_lines
+    assert len(m["signals"]) == len(world.tables["signal"])
+    segments = {b["segment"] for b in m["blocks"]}
+    assert len(segments) == len(m["blocks"]) == len(world.layout.block_stations()) - 1
+    loops = [ln for s in m["stations"] for ln in s["lines"] if ln["kind"] == "loop"]
+    assert loops and all(ln["csr_m"] for ln in loops)  # usable length on every loop
+
+
+def test_the_mimic_occupancy_comes_from_the_twin_run(data: dict[str, Any]) -> None:
+    occ = data["mimic"]["occupancy"]
+    m = data["mimic"]
+    drawn = {f"SL:{s['code']}/{ln['no']}" for s in m["stations"] for ln in s["lines"]}
+    for b in m["blocks"]:
+        for ln in b["lines"]:
+            drawn.add(f"BL:{b['segment']}/{ln['line_id']}")
+            drawn |= {f"SB:{b['segment']}/{ln['line_id']}#{n}" for n in range(1, ln["sub_blocks"] + 1)}
+    assert set(occ["resources"]) <= drawn  # every occupied resource has a drawn element
+    assert len(occ["intervals"]) > 1000
+    for r, train, start, end in occ["intervals"]:
+        assert 0 <= r < len(occ["resources"]) and 0 <= train < len(data["trains"])
+        assert end is None or start <= end
+    assert [iv[2] for iv in occ["intervals"]] == sorted(iv[2] for iv in occ["intervals"])

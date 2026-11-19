@@ -237,6 +237,12 @@ is committed. Export another day with:
 uv run python -m raildss_twin chart --date 2025-08-12
 ```
 
+`G` (or the Mimic button) switches to the **schematic mimic** (issue #87, FR-UI-06). It is a
+straight-line SVG generated from the published layout: main lines, loops with their usable length,
+block sections split into automatic sub-blocks, and signals. It shows the twin run's occupancy and
+train icons (number, direction and delay colour) at the time cursor. It is supervisory only, with no
+route setting.
+
 It is keyboard-first: press `?` for the shortcuts. `P` opens the recommendation, `1`/`2`/`3` selects an
 option, `V` toggles preview off / before / after, `A` accepts, `M` modifies (sandbox), `R` rejects
 with a reason, and `Esc` closes. Other keys: `←`/`→` pan, `+`/`−` zoom, `N` jumps to now, `Space`

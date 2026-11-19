@@ -13,6 +13,7 @@
   rules (OD-04), the assumptions and the expiry;
 * **per-train facts** for the queue and the KPI strip (FR-UI-07, FR-UI-10): class and policy weight,
   freight load, entry and exit delay of timetabled trains;
+* the **schematic mimic** (FR-UI-06, :mod:`raildss_twin.mimic`): the published layout and the run's occupancy;
 * **alerts** (FR-UI-08) the twin observed: a timetabled train late beyond the amber delay badge, and a
   train held for a resource beyond the yellow one. They are ground truth, not DS-5 output, and say so.
 
@@ -27,13 +28,14 @@ from typing import Any
 
 from raildss_common.envelope import EventType
 from raildss_twin import run
+from raildss_twin.mimic import mimic_data
 from raildss_twin.plans import Plan, day_start
 from raildss_twin.sim import Sim
 from raildss_verifier import network
 from raildss_verifier.auditor import TrainMeta, audit
 
 FORMAT = "raildss-chart"
-VERSION = 2
+VERSION = 3  # 3: the schematic mimic (issue #87)
 SECONDS_PER_MIN = 60
 KM_DIGITS = 3  # rounding of chainage in the export (metres)
 
@@ -286,6 +288,7 @@ def chart_data(world: run.World, day: dt.date) -> dict[str, Any]:
             for p in plans
         ],
         "alerts": _alerts(sim, day, plans, world),
+        "mimic": mimic_data(world, sim, [p.run_id for p in plans]),
         "preview": {
             "id": "R-DEMO-1",
             "demo": True,

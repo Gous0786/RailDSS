@@ -92,6 +92,52 @@ export interface Preview {
   valid_until_s: number; // the card expires at this time
 }
 
+// Schematic mimic (FR-UI-06, issue #87): the published layout and the occupancy of the twin run.
+export interface MimicStationLine {
+  no: number;
+  name: string | null;
+  kind: "main" | "loop" | "siding" | "yard" | string;
+  csr_m: number | null; // usable length
+  platform: boolean;
+  directions: "DN" | "UP" | "BOTH" | string;
+  in_use: boolean;
+}
+
+export interface MimicStation {
+  code: string;
+  name: string;
+  km: number;
+  halt: boolean;
+  lines: MimicStationLine[];
+}
+
+export interface MimicBlock {
+  id: string;
+  segment: string; // occupancy key of the section, e.g. "KPL~KTV"
+  from: string;
+  to: string;
+  from_km: number;
+  to_km: number;
+  system: string; // AUTO / ABS_...
+  lines: { line_id: string; direction: string; sub_blocks: number }[];
+}
+
+export interface MimicSignal {
+  id: string;
+  type: string;
+  km: number | null;
+  line_id: string | null;
+  direction: string;
+}
+
+export interface Mimic {
+  stations: MimicStation[];
+  blocks: MimicBlock[];
+  signals: MimicSignal[];
+  // labels SL:<op>/<line>, BL:<segment>/<line>, SB:<segment>/<line>#<n>; intervals [resource, train, start, end|null]
+  occupancy: { resources: string[]; intervals: [number, number, number, number | null][] };
+}
+
 export interface ChartData {
   format: string;
   version: number;
@@ -106,4 +152,5 @@ export interface ChartData {
   stations: Station[];
   trains: Train[];
   preview: Preview;
+  mimic?: Mimic; // format version 3
 }

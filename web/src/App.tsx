@@ -20,6 +20,7 @@ import type { Alert, ChartData, Priority } from "./types";
 const ControlChart = lazy(() => import("./chart/ControlChart").then((m) => ({ default: m.ControlChart })));
 const About = lazy(() => import("./About"));
 const AuditView = lazy(() => import("./audit/AuditView").then((m) => ({ default: m.AuditView })));
+const Mimic = lazy(() => import("./mimic/Mimic").then((m) => ({ default: m.Mimic })));
 const GRAFANA = grafanaUrl(import.meta.env as Record<string, string | undefined>);
 
 type Mode = "REPLAY" | "SIM" | "SANDBOX";
@@ -48,6 +49,7 @@ const SHORTCUTS: [string, string][] = [
   ["N", "jump to now"],
   ["Space", "play / pause the replay (SIM ×60)"],
   ["L", "audit and replay: log, timeline scrubbing, recommendation cards as shown"],
+  ["G", "schematic mimic ↔ control chart (layout and occupancy at the time cursor)"],
   ["I", "about, attributions and licences"],
   ["?", "show / hide this help"],
 ];
@@ -77,6 +79,7 @@ export default function App() {
   const [help, setHelp] = useState(false);
   const [about, setAbout] = useState(false);
   const [audit, setAudit] = useState(false);
+  const [mimic, setMimic] = useState(false);
   const [auditDoc, setAuditDoc] = useState<AuditDoc | null>(null);
   const [auditError, setAuditError] = useState("");
   const [drawer, setDrawer] = useState(false);
@@ -194,6 +197,7 @@ export default function App() {
       }
       if (k === "?") return setHelp((h) => !h);
       if (k === "l" || k === "L") return setAudit((a) => !a);
+      if (k === "g" || k === "G") return setMimic((v) => !v);
       if (k === "i" || k === "I") return setAbout((a) => !a);
       if (k === "p" || k === "P") {
         setPhase("card");
@@ -298,6 +302,9 @@ export default function App() {
             Health ↗
           </a>
         )}
+        <button onClick={() => setMimic((v) => !v)} aria-label="Schematic mimic" aria-pressed={mimic}>
+          {mimic ? "Chart" : "Mimic"}
+        </button>
         <button onClick={() => setAudit((a) => !a)} aria-label="Audit and replay">
           Audit
         </button>
@@ -317,8 +324,13 @@ export default function App() {
         {data && (
           <div className="main">
             <div className="chart-wrap">
+              {mimic && (
+                <Suspense fallback={<div className="loading">Loading mimic…</div>}>
+                  <Mimic data={data} now={now} />
+                </Suspense>
+              )}
               <Suspense fallback={<div className="loading">Loading chart…</div>}>
-                <ControlChart
+                {!mimic && <ControlChart
                   data={data}
                   window={view}
                   now={now}
@@ -327,7 +339,7 @@ export default function App() {
                   selected={selected}
                   onWindow={setView}
                   onSelect={setSelected}
-                />
+                />}
               </Suspense>
               <a className="map-attribution" href={OSM_COPYRIGHT_URL} target="_blank" rel="noreferrer">
                 {OSM_ATTRIBUTION}
