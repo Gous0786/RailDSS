@@ -7,6 +7,7 @@ import type { PreviewMode } from "./chart/ControlChart";
 import { type Window, defaultWindow, describe, hhmm, panWindow, zoomWindow } from "./chart/geometry";
 import { AlertsPanel } from "./ops/AlertsPanel";
 import { CardPanel, REASONS } from "./ops/CardPanel";
+import type { AuditDoc } from "./audit/audit";
 import { KpiStrip } from "./ops/KpiStrip";
 import { QueuePanel } from "./ops/QueuePanel";
 import { acknowledge, alertGroups, openCounts } from "./ops/alerts";
@@ -18,6 +19,7 @@ import type { Alert, ChartData, Priority } from "./types";
 // The chart and the About page load as separate chunks (DR-0001 §3.3 condition 2; issue #89).
 const ControlChart = lazy(() => import("./chart/ControlChart").then((m) => ({ default: m.ControlChart })));
 const About = lazy(() => import("./About"));
+const AuditView = lazy(() => import("./audit/AuditView").then((m) => ({ default: m.AuditView })));
 const GRAFANA = grafanaUrl(import.meta.env as Record<string, string | undefined>);
 
 type Mode = "REPLAY" | "SIM" | "SANDBOX";
@@ -45,6 +47,7 @@ const SHORTCUTS: [string, string][] = [
   ["+ / −", "zoom in / out"],
   ["N", "jump to now"],
   ["Space", "play / pause the replay (SIM ×60)"],
+  ["L", "audit and replay: log, timeline scrubbing, recommendation cards as shown"],
   ["I", "about, attributions and licences"],
   ["?", "show / hide this help"],
 ];
@@ -73,6 +76,9 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
   const [about, setAbout] = useState(false);
+  const [audit, setAudit] = useState(false);
+  const [auditDoc, setAuditDoc] = useState<AuditDoc | null>(null);
+  const [auditError, setAuditError] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [acked, setAcked] = useState<ReadonlySet<string>>(new Set());
@@ -102,6 +108,14 @@ export default function App() {
       .then((d: ChartData) => setData(d))
       .catch(() => setError(`Could not load data/${day}.json`));
   }, [day]);
+
+  useEffect(() => {
+    if (!audit || auditDoc) return;
+    fetch("data/audit.json")
+      .then((r) => r.json())
+      .then((d: AuditDoc) => setAuditDoc(d))
+      .catch(() => setAuditError("No audit log. Run: uv run python -m raildss_orchestrator run --from-h 8 --to-h 9 --audit-dir audit, then raildss_audit export --dir audit --out web/public/data/audit.json"));
+  }, [audit, auditDoc]);
 
   useEffect(() => {
     if (!playing) return;
@@ -170,7 +184,8 @@ export default function App() {
         return;
       }
       if (k === "Escape") {
-        if (about) setAbout(false);
+        if (audit) setAudit(false);
+        else if (about) setAbout(false);
         else if (help) setHelp(false);
         else if (drawer) setDrawer(false);
         else if (sandbox) setSandbox(false);
@@ -178,6 +193,7 @@ export default function App() {
         return;
       }
       if (k === "?") return setHelp((h) => !h);
+      if (k === "l" || k === "L") return setAudit((a) => !a);
       if (k === "i" || k === "I") return setAbout((a) => !a);
       if (k === "p" || k === "P") {
         setPhase("card");
@@ -244,7 +260,7 @@ export default function App() {
         setPlaying((p) => !p);
       }
     },
-    [data, phase, help, about, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
+    [data, phase, help, about, audit, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
   );
 
   useEffect(() => {
@@ -282,6 +298,9 @@ export default function App() {
             Health ↗
           </a>
         )}
+        <button onClick={() => setAudit((a) => !a)} aria-label="Audit and replay">
+          Audit
+        </button>
         <button onClick={() => setAbout((a) => !a)} aria-label="About and attributions">
           About
         </button>
@@ -363,6 +382,20 @@ export default function App() {
               {log.length === 0 ? <p className="muted">No decisions yet.</p> : log.map((l) => <p key={l}>{l}</p>)}
             </section>
           </aside>
+        )}
+        {audit && (
+          <Suspense fallback={null}>
+            <AuditView
+              doc={auditDoc}
+              error={auditError}
+              now={now}
+              onScrub={(t) => {
+                setNow(t);
+                setView(defaultWindow(t));
+              }}
+              onClose={() => setAudit(false)}
+            />
+          </Suspense>
         )}
         {about && (
           <Suspense fallback={null}>

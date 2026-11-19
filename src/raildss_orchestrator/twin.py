@@ -126,6 +126,7 @@ class TwinDss:
         self.detector = Detector.build(self.directory, reg)
         self.feed = TwinFeed(world, day, profile, until_s)
         self.feed.load(self._directives({}, {}))
+        self._alerts_seen = 0
 
     def _directives(
         self, holds: Mapping[tuple[str, str], float], lines: Mapping[tuple[str, str], int]
@@ -150,9 +151,15 @@ class TwinDss:
         occs = occupations(preds, snap, self.estimator, self.directory, self.predictor.horizon)
         conflicts = self.detector.detect(occs, now)
         fixes = {t.run_id: now_s - t.last_fix_age_s for t in snap.trains if t.last_fix_age_s is not None}
+        new = self.ingestor.alerts[self._alerts_seen :]
+        self._alerts_seen = len(self.ingestor.alerts)
         return DssView(
             now_s=now_s,
             version=snap.version,
+            state_hash=snap.hash,
+            alerts=[
+                {"kind": a.kind, "priority": a.priority, "source": a.source, "detail": a.detail} for a in new
+            ],
             snapshot=gates.StateSnapshot(
                 snapshot_hash=f"v{snap.version}",
                 network_version=snap.network_version,
@@ -238,6 +245,39 @@ class TwinPlanner:
         self.cpsat_enabled, self.alternatives = cpsat_enabled, alternatives
         self.time_limit_s = time_limit_s  # None: opt.time_limit_s of the cycle (routine or disruption)
         self.workers = workers if workers is not None else int(self.reg.value("opt.workers"))
+
+    def solver_info(self) -> dict[str, Any]:
+        return {
+            "cpsat": self.cpsat_enabled,
+            "alternatives": self.alternatives,
+            "workers": self.workers,
+            "time_limit_s": self.time_limit_s,
+        }
+
+    def rejudge(
+        self, ctx: PlanContext, plan_id: str, decisions: list[Decision], holds: list[Hold]
+    ) -> sandbox.G3Result:
+        """G3 of a recorded plan: a solver option is replayed by checking its plan, not by solving again."""
+        standing = standing_directives(
+            self.world,
+            self.day,
+            closures=ctx.closures,
+            exit_windows=ctx.exit_windows,
+            holds=ctx.commit_holds,
+            lines=ctx.commit_lines,
+        )
+        plans, _, inst = run.plans_for(self.world, self.day)
+        end_s = ctx.now_s + self.dispatcher.horizon_s
+        baseline = run.run_day(
+            self.world,
+            self.day,
+            plans=plans,
+            until_s=end_s,
+            keep_events=True,
+            directives=standing,
+            scenario_id=f"{inst}-loop-baseline",
+        )
+        return self._judge(ctx, plan_id, decisions, holds, standing, baseline)
 
     def plan(self, ctx: PlanContext) -> PlanSet:
         t0 = time.perf_counter()
