@@ -19,6 +19,6 @@ disruptions:
     start: "09:00"
     duration_min: {low_min: 240, high_min: 480}
     etr: {offset_min: 0, sigma_min: 30}
-requires: [injector]
-expected_gt_hash: null
+requires: []
+expected_gt_hash: "a9d20c72674b0019bfa6828bbe811071ff466d84336ede99af3e713427d948af"
 notes: "Caution order on the DN line of SGDM-PDU."

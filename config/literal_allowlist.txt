@@ -180,3 +180,9 @@ src/raildss_audit/chain.py: 12  # length of a pseudonym in hex characters, not a
 src/raildss_orchestrator/auditing.py: 2  # tuple indexes of a serialised decision (run, station, line, dep), not a rule value
 src/raildss_orchestrator/auditing.py: 3  # tuple indexes of a serialised decision (run, station, line, dep), not a rule value
 src/raildss_orchestrator/auditing.py: 8  # length of an incident id hash prefix, not a rule value
+src/raildss_orchestrator/scenarios.py: 3600  # seconds per hour (unit conversion), not a rule value
+src/raildss_orchestrator/scenarios.py: 120  # simulated clock step of the scenario report, not a rule value
+src/raildss_orchestrator/scenarios.py: 15  # minutes the report window starts before the first disruption, not a rule value
+src/raildss_orchestrator/scenarios.py: 90  # minutes the report window runs, not a rule value
+src/raildss_orchestrator/scenarios.py: 30  # minutes a closure is known before it starts in the report, not a rule value
+src/raildss_orchestrator/scenarios.py: 60  # seconds per minute (unit conversion), not a rule value

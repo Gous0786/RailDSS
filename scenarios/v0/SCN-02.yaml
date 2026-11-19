@@ -18,6 +18,6 @@ disruptions:
     start: "15:14"
     duration_min: {low_min: 30, high_min: 60}
     note: "20830 Vande Bharat enters at KTV 30 to 60 min late (booked 15:14)."
-requires: [injector]
-expected_gt_hash: null
-notes: "A late entry is a train delay, applied by the injector or the perturbation model (M1)."
+requires: []
+expected_gt_hash: "eb6013ff582c8713369e80f0c6d182d43b1498517e2d88eb66bba6feb00b0d70"
+notes: "A late entry of one train: a scripted entry delay holds 20830 at the section entry (issue #57)."

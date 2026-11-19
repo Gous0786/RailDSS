@@ -65,6 +65,20 @@ def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
         )
 
 
+def _scenarios(args: argparse.Namespace) -> int:
+    from raildss_orchestrator.scenarios import render, run_all
+
+    rows, loops = run_all(run.load_world(), args.ids, with_loops=not args.no_loop)
+    text = render(rows, loops)
+    if args.report is not None:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(text, encoding="utf-8", newline=NEWLINE)
+        print(f"wrote {args.report}")
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
 def _audit_replay(args: argparse.Namespace) -> int:
     from raildss_audit.chain import AuditLog
     from raildss_orchestrator.replay import replay_recommendation
@@ -97,7 +111,13 @@ def main(argv: list[str] | None = None) -> int:
     ar.add_argument("--audit-dir", type=Path, required=True)
     ar.add_argument("--rec", required=True, help="recommendation id, e.g. REC-0001")
     ar.add_argument("--section", default="KTV-PSA")
+    sc = sub.add_parser("scenarios", help="KPIs of the v0 scenarios under BL-0 and the loop (issue #57)")
+    sc.add_argument("ids", nargs="*", help="scenario ids (default: all ten)")
+    sc.add_argument("--no-loop", action="store_true", help="BL-0 only")
+    sc.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
     args = ap.parse_args(argv)
+    if args.cmd == "scenarios":
+        return _scenarios(args)
     if args.cmd == "audit-replay":
         return _audit_replay(args)
     replay = args.cmd == "replay"

@@ -308,6 +308,16 @@ policy, rule-catalogue, threshold and user changes with before, after and approv
   moves the chart to that time under the REPLAY banner, and each recommendation card as it was shown. The
   committed `web/public/data/audit.json` is a short demo run.
 
+## Scenario library v0 (issues #21, #57)
+
+`python -m raildss_twin scenario run [SCN-05 ...]` plays the scenarios of `scenarios/v0` in the twin and
+checks each `gt.*` trace hash. All ten are executable: the disruption ones (SCN-02 late premium train,
+SCN-03 speed restriction, SCN-05 and SCN-20 single-line working, SCN-06 loop out of use) run with the
+disruption injector, which applies the scripted incident to the ground truth and announces it on
+`ops.disruptions`; CI runs all ten. `python -m raildss_orchestrator scenarios --report
+docs/kpi/scenarios-v0.md` reports each scenario's KPIs under BL-0 and, for the two line-block scenarios, the
+decision loop against BL-0 under the same closure.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under
