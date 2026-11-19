@@ -35,6 +35,8 @@ M_PER_KM = 1000
 BLOCK_SYSTEMS = ("ABS_absolute", "AUTO", "IBS")
 # Entities that exist only because of the timetable, and so carry a ``timetable_version``.
 TIMETABLE_TABLES = ("service", "timetable_point", "freight_load", "day_instance", "train_run")
+# Static tables are exempt from these stamps: they go on events, plans, recommendations and KPIs (DR-0007).
+EXEMPT_STAMPS = ("policy_version", "rule_catalogue_version")
 MAX_LISTED = 8  # problems listed per rule in the report
 
 
@@ -278,14 +280,20 @@ def version_stamps(tables: Tables, network_version: str, timetable_version: str)
     checked = 0
     for name, rows in tables.items():
         bad: Counter[str] = Counter()
+        exempt: Counter[str] = Counter()
         for r in rows:
             checked += 1
             if r.network_version != network_version:
                 bad["network_version"] += 1
             if name in TIMETABLE_TABLES and r.timetable_version != timetable_version:
                 bad["timetable_version"] += 1
+            exempt.update(stamp for stamp in EXEMPT_STAMPS if getattr(r, stamp) is not None)
         errors += [
             f"{name}: {n} record(s) with a wrong or missing {stamp}" for stamp, n in sorted(bad.items())
+        ]
+        errors += [
+            f"{name}: {n} record(s) carry {stamp}, which static tables are exempt from (DR-0007)"
+            for stamp, n in sorted(exempt.items())
         ]
     return checked, errors
 

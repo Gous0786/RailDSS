@@ -147,6 +147,24 @@ def test_validator_flags_a_missing_stamp_and_a_dangling_reference(export: Any) -
     assert _rule(report, "N-04").status == "FAIL"
 
 
+def test_validator_flags_a_policy_or_catalogue_stamp_on_a_static_table(export: Any) -> None:
+    """DR-0007: static tables are exempt from policy_version and rule_catalogue_version (issue #65)."""
+    tables = _entities(export[1])
+    assert _rule(_validate(tables), "N-05").status == "PASS"
+    for stamp in validator.EXEMPT_STAMPS:
+        stamped = dict(tables)
+        stamped["block_section"] = [stamped["block_section"][0].model_copy(update={stamp: "x"})]
+        rule = _rule(_validate(stamped), "N-05")
+        assert rule.status == "FAIL", stamp
+        assert any(stamp in e and "exempt" in e for e in rule.errors), stamp
+
+
+def test_published_static_tables_carry_no_policy_or_catalogue_stamp(export: Any) -> None:
+    for name, rows in export[1].items():
+        for r in rows:
+            assert r.policy_version is None and r.rule_catalogue_version is None, name
+
+
 def test_validator_reports_duplicate_keys(export: Any) -> None:
     tables = _entities(export[1])
     tables["operational_point"] = [*tables["operational_point"], tables["operational_point"][0]]
