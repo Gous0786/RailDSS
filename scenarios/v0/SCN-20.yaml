@@ -15,9 +15,10 @@ disruptions:
     type: line_block
     block_id: DUSI-CHE
     line_id: UP
+    single_line_working: true
     start: "11:00"
     duration_min: {low_min: 120, high_min: 180}
     etr: {offset_min: -30, sigma_min: 10}
-requires: [injector]
-expected_gt_hash: null
+requires: []
+expected_gt_hash: "441d25cb8a0598990facb900e162e2b4f2efd0d2a866a4225699d26aba244f35"
 notes: "Planned single-line working on the DN line; the block overruns the announced end by 30 min."

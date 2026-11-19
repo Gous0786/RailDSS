@@ -115,6 +115,8 @@ class Directives:
     priority: dict[str, int] = field(default_factory=dict)
     closures: list[Closure] = field(default_factory=list)
     exit_windows: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
+    # scripted late entries (scenario entry_delay, FR-SCN-02): run id -> seconds late at the first station
+    entry_delays: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -639,6 +641,7 @@ class Sim:
         entry_delay = 0.0
         if self.pert is not None and plan.timetabled and plan.entry_s >= 0:
             entry_delay = self.pert.entry_delay_s(plan.kind, plan.category, plan.run_id)
+        entry_delay += self.directives.entry_delays.get(plan.run_id, 0.0)
         yield self.env.timeout(max(0.0, plan.entry_s + entry_delay - self.env.now))
         self.pending -= 1
         t.entered, t.status = True, "running"

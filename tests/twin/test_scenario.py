@@ -59,13 +59,19 @@ def test_the_v0_mix_meets_fr_scn_04() -> None:
     assert len(real_days) >= 2
 
 
-def test_disruption_scenarios_are_tagged_requires_injector_and_are_not_executed() -> None:
+def test_every_v0_scenario_including_the_disruption_ones_is_executable() -> None:
+    """Issue #57: the requires: injector tag is gone and every scenario carries its gt.* trace hash."""
     disrupted = [s for s in LIBRARY if s.disruptions]
     assert {s.id for s in disrupted} == {"SCN-02", "SCN-03", "SCN-05", "SCN-06", "SCN-20"}
-    for s in disrupted:
-        assert s.requires == ["injector"] and not s.executable and s.expected_gt_hash is None
-        with pytest.raises(ValueError, match="requires injector"):
-            scenario.run_scenario(None, s)
+    assert len(EXECUTABLE) == len(LIBRARY) == 10
+    for s in LIBRARY:
+        assert s.requires == [] and s.executable and s.expected_gt_hash
+    single_line = [d for s in LIBRARY if s.id in ("SCN-05", "SCN-20") for d in s.disruptions]
+    assert all(d.single_line_working and d.line_id for d in single_line)  # FR-TWIN-18
+    with pytest.raises(ValueError, match="requires injector"):
+        scenario.run_scenario(
+            None, Scenario.model_validate(dict(_base(), requires=["injector"], expected_gt_hash=None))
+        )
 
 
 def test_scripted_disruptions_realize_into_injector_disruptions_from_the_seed() -> None:
@@ -92,18 +98,6 @@ def test_the_schema_rejects_inconsistent_scenarios() -> None:
         "executable without a hash": dict(base, expected_gt_hash=None),
         "bad hash": dict(base, expected_gt_hash="abc"),
         "unknown field": dict(base, surprise=1),
-        "disruption without the tag": dict(
-            base,
-            disruptions=[
-                {
-                    "incident_id": "X",
-                    "type": "line_block",
-                    "block_id": "CPP-SGDM",
-                    "start": "10:00",
-                    "duration_min": {"low_min": 10, "high_min": 20},
-                }
-            ],
-        ),
         "tag with a hash": dict(base, requires=["injector"]),
     }
     for name, data in cases.items():
@@ -159,3 +153,42 @@ def test_executable_scenarios_run_in_the_twin_with_their_recorded_gt_hash(
 
 def test_the_two_real_day_scenarios_are_executable_and_run_in_ci() -> None:
     assert {s.id for s in EXECUTABLE} >= set(REAL_DAYS)
+
+
+DISRUPTED = [s for s in LIBRARY if s.disruptions]
+
+
+@pytest.mark.parametrize("sc", DISRUPTED, ids=lambda s: s.id)
+def test_a_disruption_scenario_differs_from_its_day_and_is_stable(world: run.World, sc: Scenario) -> None:
+    again = scenario.run_scenario(world, sc)
+    assert again.trace_hash == sc.expected_gt_hash  # stable across runs (CI runs this)
+    plain, _ = run.run_day(world, sc.wtt_date, seed=sc.seed, day_instance=sc.freight_day)
+    assert plain.trace_hash != again.trace_hash  # the injector changed the ground truth
+
+
+def test_the_scripted_late_entry_holds_the_train_at_the_section_entry(world: run.World) -> None:
+    sc = next(s for s in LIBRARY if s.id == "SCN-02")
+    delays = scenario.entry_delays(sc)
+    plans, _, _ = run.plans_for(world, sc.wtt_date, sc.freight_day)
+    ((run_id, late_s),) = delays.items()
+    assert run_id in {p.run_id for p in plans} and 30 * 60 <= late_s <= 60 * 60
+    _, sim = run.run_day(
+        world, sc.wtt_date, seed=sc.seed, day_instance=sc.freight_day, until_s=17 * 3600,
+        keep_events=True, **{k: v for k, v in scenario.run_kwargs(sc).items() if k in ("directives",)},
+    )  # fmt: skip
+    entry = [
+        e.payload
+        for e in sim.events
+        if e.train_run_id == run_id.replace(" ", "_")
+        and e.event_type.value == "DELAY_RECORD"
+        and e.payload.get("kind") == "entry"
+    ]
+    assert entry and entry[0]["delay_s"] == round(late_s, 1)
+
+
+def test_the_injector_announces_the_disruption_scenarios_on_ops_disruptions(world: run.World) -> None:
+    sc = next(s for s in LIBRARY if s.id == "SCN-05")
+    kw = scenario.run_kwargs(sc)
+    _, sim = run.run_day(world, sc.wtt_date, until_s=14 * 3600, keep_events=True, **kw)
+    raised = [e for e in sim.events if e.event_type.value == "DISRUPTION_RAISED"]
+    assert [e.payload.get("incident_id") for e in raised] == ["SCN05-DN-CPP-SGDM"]

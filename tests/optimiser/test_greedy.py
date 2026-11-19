@@ -124,7 +124,7 @@ def test_every_detected_conflict_gets_a_recommendation(world: run.World) -> None
         assert r.status == "RESOLVED" and r.actions, r
 
 
-V0 = [sc for sc in load_library() if sc.executable or all(d.type == "line_block" for d in sc.disruptions)]
+V0 = [sc for sc in load_library() if all(d.type == "line_block" for d in sc.disruptions)]  # what it plans for
 
 
 @pytest.mark.parametrize("scenario", V0, ids=[sc.id for sc in V0])

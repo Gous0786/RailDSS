@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import datetime as dt
 import itertools
+from collections.abc import Callable
 from typing import Any
 
 from raildss_dss.kpi import KpiReport, TrainInfo, compare_runs, compute
 from raildss_twin import run
 from raildss_twin.plans import Plan, day_start
-from raildss_twin.sim import Directives, token
+from raildss_twin.sim import Directives, Sim, token
 
 
 def free_run_s(world: run.World, plan: Plan) -> float:
@@ -54,11 +55,19 @@ def run_arm(
     directives: Directives | None = None,
     seed: int | None = None,
     day_instance: str | None = None,
+    setup: Callable[[Sim], object] | None = None,
 ) -> KpiReport:
     """Replay the day under BL-0 (with a candidate's directives, if any) and compute its KPIs."""
     plans, _, _ = run.plans_for(world, day, day_instance)
     _, sim = run.run_day(
-        world, day, plans=plans, seed=seed, day_instance=day_instance, keep_events=True, directives=directives
+        world,
+        day,
+        plans=plans,
+        seed=seed,
+        day_instance=day_instance,
+        keep_events=True,
+        directives=directives,
+        setup=setup,
     )
     return compute(
         sim.events,
