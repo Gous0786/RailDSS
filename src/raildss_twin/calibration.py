@@ -39,7 +39,7 @@ import json
 import math
 import statistics
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -463,6 +463,33 @@ class Leg(NamedTuple):
     arr_platform: str | None = None  # booked platform at ``b`` when it is a stop
 
 
+def calibrated_leg(
+    runner: Runner,
+    template: ConsistTemplate,
+    leg: Leg,
+    cap: float,
+    supplements: dict[str, float],
+    dep: Approach | None = None,
+    arr: Approach | None = None,
+) -> float:
+    """Calibrated passenger leg time (issue #137): physics plus the signed supplement of the leg's stopping
+    context, never faster than physics at line speed (VER-LSP-01), and never faster than the same leg with
+    fewer stops: stopping cannot shorten a run (the twin, the DISPLIB IR and the planners rely on it)."""
+
+    def one(start: bool, end: bool) -> float:
+        d, r = (dep if start else None), (arr if end else None)
+        run = runner.time(template, leg.a, leg.b, start, end, cap, d, r)
+        run += supplements.get(leg_key(leg.a, leg.b, start, end), 0.0)
+        return max(run, runner.time(template, leg.a, leg.b, start, end, math.inf, d, r))
+
+    return monotone(one, leg.start_stopped, leg.end_stopped)
+
+
+def monotone(time_of: Callable[[bool, bool], float], start_stopped: bool, end_stopped: bool) -> float:
+    """The largest time over the leg's stopping context and every context with fewer stops."""
+    return max(time_of(s, e) for s in {False, start_stopped} for e in {False, end_stopped})
+
+
 def leg_key(a: str, b: str, start_stopped: bool, end_stopped: bool) -> str:
     """Supplement key of a leg in one stopping context, e.g. ``"PUN-PSA/pass-stop"`` (issue #137)."""
     return f"{a}-{b}/{'stop' if start_stopped else 'pass'}-{'stop' if end_stopped else 'pass'}"
@@ -604,17 +631,23 @@ def _passenger(
         for sp in spans:
             seq = sp.stops
             phys = sum(physics(sp.coaches, leg, cap, use_approach) for leg in sp.legs)
-            # A signed supplement may shorten a leg only down to its physics at line speed (no cruise
-            # cap), so a calibrated run never beats the speed limits (VER-LSP-01, issue #137).
+            # The calibrated leg time is the twin's (calibrated_leg): bounded by line-speed physics and
+            # monotone in stopping (issue #137).
+            tpl = rs.passenger(sp.coaches or default_coaches)
             s = (
                 sum(
-                    max(
-                        sup.get(leg_key(x.a, x.b, x.start_stopped, x.end_stopped), 0.0),
-                        physics(sp.coaches, x, math.inf, use_approach)
-                        - physics(sp.coaches, x, cap, use_approach),
+                    calibrated_leg(
+                        runner,
+                        tpl,
+                        x,
+                        cap,
+                        sup,
+                        runner.net.approach(x.a, x.dep_platform) if use_approach else None,
+                        runner.net.approach(x.b, x.arr_platform) if use_approach else None,
                     )
                     for x in sp.legs
                 )
+                - phys
                 if use_sup
                 else 0.0
             )

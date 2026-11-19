@@ -4,7 +4,7 @@ This note is for the product owner. Under DR-0005, each passenger stop-to-stop s
 legs) is scored against **its own train's booked net WTT time**: booked time minus the recorded
 engineering and traffic allowances. The tolerance is ±1 min and the target is ≥ 95 % of spans.
 
-**The target is not met: 99 of 307 spans are within ±1 min (32.2 %).** Every span and every miss
+**The target is not met: 98 of 307 spans are within ±1 min (31.9 %).** Every span and every miss
 is itemised in [runtime-calibration.md](runtime-calibration.md), with a summary per stop pattern.
 
 ## Model
@@ -25,11 +25,11 @@ is itemised in [runtime-calibration.md](runtime-calibration.md), with a summary 
 | | v1.5: modal reference (#59) | v1.7: own booked time (#137) |
 |---|---:|---:|
 | Spans scored | 191 of 307 | 307 of 307 |
-| Within ±1 min, calibrated | 52 (27.2 %) | **99 (32.2 %)** |
+| Within ±1 min, calibrated | 52 (27.2 %) | **98 (31.9 %)** |
 | Within ±1 min, physics alone | 9 | 73 |
-| Same model without the station-line approach | 15 | 117 (38.1 %) |
+| Same model without the station-line approach | 15 | 115 (37.5 %) |
 
-The station-line approach costs 18 spans. The WTT's allowances do not depend on whether the booked
+The station-line approach costs 17 spans. The WTT's allowances do not depend on whether the booked
 platform is a 15 km/h loop or a main line (#59), so the book has no loop reception time to match.
 The approach stays in the model because it is how the twin moves trains.
 
@@ -44,7 +44,7 @@ The approach stays in the model because it is how the twin moves trains.
 - **Variants tried, unbounded.** Per-leg medians, class-specific supplements, a modal estimator and
   other cruise caps all score 133-145 of 307. They do so only by letting some legs run faster than
   the line speed; the greedy dispatcher's G2 check rejects those plans (VER-LSP-01).
-- **Variants tried, bounded.** Leg-by-leg medians score 70-80. The joint fit scores 99-100 at every
+- **Variants tried, bounded.** Leg-by-leg medians score 70-80. The joint fit scores 98-100 at every
   cap from 105 to 130 km/h.
 - **Residuals are mostly negative.** The robust fit follows the typical train, so trains carrying
   extra booked time appear as negative residuals: the twin is faster than their book.
@@ -70,9 +70,9 @@ There are 48 spans; their booked net times run from 2,490 to 5,100 s. Three are 
 
 ## Decision requested
 
-Accept **99 / 307 (32.2 %)** as the documented M1 passenger result under DSC-10 v1.7. The ceiling
+Accept **98 / 307 (31.9 %)** as the documented M1 passenger result under DSC-10 v1.7. The ceiling
 of any per-leg model is 52.1 %, even before the speed limits. Reaching 95 % would need per-train
 running-time data or per-train fitting.
 
-Optionally, drop the station-line approach from the scored model. That gives 117 / 307 (38.1 %),
+Optionally, drop the station-line approach from the scored model. That gives 115 / 307 (37.5 %),
 at the cost of the twin no longer slowing trains on loop platforms.

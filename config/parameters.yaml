@@ -454,7 +454,8 @@ parameters:
       rtis.position_interval_s, so every ground-truth sample has a position fix to compare with (the DSS never
       extrapolates; at 10 s the D0 estimator test of #71 finds 76 k samples between fixes). Use 1 s for a
       recorded evaluation run. hold_stand_s: a plan hold shorter than this (rounding of a recorded decision
-      time) delays a train without making it stand, so a replan reproduces the frozen plan (issue #137).
+      time) delays a train without making it stand; a held train also joins the queue for its block line
+      this long before the hold and leaves at the hold, so a replan reproduces the frozen plan (issue #137).
   - key: runtime.model
     value: {step_m: 10, rotational_mass_factor: {passenger: 1.06, freight: 1.04}}
     unit: null

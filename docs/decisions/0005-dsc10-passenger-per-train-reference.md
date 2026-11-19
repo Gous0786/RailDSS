@@ -54,9 +54,9 @@ Model rules that follow from the decision (issue #137):
 | | v1.5 (modal reference) | v1.7 (own booked time) |
 |---|---:|---:|
 | Spans scored | 191 (116 padded, not scored) | 307 (all) |
-| Within ±1 min, calibrated | 52 (27.2 %) | **99 (32.2 %)** |
+| Within ±1 min, calibrated | 52 (27.2 %) | **98 (31.9 %)** |
 | Within ±1 min, physics alone | 9 | 73 |
-| Same, without the station-line approach (#59) | 15 | 117 (38.1 %) |
+| Same, without the station-line approach (#59) | 15 | 115 (37.5 %) |
 | Freight blocks within ±15 % | 59 / 64 | 59 / 64 (92.2 %) |
 
 **The 95 % passenger target is still not met.** The remaining residual is per-train pathing time.
@@ -71,7 +71,7 @@ which DSC-10 forbids.
 
 - **Without the speed-limit bound** the per-leg median scored 142 (46.2 %), but only by letting legs
   run faster than the line speed.
-- **The station-line approach costs 18 spans** (99 against 117). The WTT's allowances do not depend
+- **The station-line approach costs 17 spans** (98 against 115). The WTT's allowances do not depend
   on whether the booked platform is a 15 km/h loop or a main line (#59). The approach stays in the
   model because it is how the twin moves trains.
 
@@ -81,9 +81,16 @@ which DSC-10 forbids.
   ([runtime-calibration.md](../twin/runtime-calibration.md)).
 - The twin's passenger leg times now use the stopping-context supplements and the 105 km/h cap, and
   never beat its physics at line speed.
-- In the simulator, a plan hold shorter than `twin.sim.hold_stand_s` (1 s) no longer makes a train
-  stand. Such a hold only rounds a recorded decision time, so rolling-horizon replans now reproduce
-  the frozen plan.
+- A calibrated leg is never faster than the same leg with fewer stops, so stopping cannot shorten a
+  run. The DISPLIB IR minimum durations and the CP-SAT warm start rely on this.
+- Three simulator and planner fixes, all exposed by the new timings, make replans reproduce the frozen
+  plan (VER-FRZ-01):
+  - A plan hold shorter than `twin.sim.hold_stand_s` (1 s) no longer makes a train stand; such a
+    hold only rounds a recorded decision time.
+  - A held train joins the queue for its block line that long before the hold, and leaves at the
+    hold.
+  - The greedy plan exports a hold for every wait it imposes. This includes a train standing at a
+    station it would pass, and a train still inside the section at the end of the horizon.
 - The scenario hashes, the BL-0 note, the chart data and the v0 scenario KPIs were regenerated.
 - The shortfall against 95 % stays documented for product-owner review. Reaching 95 % would need
   per-train timing data, which is out of scope under DSC-10.

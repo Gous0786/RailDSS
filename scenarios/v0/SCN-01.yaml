@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "df2e333f24c15621eb64ede25d4b62f213b776464796a54dc2800dbfadf8bebf"
+expected_gt_hash: "b9383318672b82ed13c9449ad2f720ddbc81e56033d4167699599c304316604f"
 notes: "Baseline for the comparison with BL-5. Low and peak density need NHPP scaling (v1)."

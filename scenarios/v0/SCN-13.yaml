@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "b2cb7ab015ab95d9e3fbb0f12400815c7fcb428ff8fa971ea2f428ddbd8db54e"
+expected_gt_hash: "2b0c4cc7acd65b46faa1ab8f31c84da0043ee8c2d6b3fb56b646a00ccaf021c8"
 notes: "Every freight consist is 668.6 m, so the twin refuses the short lines (csr_refused > 0)."

@@ -211,12 +211,19 @@ class GreedyDispatcher:
         g2 = engine.check(cand, self.net, register=self.reg)
         runtime = time.perf_counter() - t0
         decisions, holds = [], []
+        exit_of = {token(p.run_id): p.nodes[-1].op for p in plans} | {p.run_id: p.nodes[-1].op for p in plans}
         for tr in cand.trains:
-            for c in tr.calls[:-1]:  # the last call is the exit, not a departure decision
+            # The exit is not a departure decision. A train still inside at the end of the horizon has left
+            # its last recorded station (the block run is not complete yet), so that call is a decision.
+            calls = tr.calls[:-1] if tr.calls and tr.calls[-1].op == exit_of.get(tr.run_id) else tr.calls
+            for c in calls:
                 if start_s <= c.dep_s < end_s:
                     decisions.append(Decision(tr.run_id, c.op, c.line_no, c.dep_s))
+                    # Every wait the plan imposes is a hold, also a train standing at a station it would
+                    # pass (held for a higher class): a replay without the plan's priorities (the G3
+                    # sandbox) must reproduce the plan (VER-FRZ-01, issue #137).
                     base = c.booked_dep_s if c.booked_dep_s is not None else c.arr_s
-                    if c.stop and c.dep_s - base > 0:
+                    if c.dep_s - base > 0:
                         holds.append(Hold(tr.run_id, c.op, c.dep_s, c.dep_s - base))
         stuck = sorted(
             {s.run_id for s in report.stuck} | {t.run_id for d in report.deadlocks for t in d.trains}

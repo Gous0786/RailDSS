@@ -727,11 +727,15 @@ class Sim:
                 hold = self.directives.holds.get((plan.run_id, node.op))
                 if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)
                     # A held train starts from rest; a hold that only rounds the recorded time does not
-                    # stop a passing train (rolling-horizon replans must reproduce the frozen plan).
+                    # stop a passing train. It joins the queue for its block line hold_stand_s before the
+                    # hold and leaves at the hold, so a replan with frozen decisions keeps the queue order
+                    # of the plan they come from (VER-FRZ-01).
                     t.status = "dwelling"
                     t.stood = t.stood or hold - self.env.now >= self.hold_stand_s
-                    yield self.env.timeout(hold - self.env.now)
+                    yield self.env.timeout(max(0.0, hold - self.hold_stand_s - self.env.now))
                     t.status = "running"
+                else:
+                    hold = None
                 if plan.timetabled and node.stop:
                     self._delay(t, node, "departure", self.env.now - node.dep)
                 # ---- despatch: take a block line, then free the station line
@@ -744,6 +748,10 @@ class Sim:
                 lines = yield from self._open_lines(t, k, idx, node, lines)
                 first = [self._line_resource(ln, hop) for ln in lines]
                 j = yield from self.acquire(t, first)
+                if hold is not None and hold > self.env.now:  # line taken early: leave at the hold
+                    t.status = "dwelling"
+                    yield self.env.timeout(hold - self.env.now)
+                    t.status = "running"
                 chosen = lines[j]
                 self.emit(
                     "gt.signal",

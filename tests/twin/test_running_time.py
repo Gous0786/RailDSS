@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 
@@ -294,7 +295,12 @@ def test_twin_timing_uses_the_booked_platform() -> None:
     sup = timing.calibration.leg_supplement_s
     phys = timing.runner.time(plan.template, "PUN", "PSA", False, True, timing.calibration.passenger_cap_kmh)
     fastest = timing.runner.time(plan.template, "PUN", "PSA", False, True, math.inf)
-    assert timing.leg(plan, "PUN", "PSA", False, True) == max(phys + sup["PUN-PSA/pass-stop"], fastest)
+    assert timing.leg(plan, "PUN", "PSA", False, True) >= max(phys + sup["PUN-PSA/pass-stop"], fastest)
+    # stopping never shortens a leg: the IR minimum durations and the planners rely on it
+    for x, y in itertools.pairwise(("KTV", "KPL", "ALM", "KUK", "VZM", "NML", "GVI")):
+        both = timing.leg(plan, x, y, True, True)
+        assert both >= timing.leg(plan, x, y, True, False) >= timing.leg(plan, x, y, False, False)
+        assert both >= timing.leg(plan, x, y, False, True) >= timing.leg(plan, x, y, False, False)
     # a negative supplement never makes a leg faster than physics at line speed (VER-LSP-01)
     neg = next(k for k, v in sup.items() if v < 0 and k.endswith("/pass-pass"))
     a, b = neg.split("/")[0].split("-")

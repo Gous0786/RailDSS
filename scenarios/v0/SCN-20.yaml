@@ -20,5 +20,5 @@ disruptions:
     duration_min: {low_min: 120, high_min: 180}
     etr: {offset_min: -30, sigma_min: 10}
 requires: []
-expected_gt_hash: "4a366eeed9f48932dc358d3017a9a71ec7c687a5586ffbea8bd7e7ecf2651dc2"
+expected_gt_hash: "c72d9f1f2a7530e51bbe5e1f465a68a3aeb34021270fac4a1228b24b72a5b215"
 notes: "Planned single-line working on the DN line; the block overruns the announced end by 30 min."
