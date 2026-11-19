@@ -211,7 +211,10 @@ class Orchestrator:
         targets, blocked = self._releasable(view)
         frozen = self.cadence.freeze(self._last_plan, now)
         holds, lines = self.commitments()
-        frozen += [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
+        horizon = now + self.cadence.freeze_s
+        ahead = [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
+        frozen += [d for d in ahead if d.dep_s < horizon]
+        committed = [d for d in ahead if d.dep_s >= horizon]
         past = {(d.run_id, d.station): d for d in self.cadence.history()}
         past |= {
             (d.run_id, d.station): d
@@ -225,6 +228,8 @@ class Orchestrator:
             plan_id=f"plan-{len(self.cycles)}",
             triggers=triggers,
             frozen=frozen,
+            committed=committed,
+            impose=bool(closures or self.exit_windows),
             history=list(past.values()),
             closures=closures,
             exit_windows=self.exit_windows,

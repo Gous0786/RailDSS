@@ -83,3 +83,16 @@ def test_the_days_kpis_compare_the_dss_arm_with_bl0(
     comparison = day_kpis(world, DAY, closures=[], exit_windows={}, holds=holds, lines=lines)
     assert set(comparison["arms"]) == {"DSS", "BL-0"}
     assert "A5_weighted_delay_train_min" in comparison["deltas"]["BL-0"]["kpis"]
+
+
+def test_replans_keep_the_frozen_decisions_of_earlier_plans(world: run.World) -> None:
+    """Issue #127: the plan after the fourth cycle (08:10) used to fail VER-FRZ-01 because a frozen train
+    was promoted in every queue and overtook another frozen train. Every re-plan must now pass G2."""
+    dss = TwinDss(world, DAY, until_s=START_S + 3600)
+    loop = Orchestrator(world.register, dss, TwinPlanner(world, DAY, cpsat_enabled=False))
+    summary = loop.run(START_S, START_S + 11 * 60, 120.0)
+    cycles = [c for c in summary.cycles if c.candidates]
+    assert len(cycles) >= 4 and cycles[-1].now_s >= START_S + 600  # includes the 08:10 re-plan
+    failed = [(c.now_s, x.fail) for c in cycles for x in c.candidates if not x.verified]
+    assert failed == []
+    assert summary.accepted > 0  # and the accepted orders are the frozen decisions that must hold

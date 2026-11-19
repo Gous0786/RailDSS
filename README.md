@@ -278,12 +278,13 @@ adds a closure and `--out run.json` keeps the full log. `python -m raildss_orche
 loop without the report. See `docs/dss/orchestrator.md`. The result of the committed run is in
 `docs/kpi/replay-ktv-psa-2025-08-20.md`.
 
-The committed run (greedy options, 08:00-10:00) executes 16 accepted recommendations in the twin and
-ends close to BL-0 (A5 weighted delay +2 %, unplanned stops -1.6 %). It is a first demo, not a
-benefit claim: after the first few orders most re-plans fail the frozen-decision rule (VER-FRZ-01),
-because each plan re-simulates the day from midnight and the stacked frozen decisions of earlier
-plans no longer all hold, so those plans are not released (9 of 48 candidate plans verified). Making
-the rolling plan consistent with its own frozen decisions is the next improvement.
+The committed run (greedy options, 08:00-10:00) executes 32 accepted recommendations in the twin and
+ends ahead of BL-0: A5 weighted delay -4.9 % (11141 against 11721 train-min), P90 exit delay -4.3 min,
+unplanned stops -33. All 53 candidate plans pass gates G0-G3. The greedy plan is a pure function of the
+day and its directives, so an unchanged world reproduces the decisions of earlier plans. Frozen decisions
+(commit window, started, accepted orders) are therefore only checked (VER-FRZ-01) and imposed as holds
+only when the world changes (a closure or a closed exit): a hold sends a train that was queueing to the
+back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
 
 ## Licence
 
