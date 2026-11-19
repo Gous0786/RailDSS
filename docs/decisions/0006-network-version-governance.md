@@ -5,7 +5,7 @@
 | Spec references | FR-DATA-03, FR-DATA-04; DR-0002 F06; DR-0003 (consequences) |
 | Issues | #63 (this change); #62 (DQ gate decoupled from the register hash) |
 | Date | 2026-11-19 |
-| Status | **Proposed** (accepted when the PR that adds it is merged) |
+| Status | **Accepted** (PR merged) |
 | Supersedes | n/a |
 
 ## Context
