@@ -12,7 +12,11 @@ Two layers, both reported:
      against two references), = max(0, mean residual);
    * passenger: one supplement per WTT leg and direction, fitted on non-stop legs whose time is
      within ``padding_band_s`` of the leg's minimum (single minute-rounded legs are never used as
-     minima: the mean over trains is used).
+     minima: the mean over trains is used), on legs with at least ``supplement_min_legs`` such runs.
+
+   A stop-to-stop passenger run leaves from and is received on the station line of its booked
+   platform (WTT planned line -> ``platform`` -> ``station_line``) at ``station_line.speed_kmh``
+   (issue #59, :meth:`Network.approach_restrictions`).
 
 References:
 
@@ -28,6 +32,7 @@ References:
 
 from __future__ import annotations
 
+import dataclasses
 import itertools
 import json
 import statistics
@@ -47,9 +52,17 @@ from raildss_etl.speeds import Speeds, Stage4Report
 from raildss_etl.timetable import Timetable
 from raildss_etl.topology import Topology
 from raildss_params import Register, load
-from raildss_schema.entities import BlockSection, BlockSectionLine, Gradient, OperationalPoint, SpeedProfile
+from raildss_schema.entities import (
+    BlockSection,
+    BlockSectionLine,
+    Gradient,
+    OperationalPoint,
+    Platform,
+    SpeedProfile,
+    StationLine,
+)
 from raildss_twin.rolling_stock import ConsistTemplate, RollingStock
-from raildss_twin.running_time import Driving, Restriction, Track, simulate
+from raildss_twin.running_time import M_PER_KM, Driving, Restriction, Track, simulate
 
 CALIBRATION_FILE = OUT_DIR / "ktv_psa_runtime_calibration.json"
 REFERENCE_FILE = OUT_DIR / "ktv_psa_runtime_reference_seconds.json"
@@ -69,6 +82,7 @@ class Residual(BaseModel):
     residual: float  # fraction (freight) or seconds (passenger)
     within: bool
     wagon_mix: dict[str, int] = {}  # freight: loads per wagon family on the block (issue #60)
+    approach: str = ""  # passenger: booked departure / reception station lines (issue #59)
 
 
 class CalibrationReport(BaseModel):
@@ -82,6 +96,7 @@ class CalibrationReport(BaseModel):
     spans_padded: int
     spans_scored: int
     spans_physics_within: int
+    spans_no_approach_within: int = 0  # physics + supplements, no station-line approach (issue #59)
     spans_within: int
     spans_share: float
     spans_within_all: int
@@ -92,6 +107,7 @@ class CalibrationReport(BaseModel):
     worst_blocks: list[Residual]
     freight_rows: list[Residual] = []  # every scored freight block, with its wagon mix (issue #60)
     worst_spans: list[Residual]
+    span_rows: list[Residual] = []  # every scored passenger span (issue #59)
 
     freight_target_met: bool
     passenger_target_met: bool  # DSC-10 passenger share; a shortfall is documented, not fitted away
@@ -107,6 +123,26 @@ class Span(NamedTuple):
     coaches: int
     stops: tuple[str, ...]  # stations from the first stop to the next stop
     net_s: int  # WTT time net of engineering and traffic allowances
+    dep_platform: str | None = None  # booked platform at the first stop (WTT planned line)
+    arr_platform: str | None = None  # booked platform at the last stop
+
+
+class Approach(NamedTuple):
+    """The station line a train leaves from or is received on (issue #59).
+
+    Reception: the train runs over the turnout and the line at ``speed_kmh`` for the line's clear
+    standing room before it stops (it stops at the far end of the line). Departure: it is held to
+    ``speed_kmh`` until its rear clears the exit turnout (one train length).
+    """
+
+    op: str
+    line_no: int
+    kind: str  # main | loop | siding | yard
+    speed_kmh: float
+    csr_m: float
+
+    def label(self) -> str:
+        return f"{self.op}/{self.line_no} {self.kind} {self.speed_kmh:g}"
 
 
 class Calibration(BaseModel):
@@ -123,7 +159,12 @@ class Network:
     """Per-direction tracks for passenger and goods speed limits, plus station chainage."""
 
     def __init__(
-        self, topology: Topology, speeds: Speeds, speeds_report: Stage4Report, gradients: list[Gradient]
+        self,
+        topology: Topology,
+        speeds: Speeds,
+        speeds_report: Stage4Report,
+        gradients: list[Gradient],
+        platforms: Sequence[Platform] = (),
     ) -> None:
         psr = [
             (p.id, p.direction, p.from_km_hwh, p.to_km_hwh, frozenset(p.lines))
@@ -132,6 +173,7 @@ class Network:
         self._build(
             topology.operational_points, topology.block_sections, speeds.speed_profiles, psr, gradients
         )
+        self._stations(speeds.station_lines, platforms)
 
     @classmethod
     def from_entities(
@@ -141,6 +183,8 @@ class Network:
         speed_profiles: Sequence[SpeedProfile],
         gradients: Sequence[Gradient],
         block_section_lines: Sequence[BlockSectionLine] = (),
+        station_lines: Sequence[StationLine] = (),
+        platforms: Sequence[Platform] = (),
     ) -> Network:
         """Build from published entities. A PSR profile's locations carry the HWH chainage.
 
@@ -170,7 +214,44 @@ class Network:
             )
         net = cls.__new__(cls)
         net._build(operational_points, block_sections, speed_profiles, psr, gradients)
+        net._stations(station_lines, platforms)
         return net
+
+    def _stations(self, station_lines: Sequence[StationLine], platforms: Sequence[Platform]) -> None:
+        """Station lines with a speed and a CSR, and the line behind each platform (issue #59)."""
+        self.station_lines: dict[tuple[str, int], StationLine] = {
+            (sl.op_code, sl.line_no): sl for sl in station_lines if sl.line_speed_kmh and sl.csr_m
+        }
+        self.platform_line: dict[tuple[str, str], int] = {
+            (p.op_code, p.platform_no): p.station_line_no for p in platforms if p.station_line_no is not None
+        }
+
+    def approach(self, op: str, platform: str | None = None, line_no: int | None = None) -> Approach | None:
+        """The station line behind a booked platform (or a line number); None if unknown."""
+        if line_no is None and platform is not None:
+            line_no = self.platform_line.get((op, platform))
+        sl = self.station_lines.get((op, line_no)) if line_no is not None else None
+        if sl is None or sl.line_speed_kmh is None or sl.csr_m is None:
+            return None
+        return Approach(op, sl.line_no, sl.kind, sl.line_speed_kmh, sl.csr_m)
+
+    def approach_restrictions(
+        self, a: str, b: str, dep: Approach | None, arr: Approach | None
+    ) -> list[Restriction]:
+        """Station-line speed limits for a run from a stop at ``a`` to a stop at ``b``.
+
+        Departure: a zero-length limit at ``a``; the running-time model holds it until the rear of the
+        train has cleared it, i.e. for one train length (the exit turnout is at the starter). Reception:
+        the line's CSR before ``b`` (the train stops at the far end of the line).
+        """
+        out = []
+        if dep is not None:
+            out.append(Restriction(self.km[a], self.km[a], dep.speed_kmh))
+        if arr is not None:
+            kb, length = self.km[b], arr.csr_m / M_PER_KM
+            lo, hi = (kb - length, kb) if self.km[b] > self.km[a] else (kb, kb + length)
+            out.append(Restriction(lo, hi, arr.speed_kmh))
+        return out
 
     def _build(
         self,
@@ -238,12 +319,27 @@ class Runner:
         self._cache: dict[tuple[Any, ...], int] = {}
 
     def time(
-        self, template: ConsistTemplate, a: str, b: str, start_stopped: bool, end_stopped: bool, cap: float
+        self,
+        template: ConsistTemplate,
+        a: str,
+        b: str,
+        start_stopped: bool,
+        end_stopped: bool,
+        cap: float,
+        dep: Approach | None = None,
+        arr: Approach | None = None,
     ) -> int:
-        key = (template.consist.id, a, b, start_stopped, end_stopped, cap)
+        """Running time from ``a`` to ``b``. ``dep`` / ``arr``: the station line the train starts from
+        (when ``start_stopped``) or is received on (when ``end_stopped``), issue #59."""
+        dep = dep if start_stopped else None
+        arr = arr if end_stopped else None
+        key = (template.consist.id, a, b, start_stopped, end_stopped, cap, dep, arr)
         if key not in self._cache:
             passenger = template.consist_type == "passenger"
             track = self.net.tracks[(self.net.direction(a, b), "passenger" if passenger else "goods")]
+            extra = self.net.approach_restrictions(a, b, dep, arr)
+            if extra:
+                track = dataclasses.replace(track, restrictions=[*track.restrictions, *extra])
             driving = Driving(
                 cruise_kmh=cap, rotational_mass_factor=self.rot["passenger" if passenger else "freight"]
             )
@@ -379,8 +475,23 @@ def _spans(timetable: Timetable, km: dict[str, float], min_legs: int) -> list[Sp
             net = (
                 pts[j].arr_s - pts[i].dep_s - sum(p.eng_allowance_s + p.traffic_allowance_s for p in pts[i:j])
             )
-            spans.append(Span(svc.train_no, svc.coaches or 0, tuple(p.op_code for p in seg), net))
+            spans.append(
+                Span(
+                    svc.train_no,
+                    svc.coaches or 0,
+                    tuple(p.op_code for p in seg),
+                    net,
+                    booked_platform(pts[i].planned_line),
+                    booked_platform(pts[j].planned_line),
+                )
+            )
     return spans
+
+
+def booked_platform(planned: Sequence[str | None]) -> str | None:
+    """The platform a train is booked on at a stop: the most common over its running days."""
+    counts = Counter(x for x in planned if x)
+    return min(counts, key=lambda k: (-counts[k], k)) if counts else None
 
 
 def _modal(values: list[int]) -> int:
@@ -405,21 +516,38 @@ def _passenger(
     scored = [s for s in spans if s.net_s <= standard[s.stops] + band]
     reference_tpl = rs.passenger(default_coaches)
 
+    min_legs = int(cfg["supplement_min_legs"])
+
     def supplements(cap: float) -> dict[str, float]:
+        # A leg is supplemented only on enough non-stop runs: a handful of trains passing a station
+        # where nearly all stop (NML-VZM: 5) do not represent the stopping trains (issue #59).
         out = {}
         for key, times in legs.items():
             a, b = key.split("-")
+            if len(times) < min_legs:
+                continue
             unpadded = [t for t in times if t <= min(times) + band]
             out[key] = round(
                 max(0.0, statistics.mean(unpadded) - runner.time(reference_tpl, a, b, False, False, cap)), 1
             )
         return out
 
-    def evaluate(cap: float, sup: dict[str, float], use_sup: bool) -> list[Residual]:
+    def approaches(sp: Span, use: bool) -> tuple[Approach | None, Approach | None]:
+        if not use:
+            return None, None
+        return runner.net.approach(sp.stops[0], sp.dep_platform), runner.net.approach(
+            sp.stops[-1], sp.arr_platform
+        )
+
+    def evaluate(
+        cap: float, sup: dict[str, float], use_sup: bool, use_approach: bool = True
+    ) -> list[Residual]:
         rows = []
-        for no, coaches, seq, _ in scored:
+        for sp in scored:
+            no, coaches, seq = sp.train_no, sp.coaches, sp.stops
             tpl = rs.passenger(coaches or default_coaches)
-            phys = runner.time(tpl, seq[0], seq[-1], True, True, cap)
+            dep, arr = approaches(sp, use_approach)
+            phys = runner.time(tpl, seq[0], seq[-1], True, True, cap, dep, arr)
             s = sum(sup.get(f"{a}-{b}", 0.0) for a, b in itertools.pairwise(seq)) if use_sup else 0.0
             ref = float(standard[seq])
             r = phys + s - ref
@@ -434,6 +562,9 @@ def _passenger(
                     simulated_s=phys + s,
                     residual=round(r, 1),
                     within=abs(r) <= tol,
+                    approach=" / ".join(
+                        x.label() if x else f"{op} unknown" for x, op in ((dep, seq[0]), (arr, seq[-1]))
+                    ),
                 )
             )
         return rows
@@ -444,17 +575,21 @@ def _passenger(
     sup = supplements(best)
     rows = evaluate(best, sup, True)
     physics_within = sum(r.within for r in evaluate(best, sup, False))
+    no_approach_within = sum(r.within for r in evaluate(best, sup, True, use_approach=False))
     within_all = 0
-    for _, coaches, seq, net in spans:
-        tpl = rs.passenger(coaches or default_coaches)
-        sim = runner.time(tpl, seq[0], seq[-1], True, True, best) + sum(
+    for sp in spans:
+        seq = sp.stops
+        tpl = rs.passenger(sp.coaches or default_coaches)
+        dep, arr = approaches(sp, True)
+        sim = runner.time(tpl, seq[0], seq[-1], True, True, best, dep, arr) + sum(
             sup.get(f"{a}-{b}", 0.0) for a, b in itertools.pairwise(seq)
         )
-        within_all += abs(sim - net) <= tol
+        within_all += abs(sim - sp.net_s) <= tol
     counts = {
         "total": len(spans),
         "padded": len(spans) - len(scored),
         "physics": physics_within,
+        "no_approach": no_approach_within,
         "all": within_all,
     }
     return best, sup, rows, counts
@@ -545,12 +680,13 @@ def calibrate(
     register: Register | None = None,
     gradients: list[Gradient] | None = None,
     record_reference: bool = False,
+    platforms: Sequence[Platform] = (),
 ) -> tuple[Calibration, CalibrationReport]:
     reg = register or load()
     cfg = reg.value("runtime.calibration")
     rs = RollingStock(reg, topology.network_version)
     network = Network(
-        topology, speeds, speeds_report, gradients if gradients is not None else read_gradients()
+        topology, speeds, speeds_report, gradients if gradients is not None else read_gradients(), platforms
     )
     runner = Runner(network, reg)
 
@@ -585,6 +721,7 @@ def calibrate(
         spans_padded=counts["padded"],
         spans_scored=len(p_rows),
         spans_physics_within=counts["physics"],
+        spans_no_approach_within=counts["no_approach"],
         spans_within=s_within,
         spans_share=round(s_within / len(p_rows), 4) if p_rows else 0.0,
         spans_within_all=counts["all"],
@@ -597,6 +734,7 @@ def calibrate(
         worst_blocks=sorted(f_rows, key=lambda r: -abs(r.residual))[:WORST],
         freight_rows=sorted(f_rows, key=lambda r: (r.ref, r.direction, r.kind)),
         worst_spans=sorted(p_rows, key=lambda r: -abs(r.residual))[:WORST],
+        span_rows=sorted(p_rows, key=lambda r: (r.ref, r.direction)),
     )
     calibration = Calibration(
         freight_caps_kmh=f_caps, passenger_cap_kmh=p_cap, block_allowance_s=allowance, leg_supplement_s=legs
@@ -656,7 +794,10 @@ def render_markdown(report: CalibrationReport) -> str:
         f"{report.spans_padded} padded (more than 1 min above their standard time), "
         f"{report.spans_scored} scored. Within +-1 min: {report.spans_within} "
         f"({report.spans_share:.1%}); physics alone {report.spans_physics_within}; "
-        f"against every span, standard or padded: {report.spans_within_all}/{report.spans_total}.",
+        f"without the station-line approach {report.spans_no_approach_within}; "
+        f"against every span, standard or padded: {report.spans_within_all}/{report.spans_total}. "
+        f"Target {'met' if report.passenger_target_met else 'not met'}: the residual is explained "
+        "in [passenger-residual.md](passenger-residual.md) (issue #59).",
         f"- Pass-through slower than stop-start: {len(report.pass_slower_than_stop)} blocks. "
         f"Physics reproduces the {report.reference_runs} recorded reference runs "
         f"(`{REFERENCE_FILE.name}`) to {REFERENCE_TOLERANCE_S} s: {'yes' if report.reproducible else 'no'}.",
@@ -677,8 +818,47 @@ def render_markdown(report: CalibrationReport) -> str:
         "",
         *table(report.worst_spans, "s"),
         "",
+        "## Passenger spans by stop pattern",
+        "",
+        "Stop-to-stop runs leave from and are received on the booked platform's station line (WTT planned "
+        "line, via the platform table) at its line speed: reception over the line's CSR before the stop, "
+        "departure until the rear clears (issue #59). One reference per stop pattern: the modal net time.",
+        "",
+        *_span_groups(report.span_rows),
+        "",
+        "## Every scored passenger miss",
+        "",
+        "| Span | Train | Dir | Station lines (departure / reception) | Reference (s) | Physics (s) "
+        "| Supplement (s) | Simulated (s) | Residual (s) |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|",
+        *(
+            f"| {r.ref.rsplit(' ', 1)[0]} | {r.ref.rsplit(' ', 1)[1]} | {r.direction} | {r.approach} | "
+            f"{r.reference_s:.0f} | {r.physics_s} | {r.supplement_s:.0f} | {r.simulated_s:.0f} | "
+            f"{r.residual:+.0f} |"
+            for r in report.span_rows
+            if not r.within
+        ),
+        "",
     ]
     return "\n".join(lines)
+
+
+def _span_groups(rows: list[Residual]) -> list[str]:
+    """One row per stop pattern: spans, within, mean and range of the residual."""
+    groups: dict[tuple[str, str], list[Residual]] = defaultdict(list)
+    for r in rows:
+        groups[(r.ref.rsplit(" ", 1)[0], r.direction)].append(r)
+    out = [
+        "| Span | Dir | Reference (s) | Spans | Within | Mean residual (s) | Range (s) |",
+        "|---|---|---:|---:|---:|---:|---|",
+    ]
+    for (span, direction), rs in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        res = [r.residual for r in rs]
+        out.append(
+            f"| {span} | {direction} | {rs[0].reference_s:.0f} | {len(rs)} | {sum(r.within for r in rs)} | "
+            f"{statistics.mean(res):+.0f} | {min(res):+.0f} .. {max(res):+.0f} |"
+        )
+    return out
 
 
 def frame(rows: list[Residual]) -> pd.DataFrame:
@@ -701,9 +881,17 @@ def run(
 
     tables = run_stage1(write=False)[0]
     topology = build_topology(tables)[0]
-    speeds, speeds_report = build_speeds(tables, topology, build_station_lines(tables)[0])
+    station_lines, platforms, _ = build_station_lines(tables)
+    speeds, speeds_report = build_speeds(tables, topology, station_lines)
     demand = build_freight(tables, topology)[0]
     timetable = build_timetable(tables)[0]
     return calibrate(
-        topology, speeds, speeds_report, demand, timetable, register, record_reference=record_reference
+        topology,
+        speeds,
+        speeds_report,
+        demand,
+        timetable,
+        register,
+        record_reference=record_reference,
+        platforms=platforms,
     )

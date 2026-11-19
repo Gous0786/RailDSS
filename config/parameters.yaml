@@ -476,8 +476,9 @@ parameters:
       span_min_legs: 3
       span_tolerance_s: 60
       padding_band_s: 60
+      supplement_min_legs: 30
     unit: null
-    source: "spec DSC-10, REC-08; issue #16"
+    source: "spec DSC-10, REC-08; issues #16, #59"
     status: SA
     owner: twin
     valid_from: 2026-11-05
@@ -486,7 +487,9 @@ parameters:
       freight (loaded / empty) and passenger trains; the cap pair is chosen on the physics-only fit,
       then non-negative block (freight) or leg (passenger) supplements absorb location effects.
       WTT spans or legs more than padding_band_s above their standard (modal / minimum) time are
-      padded and reported, not scored.
+      padded and reported, not scored. A passenger leg is supplemented only when at least
+      supplement_min_legs non-stop runs cross it (issue #59). Stop-to-stop runs leave from and are
+      received on the booked platform's station line at station_line.speed_kmh.
 
   # ------------------------------------------------------------------ timetable
   - key: wtt.time_tolerance_s

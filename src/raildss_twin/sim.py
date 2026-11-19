@@ -725,7 +725,7 @@ class Sim:
                     t.status = "running"
                 hold = self.directives.holds.get((plan.run_id, node.op))
                 if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)
-                    t.status = "dwelling"
+                    t.status, t.stood = "dwelling", True  # a held train starts from rest
                     yield self.env.timeout(hold - self.env.now)
                     t.status = "running"
                 if plan.timetabled and node.stop:
@@ -852,7 +852,7 @@ class Sim:
     def run_time(self, t: Train, x: Node, y: Node, start_stopped: bool, end_stopped: bool) -> float:
         """Calibrated running time. A booked train does not pass a point before its booked time: where the
         timetable is padded it runs to time (a stop is simply reached early and waits for its departure)."""
-        span = self.timing.leg(t.plan, x.op, y.op, start_stopped, end_stopped)
+        span = self.timing.leg(t.plan, x.op, y.op, start_stopped, end_stopped, x.platform, y.platform)
         if self.pert is not None:
             span *= self.pert.leg_factor(t.plan.kind, t.plan.run_id, x.op, y.op)
         if t.plan.timetabled and not y.stop:

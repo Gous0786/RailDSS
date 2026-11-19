@@ -21,8 +21,8 @@
    "block": "ALM-KPL",
    "from_op": "ALM",
    "to_op": "KPL",
-   "cap_kmh": 130.0,
-   "seconds": 257
+   "cap_kmh": 120.0,
+   "seconds": 278
   },
   {
    "consist": "FRT-BOXN-L",
@@ -45,8 +45,8 @@
    "block": "ALM-KUK",
    "from_op": "ALM",
    "to_op": "KUK",
-   "cap_kmh": 130.0,
-   "seconds": 197
+   "cap_kmh": 120.0,
+   "seconds": 213
   },
   {
    "consist": "FRT-BOXN-L",
@@ -69,8 +69,8 @@
    "block": "CHE-DUSI",
    "from_op": "CHE",
    "to_op": "DUSI",
-   "cap_kmh": 130.0,
-   "seconds": 179
+   "cap_kmh": 120.0,
+   "seconds": 194
   },
   {
    "consist": "FRT-BOXN-L",
@@ -93,8 +93,8 @@
    "block": "CHE-ULM",
    "from_op": "CHE",
    "to_op": "ULM",
-   "cap_kmh": 130.0,
-   "seconds": 278
+   "cap_kmh": 120.0,
+   "seconds": 301
   },
   {
    "consist": "FRT-BOXN-L",
@@ -117,8 +117,8 @@
    "block": "CPP-GVI",
    "from_op": "CPP",
    "to_op": "GVI",
-   "cap_kmh": 130.0,
-   "seconds": 185
+   "cap_kmh": 120.0,
+   "seconds": 198
   },
   {
    "consist": "FRT-BOXN-L",
@@ -141,7 +141,7 @@
    "block": "CPP-SGDM",
    "from_op": "CPP",
    "to_op": "SGDM",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 434
   },
   {
@@ -165,7 +165,7 @@
    "block": "DUSI-CHE",
    "from_op": "DUSI",
    "to_op": "CHE",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 235
   },
   {
@@ -189,8 +189,8 @@
    "block": "DUSI-PDU",
    "from_op": "DUSI",
    "to_op": "PDU",
-   "cap_kmh": 130.0,
-   "seconds": 244
+   "cap_kmh": 120.0,
+   "seconds": 265
   },
   {
    "consist": "FRT-BOXN-L",
@@ -213,8 +213,8 @@
    "block": "GVI-CPP",
    "from_op": "GVI",
    "to_op": "CPP",
-   "cap_kmh": 130.0,
-   "seconds": 183
+   "cap_kmh": 120.0,
+   "seconds": 197
   },
   {
    "consist": "FRT-BOXN-L",
@@ -237,8 +237,8 @@
    "block": "GVI-NML",
    "from_op": "GVI",
    "to_op": "NML",
-   "cap_kmh": 130.0,
-   "seconds": 341
+   "cap_kmh": 120.0,
+   "seconds": 370
   },
   {
    "consist": "FRT-BOXN-L",
@@ -261,7 +261,7 @@
    "block": "KBM-NWP",
    "from_op": "KBM",
    "to_op": "NWP",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 456
   },
   {
@@ -285,7 +285,7 @@
    "block": "KBM-TIU",
    "from_op": "KBM",
    "to_op": "TIU",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 449
   },
   {
@@ -309,8 +309,8 @@
    "block": "KPL-ALM",
    "from_op": "KPL",
    "to_op": "ALM",
-   "cap_kmh": 130.0,
-   "seconds": 256
+   "cap_kmh": 120.0,
+   "seconds": 277
   },
   {
    "consist": "FRT-BOXN-L",
@@ -333,8 +333,8 @@
    "block": "KPL-KTV",
    "from_op": "KPL",
    "to_op": "KTV",
-   "cap_kmh": 130.0,
-   "seconds": 220
+   "cap_kmh": 120.0,
+   "seconds": 236
   },
   {
    "consist": "FRT-BOXN-L",
@@ -357,8 +357,8 @@
    "block": "KTV-KPL",
    "from_op": "KTV",
    "to_op": "KPL",
-   "cap_kmh": 130.0,
-   "seconds": 215
+   "cap_kmh": 120.0,
+   "seconds": 232
   },
   {
    "consist": "FRT-BOXN-L",
@@ -381,8 +381,8 @@
    "block": "KUK-ALM",
    "from_op": "KUK",
    "to_op": "ALM",
-   "cap_kmh": 130.0,
-   "seconds": 197
+   "cap_kmh": 120.0,
+   "seconds": 213
   },
   {
    "consist": "FRT-BOXN-L",
@@ -405,8 +405,8 @@
    "block": "KUK-VZM",
    "from_op": "KUK",
    "to_op": "VZM",
-   "cap_kmh": 130.0,
-   "seconds": 295
+   "cap_kmh": 120.0,
+   "seconds": 319
   },
   {
    "consist": "FRT-BOXN-L",
@@ -429,8 +429,8 @@
    "block": "NML-GVI",
    "from_op": "NML",
    "to_op": "GVI",
-   "cap_kmh": 130.0,
-   "seconds": 342
+   "cap_kmh": 120.0,
+   "seconds": 370
   },
   {
    "consist": "FRT-BOXN-L",
@@ -453,8 +453,8 @@
    "block": "NML-VZM",
    "from_op": "NML",
    "to_op": "VZM",
-   "cap_kmh": 130.0,
-   "seconds": 371
+   "cap_kmh": 120.0,
+   "seconds": 380
   },
   {
    "consist": "FRT-BOXN-L",
@@ -477,7 +477,7 @@
    "block": "NWP-KBM",
    "from_op": "NWP",
    "to_op": "KBM",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 456
   },
   {
@@ -501,7 +501,7 @@
    "block": "NWP-PUN",
    "from_op": "NWP",
    "to_op": "PUN",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 433
   },
   {
@@ -525,8 +525,8 @@
    "block": "PDU-DUSI",
    "from_op": "PDU",
    "to_op": "DUSI",
-   "cap_kmh": 130.0,
-   "seconds": 307
+   "cap_kmh": 120.0,
+   "seconds": 313
   },
   {
    "consist": "FRT-BOXN-L",
@@ -549,8 +549,8 @@
    "block": "PDU-SGDM",
    "from_op": "PDU",
    "to_op": "SGDM",
-   "cap_kmh": 130.0,
-   "seconds": 280
+   "cap_kmh": 120.0,
+   "seconds": 302
   },
   {
    "consist": "FRT-BOXN-L",
@@ -573,8 +573,8 @@
    "block": "PSA-PUN",
    "from_op": "PSA",
    "to_op": "PUN",
-   "cap_kmh": 130.0,
-   "seconds": 341
+   "cap_kmh": 120.0,
+   "seconds": 369
   },
   {
    "consist": "FRT-BOXN-L",
@@ -597,7 +597,7 @@
    "block": "PUN-NWP",
    "from_op": "PUN",
    "to_op": "NWP",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 433
   },
   {
@@ -621,8 +621,8 @@
    "block": "PUN-PSA",
    "from_op": "PUN",
    "to_op": "PSA",
-   "cap_kmh": 130.0,
-   "seconds": 344
+   "cap_kmh": 120.0,
+   "seconds": 370
   },
   {
    "consist": "FRT-BOXN-L",
@@ -645,7 +645,7 @@
    "block": "SGDM-CPP",
    "from_op": "SGDM",
    "to_op": "CPP",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 434
   },
   {
@@ -669,8 +669,8 @@
    "block": "SGDM-PDU",
    "from_op": "SGDM",
    "to_op": "PDU",
-   "cap_kmh": 130.0,
-   "seconds": 283
+   "cap_kmh": 120.0,
+   "seconds": 303
   },
   {
    "consist": "FRT-BOXN-L",
@@ -693,7 +693,7 @@
    "block": "TIU-KBM",
    "from_op": "TIU",
    "to_op": "KBM",
-   "cap_kmh": 130.0,
+   "cap_kmh": 120.0,
    "seconds": 449
   },
   {
@@ -717,8 +717,8 @@
    "block": "TIU-ULM",
    "from_op": "TIU",
    "to_op": "ULM",
-   "cap_kmh": 130.0,
-   "seconds": 317
+   "cap_kmh": 120.0,
+   "seconds": 326
   },
   {
    "consist": "FRT-BOXN-L",
@@ -741,8 +741,8 @@
    "block": "ULM-CHE",
    "from_op": "ULM",
    "to_op": "CHE",
-   "cap_kmh": 130.0,
-   "seconds": 278
+   "cap_kmh": 120.0,
+   "seconds": 301
   },
   {
    "consist": "FRT-BOXN-L",
@@ -765,8 +765,8 @@
    "block": "ULM-TIU",
    "from_op": "ULM",
    "to_op": "TIU",
-   "cap_kmh": 130.0,
-   "seconds": 341
+   "cap_kmh": 120.0,
+   "seconds": 347
   },
   {
    "consist": "FRT-BOXN-L",
@@ -789,8 +789,8 @@
    "block": "VZM-KUK",
    "from_op": "VZM",
    "to_op": "KUK",
-   "cap_kmh": 130.0,
-   "seconds": 295
+   "cap_kmh": 120.0,
+   "seconds": 319
   },
   {
    "consist": "FRT-BOXN-L",
@@ -813,8 +813,8 @@
    "block": "VZM-NML",
    "from_op": "VZM",
    "to_op": "NML",
-   "cap_kmh": 130.0,
-   "seconds": 665
+   "cap_kmh": 120.0,
+   "seconds": 669
   }
  ]
 }

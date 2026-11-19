@@ -13,12 +13,14 @@ from raildss_twin.calibration import (
     CalibrationReport,
     Network,
     Runner,
+    booked_platform,
     check_reference,
     read_reference,
     render_markdown,
     run,
     weighted_quantile,
 )
+from raildss_twin.plans import Plan, Timing
 from raildss_twin.rolling_stock import KMH_PER_MPS, RollingStock
 from raildss_twin.running_time import Driving, Restriction, Track, simulate
 
@@ -193,3 +195,84 @@ def test_passenger_spans_reported_for_sme_review(report: CalibrationReport) -> N
 def test_committed_calibration_matches_a_fresh_run(report: CalibrationReport) -> None:
     committed = json.loads(CALIBRATION_FILE.read_text(encoding="utf-8"))["report"]
     assert committed == json.loads(report.model_dump_json())
+
+
+# ---------------------------------------------------------------- station approach (issue #59)
+
+
+def _published_network() -> Network:
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    return Network.from_entities(
+        tables["operational_point"],  # type: ignore[arg-type]
+        tables["block_section"],  # type: ignore[arg-type]
+        tables["speed_profile"],  # type: ignore[arg-type]
+        tables["gradient"],  # type: ignore[arg-type]
+        tables["block_section_line"],  # type: ignore[arg-type]
+        tables["station_line"],  # type: ignore[arg-type]
+        tables["platform"],  # type: ignore[arg-type]
+    )
+
+
+def test_booked_platform_resolves_to_its_station_line() -> None:
+    net = _published_network()
+    psa = net.approach("PSA", "PF-3")  # PF-3 -> line 6 (DNML5), a 15 km/h loop in the estimated data
+    assert psa is not None and (psa.line_no, psa.kind, psa.speed_kmh) == (6, "loop", 15.0)
+    vzm = net.approach("VZM", "PF-4")
+    assert vzm is not None and vzm.kind == "main" and vzm.speed_kmh == 100.0
+    assert net.approach("VZM", None) is None and net.approach("VZM", "PF-99") is None
+    assert booked_platform([None, "PF-3", "PF-3", "PF-1"]) == "PF-3"
+    assert booked_platform([None, None]) is None
+
+
+def test_loop_reception_and_departure_cost_time() -> None:
+    net = _published_network()
+    runner = Runner(net, load())
+    tpl = RollingStock().passenger(22)
+    loop_in, main_in = net.approach("PSA", "PF-3"), net.approach("VZM", "PF-4")
+    plain = runner.time(tpl, "PUN", "PSA", True, True, 120.0)
+    received = runner.time(tpl, "PUN", "PSA", True, True, 120.0, arr=loop_in)
+    # 15 km/h over the line's CSR before the stop: about 2 min more than braking from line speed
+    assert received - plain > 60
+    loop_out = net.approach("PSA", "PF-2")  # UP loop
+    assert runner.time(tpl, "PSA", "PUN", True, True, 120.0, dep=loop_out) > runner.time(
+        tpl, "PSA", "PUN", True, True, 120.0
+    )
+    # A main-line platform hardly changes the run; a passing train ignores the station line.
+    assert (
+        abs(
+            runner.time(tpl, "NML", "VZM", True, True, 120.0, arr=main_in)
+            - runner.time(tpl, "NML", "VZM", True, True, 120.0)
+        )
+        <= 5
+    )
+    assert runner.time(tpl, "PUN", "PSA", True, False, 120.0, arr=loop_in) == runner.time(
+        tpl, "PUN", "PSA", True, False, 120.0
+    )
+
+
+def test_every_scored_passenger_miss_is_itemised(report: CalibrationReport) -> None:
+    assert len(report.span_rows) == report.spans_scored
+    assert sum(r.within for r in report.span_rows) == report.spans_within
+    assert report.spans_no_approach_within != report.spans_within  # the approach model is in effect
+    doc = render_markdown(report)
+    assert "## Passenger spans by stop pattern" in doc and "## Every scored passenger miss" in doc
+    misses = [r for r in report.span_rows if not r.within]
+    section = doc.split("## Every scored passenger miss", 1)[1]
+    assert section.count("\n| ") - 1 == len(misses)  # one row per miss, after the header
+    assert all(r.approach for r in report.span_rows)
+
+
+def test_twin_timing_uses_the_booked_platform() -> None:
+    _, tables, _ = read_export(PUBLISHED_DIR / "KTV-PSA-2025-08")
+    timing = Timing(tables, load())  # type: ignore[arg-type]
+    plan = Plan(
+        run_id="t",
+        kind="passenger",
+        name="t",
+        template=timing.stock.passenger(22),
+        nodes=[],
+        entry_s=0.0,
+        timetabled=True,
+    )
+    base = timing.leg(plan, "PUN", "PSA", True, True)
+    assert timing.leg(plan, "PUN", "PSA", True, True, None, "PF-3") > base
