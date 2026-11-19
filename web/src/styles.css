@@ -649,3 +649,92 @@ kbd {
   border-top: 1px solid #373e47;
   margin-top: 8px;
 }
+
+/* ---- issue #87: schematic mimic (FR-UI-06) ---- */
+.mimic {
+  flex: 1 1 58%;
+  min-height: 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mimic-head,
+.mimic-legend {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #7d8590;
+}
+.mimic-scroll {
+  flex: 1;
+  overflow: auto;
+  background: #0f1115;
+}
+.mimic-axis,
+.mimic-code {
+  fill: #7d8590;
+  font-size: 11px;
+}
+.mimic-code.halt {
+  fill: #545d68;
+}
+.mimic-station-tick {
+  stroke: #2a2f37;
+}
+.mimic-track {
+  stroke: #545d68;
+  stroke-width: 3;
+}
+.mimic-track.busy {
+  stroke: #f85149;
+  stroke-width: 5;
+}
+.mimic-signal {
+  fill: #7d8590;
+}
+.mimic-sl {
+  fill: #22272e;
+  stroke: #545d68;
+}
+.mimic-sl.loop {
+  stroke-dasharray: 3 2;
+}
+.mimic-sl.busy {
+  fill: #f8514955;
+  stroke: #f85149;
+}
+.mimic-sl.out {
+  fill: transparent;
+  stroke: #d29922;
+  stroke-dasharray: 1 2;
+}
+.mimic-sl-text {
+  fill: #c9d1d9;
+  font-size: 8px;
+}
+.mimic-train path {
+  fill: #1f6feb;
+  stroke: #0f1115;
+}
+.mimic-train.yellow path {
+  fill: #9e6a03;
+}
+.mimic-train.amber path {
+  fill: #bd561d;
+}
+.mimic-train.red path {
+  fill: #da3633;
+}
+.mimic-train text {
+  fill: #ffffff;
+  font-size: 9px;
+}
+.mimic-legend .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  background: #545d68;
+  vertical-align: middle;
+}
+.mimic-legend .swatch.busy {
+  background: #f85149;
+}
