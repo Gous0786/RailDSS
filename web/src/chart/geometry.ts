@@ -1,6 +1,6 @@
 // Pure helpers of the control chart: the time window, axis ticks and hit-testing (FR-UI-02).
 
-import type { Point } from "../types";
+import type { Point, Train } from "../types";
 
 export const DAY_S = 24 * 3600;
 export const MIN_SPAN_S = 30 * 60; // zoom-in limit
@@ -87,4 +87,8 @@ export function visible(pts: Point[], start: number, end: number): Point[] {
   while (j >= 0 && pts[j][0] > end) j--;
   if (i === pts.length || j < 0) return []; // wholly before or after the window
   return pts.slice(Math.max(0, i - 1), Math.min(pts.length, j + 2));
+}
+
+export function describe(t: Train): string {
+  return `${t.id} · ${t.name || t.category || t.kind} · ${t.kind}`;
 }

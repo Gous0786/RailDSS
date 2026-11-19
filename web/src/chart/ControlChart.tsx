@@ -4,7 +4,7 @@
 import { scaleLinear } from "d3-scale";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChartData, Option, Point, Train } from "../types";
-import { type Window, hhmm, nearestLine, panWindow, timeTickStep, visible, zoomWindow } from "./geometry";
+import { type Window, describe, hhmm, nearestLine, panWindow, timeTickStep, visible, zoomWindow } from "./geometry";
 
 export type PreviewMode = "off" | "before" | "after";
 
@@ -236,8 +236,4 @@ export function ControlChart({ data, window: w, now, option, mode, selected, onW
       {hover && <div className="tip">{describe(data.trains.find((t) => t.id === hover)!)}</div>}
     </div>
   );
-}
-
-export function describe(t: Train): string {
-  return `${t.id} · ${t.name || t.category || t.kind} · ${t.kind}`;
 }

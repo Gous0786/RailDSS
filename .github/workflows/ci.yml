@@ -95,7 +95,7 @@ jobs:
           uv run pytest tests/hitl -v
 
   web:
-    name: Web UI typecheck, tests, build and npm licence gate (issue #86)
+    name: Web UI typecheck, tests, build, chunks and npm licence report (issues #86, #89)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -111,7 +111,14 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npm run licences
+      - name: Chart and About page are separate chunks (DR-0001 §3.3, issue #89)
+        run: npm run check-chunks
+      - name: npm licence gate and report (issue #89)
+        run: npm run licences:report
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-licence-report
+          path: web/licences.json
 
   licences:
     name: Licence gate and SBOM (NFR-LIC-02)
