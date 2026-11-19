@@ -30,12 +30,12 @@ from pydantic import TypeAdapter
 import raildss_etl
 from raildss_etl import dq, gradients, signalling, validator
 from raildss_etl.mapping import REPO
+from raildss_etl.rolling_stock import RollingStock
 from raildss_etl.timetable import Timetable, ist
 from raildss_params import Register
 from raildss_schema import migrate, store
 from raildss_schema.base import Stamped
 from raildss_schema.entities import ENTITIES, Consist, NetworkVersion, TrainRun
-from raildss_twin.rolling_stock import RollingStock
 
 PUBLISHED_DIR = REPO / "data" / "published"
 STATS_FILE = "freight_demand_stats.json"

@@ -34,9 +34,9 @@ src/raildss_etl/signalling.py: 3.6  # km/h per m/s (unit conversion), not a rule
 src/raildss_etl/signalling.py: 2  # v^2 / 2a in the braking-distance formula and the two non-warning aspects, not rule values
 src/raildss_etl/signalling.py: 6  # rounding digits of chainage, not a rule value
 src/raildss_etl/signalling.py: 0.000001  # floating-point tolerance for tiling, not a rule value
-src/raildss_twin/rolling_stock.py: 0.745699872  # mechanical horsepower to kW (unit conversion), not a rule value
-src/raildss_twin/rolling_stock.py: 3.6  # km/h per m/s (unit conversion), not a rule value
-src/raildss_twin/rolling_stock.py: 1000  # N per kN (unit conversion), not a rule value
+src/raildss_etl/rolling_stock.py: 0.745699872  # mechanical horsepower to kW (unit conversion), not a rule value
+src/raildss_etl/rolling_stock.py: 3.6  # km/h per m/s (unit conversion), not a rule value
+src/raildss_etl/rolling_stock.py: 1000  # N per kN (unit conversion), not a rule value
 src/raildss_etl/speeds.py: 3  # decimal places of a chainage in km (1 m), not a rule value
 src/raildss_etl/gradients.py: 2  # window half-width doubling (centred window = 2h + 1) and rounding digits of gradient / degree values, not rule values
 src/raildss_etl/gradients.py: 3  # rounding digits of a distance in km, not a rule value
