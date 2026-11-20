@@ -1,0 +1,31 @@
+# Scenario SCN-08 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-08
+title: "Planned OHE power block that overruns"
+family: "Traction power"
+spec: "R01 P9, R05 §7.4"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-13"
+freight_day: aug25-day-13
+seed: 8
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN08-OHE-DN
+    type: ohe_block
+    block_id: GVI-CPP
+    through_block: CPP-SGDM
+    start: "10:00"
+    duration_min: {low_min: 120, high_min: 120}
+    etr: {offset_min: -60, sigma_min: 15}
+    note: "Planned power block GVI-SGDM of 2 h, DN direction; the work overruns the announced end by 60 min."
+  - incident_id: SCN08-OHE-UP
+    type: ohe_block
+    block_id: SGDM-CPP
+    through_block: CPP-GVI
+    start: "10:00"
+    duration_min: {low_min: 120, high_min: 120}
+    etr: {offset_min: -60, sigma_min: 15}
+    note: "The same zone, UP direction."
+requires: [injector-ohe-crew]
+notes: "Needs the OHE injector (#147). Electric trains stop in the zone until the block ends."

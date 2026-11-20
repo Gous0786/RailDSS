@@ -1,0 +1,16 @@
+# Scenario SCN-19 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-19
+title: "Peak KTV-VZM on the 3-line automatic block: precedence, overtakes and line choice"
+family: "Peak load"
+spec: "R06 §2; REC-18"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-15"
+freight_day: aug25-day-15
+seed: 19
+density: 1.0
+degradation_profile: D1
+disruptions: []
+requires: []
+expected_gt_hash: "9b834ab6fc8895d3dd033cad631745ebb41dfed8d66b6a052a3dcb8446b78c26"
+notes: "The busiest day on KTV-VZM (50 freight loads on KTV-VZM DN, K1 reference). No disruption: the load is the scenario."

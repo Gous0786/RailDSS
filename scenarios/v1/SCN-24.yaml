@@ -1,0 +1,17 @@
+# Scenario SCN-24 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-24
+title: "PSA CSR low-bound sensitivity (673 / 678 m) on SCN-01 and SCN-16"
+family: "Sensitivity"
+spec: "R06 App. C; FR-DATA-08"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-22"
+freight_day: aug25-day-22
+seed: 24
+density: 1.0
+degradation_profile: D1
+disruptions: []
+requires: [sensitivity-run]
+base: [SCN-01, SCN-16]
+sensitivity: {station_line.csr.psa: low}
+notes: "Run SCN-01 and SCN-16 with the register's low bound for the PSA CSR. Needs a scenario runner that applies the sensitivity; its date is that of SCN-16."

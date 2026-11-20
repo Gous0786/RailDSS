@@ -1,0 +1,26 @@
+# Scenario SCN-14 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-14
+title: "Deadlock-prone opposing batches under single-line working across two block sections"
+family: "Single-line working"
+spec: "R04 §11.1"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-18"
+freight_day: aug25-day-18
+seed: 14
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN14-DN-TIU-KBM-NWP
+    type: line_block
+    block_id: TIU-KBM
+    through_block: KBM-NWP
+    line_id: DN
+    single_line_working: true
+    start: "06:00"
+    duration_min: {low_min: 180, high_min: 240}
+    etr: {offset_min: 30, sigma_min: 30}
+    note: "A long single-line stretch (TIU-NWP) during the morning peak: batches of both directions queue at the ends."
+requires: []
+expected_gt_hash: "7c3c004bcf311e99fde48548145b3a47f0cb39cd7cec07e5abd65facad718ed2"
+notes: "Executable today (two block sections of one line); the deadlock checks of the twin and the verifier apply."

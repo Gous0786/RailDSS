@@ -1,0 +1,23 @@
+# Scenario SCN-07 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-07
+title: "Signal / block-instrument failure on an AB section: degraded working"
+family: "Signal and block failure"
+spec: "R04 §5.1, R05 §7.4"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-12"
+freight_day: aug25-day-12
+seed: 7
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN07-SIG-SGDM-PDU
+    type: signal_failure
+    block_id: SGDM-PDU
+    start: "09:30"
+    duration_min: {low_min: 60, high_min: 120}
+    etr: {offset_min: 15, sigma_min: 15}
+    note: "Degraded (caution) working on SGDM-PDU DN; the injector's caution speed applies."
+requires: []
+expected_gt_hash: "0c51d36c00f70d87f68d9d6fecbcea8c022070d56362468785cc7c0282a80e55"
+notes: "Runs today with the signal_failure kind of the injector; #146 refines it with the block-instrument case."

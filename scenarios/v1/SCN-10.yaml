@@ -1,0 +1,23 @@
+# Scenario SCN-10 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-10
+title: "Crew running out of hours on a freight train held at VZM"
+family: "Crew"
+spec: "R01 §7.11, R04 §3.1"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-17"
+freight_day: aug25-day-17
+seed: 10
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN10-CREW-VZM
+    type: crew_hours
+    train_no: "CCJSIDBR17082025025040"
+    station: VZM
+    start: "07:30"
+    duration_min: {low_min: 90, high_min: 150}
+    etr: {offset_min: 0, sigma_min: 30}
+    note: "The crew of a freight train (entered at KTV 06:03) runs out of hours; it stands until relief."
+requires: [injector-ohe-crew]
+notes: "Needs the crew-hours injector (#147)."
