@@ -49,6 +49,12 @@ def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
     r.add_argument(
         "--notice-min", type=float, default=30.0, help="how long before it starts a closure is known"
     )
+    r.add_argument(
+        "--degraded-predictor",
+        action="store_true",
+        help="BL-3: noisy DS-4 ETAs from the register's pred.degraded model (seeded by --noise-seed)",
+    )
+    r.add_argument("--noise-seed", type=int, default=0, help="seed of the BL-3 ETA noise")
     r.add_argument("--alternatives", type=int, default=1, help="extra CP-SAT solutions (other seeds)")
     r.add_argument("--out", type=Path, default=None, help="write the run summary as JSON")
     r.add_argument("--audit-dir", type=Path, default=None, help="record the audit trail here (FR-AUD-01)")
@@ -138,7 +144,16 @@ def main(argv: list[str] | None = None) -> int:
     for e in args.exit_closed:
         op, a, b = _window(e)
         exits.setdefault(op, []).append((a, b))
-    dss = TwinDss(world, day, profile=args.profile, until_s=to_s, closures=closures, exit_windows=exits)
+    dss = TwinDss(
+        world,
+        day,
+        profile=args.profile,
+        until_s=to_s,
+        closures=closures,
+        exit_windows=exits,
+        degraded_predictor=args.degraded_predictor,
+        noise_seed=args.noise_seed,
+    )
     planner = TwinPlanner(world, day, cpsat_enabled=not args.no_cpsat, alternatives=args.alternatives)
     recorder = None
     if args.audit_dir is not None:

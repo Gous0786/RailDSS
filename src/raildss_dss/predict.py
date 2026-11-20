@@ -16,13 +16,18 @@
   compared with a persistence baseline (the speed of the last block persists) and a schedule baseline
   (technical minimum plus allowance, what a planner would book). Passenger ETAs cannot be evaluated: there
   is no real running record (no NTES, C-03).
+* **Degraded mode** (BL-3, :class:`DegradedPredictor`). The same predictor with its ETAs disturbed by the
+  register's ``pred.degraded`` noise model: a bias and a spread that grows with the lead time, seeded per
+  event, so a BL-3 run differs from BL-2 only through what the predictor says (spec §12.2, FR-SCN-08).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import json
 import math
+import random
 import statistics
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
@@ -352,6 +357,38 @@ class Predictor:
             for k, n in enumerate(nodes)
             if p50[k] <= limit
         ]
+
+
+class DegradedPredictor(Predictor):
+    """BL-3: the predictor with noisy ETAs (spec §12.2 "DSS with noisy predictions").
+
+    Every event's ETA P50 and P90 are shifted by ``bias_min`` plus a normal draw whose standard deviation is
+    ``spread_frac`` of the lead time (``pred.degraded`` in the register). The draw is fixed per ``seed``,
+    run, station and event kind, so the same event keeps the same error from one cycle to the next and
+    the shrinking spread follows the lead time as the event nears. Nothing before ``t`` is predicted.
+    """
+
+    def __init__(self, process: ProcessTimes, register: Register | None = None, seed: int = 0) -> None:
+        reg = register or load()
+        super().__init__(process, reg)
+        model = reg.value("pred.degraded")
+        self.bias_s = float(model["bias_min"]) * SECONDS_PER_MINUTE
+        self.spread_frac = float(model["spread_frac"])
+        self.seed = seed
+
+    def _shift_s(self, e: EventPrediction, lead_s: float) -> float:
+        z = random.Random(f"raildss-degraded/{self.seed}/{e.run_id}/{e.station}/{e.kind}").gauss(0.0, 1.0)
+        return self.bias_s + z * self.spread_frac * lead_s
+
+    def predict(
+        self, estimator: StateEstimator, t: dt.datetime, orderings: Sequence[Ordering] = ()
+    ) -> list[EventPrediction]:
+        out = []
+        for e in super().predict(estimator, t, orderings):
+            shift = dt.timedelta(seconds=self._shift_s(e, (e.eta_p50 - t).total_seconds()))
+            p50 = max(t, e.eta_p50 + shift)
+            out.append(dataclasses.replace(e, eta_p50=p50, eta_p90=max(p50, e.eta_p90 + shift)))
+        return out
 
 
 def _longest(nodes: list[_Node], edges: list[tuple[int, int, float, float]], col: int) -> list[float]:

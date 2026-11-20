@@ -710,6 +710,16 @@ parameters:
     owner: dss
     valid_from: 2026-11-10
 
+  - key: pred.degraded
+    value: {bias_min: 3.0, spread_frac: 0.15}
+    unit: bias in min; spread as a fraction of the lead time
+    source: spec §12.2 BL-3 (DSS with noisy predictions, robustness test; R04 §11.2); assumed magnitudes
+    status: SA
+    owner: dss
+    bounds: {low: {bias_min: 0.0, spread_frac: 0.05}, high: {bias_min: 10.0, spread_frac: 0.4}}
+    valid_from: 2026-11-20
+    notes: "Noise of the BL-3 arm on every DS-4 ETA: a constant bias plus a seeded normal error whose sigma is spread_frac times the lead time (raildss_dss.predict.DegradedPredictor)."
+
   # ------------------------------------------------------------------ conflict detection and optimiser
   - key: cd.horizon_min
     value: 120
