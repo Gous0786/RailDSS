@@ -23,7 +23,7 @@ from typing import Any
 
 from raildss_dss.conflicts import Detector, occupations
 from raildss_dss.ingest import Ingestor
-from raildss_dss.predict import Predictor, ProcessTimes
+from raildss_dss.predict import DegradedPredictor, Predictor, ProcessTimes
 from raildss_dss.state import PlanDirectory, StateEstimator
 from raildss_optimiser import cpsat
 from raildss_optimiser.greedy import Decision, GreedyDispatcher, GreedyPlan, Hold
@@ -114,7 +114,10 @@ class TwinDss:
         until_s: float,
         closures: Sequence[Closure] = (),
         exit_windows: Mapping[str, list[tuple[float, float]]] | None = None,
+        degraded_predictor: bool = False,
+        noise_seed: int = 0,
     ) -> None:
+        """``degraded_predictor`` is the BL-3 arm: the same chain with noisy ETAs (``pred.degraded``)."""
         reg = world.register
         self.world, self.day = world, day
         self.closures, self.exit_windows = list(closures), dict(exit_windows or {})
@@ -122,7 +125,10 @@ class TwinDss:
         self.directory = PlanDirectory.from_published(register=reg)
         self.estimator = StateEstimator(self.directory, reg)
         self.ingestor = Ingestor(reg, on_event=self.estimator.apply)
-        self.predictor = Predictor(ProcessTimes.from_log([], self.directory, reg), reg)
+        process = ProcessTimes.from_log([], self.directory, reg)
+        self.predictor: Predictor = (
+            DegradedPredictor(process, reg, noise_seed) if degraded_predictor else Predictor(process, reg)
+        )
         self.detector = Detector.build(self.directory, reg)
         self.feed = TwinFeed(world, day, profile, until_s)
         self.feed.load(self._directives({}, {}))
