@@ -87,6 +87,8 @@ class CycleRecord(BaseModel):
     notes: list[str] = Field(default_factory=list)
     expired: list[str] = Field(default_factory=list)
     wall_s: float
+    planner: str = "greedy"  # the plan that carried the rolling state (issue #152)
+    churn: int | None = None  # decisions of the previous plan this one changed
 
 
 class RunSummary(BaseModel):
@@ -225,6 +227,9 @@ class Orchestrator:
         horizon = now + self.cadence.freeze_s
         ahead = [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
         frozen += [d for d in ahead if d.dep_s < horizon]
+        # one decision per train and station: an accepted order overrides the last plan's (issue #152; with
+        # a planner that does not reproduce its own earlier decisions the two can differ)
+        frozen = list({(d.run_id, d.station): d for d in frozen}.values())
         committed = [d for d in ahead if d.dep_s >= horizon]
         past = {(d.run_id, d.station): d for d in self.cadence.history()}
         past |= {
@@ -249,6 +254,7 @@ class Orchestrator:
             policy_from_s=self.cadence.first_plan_s if self.cadence.first_plan_s is not None else now,
             verify=bool(targets),
             time_limit_s=float(limits["disruption" if disruption else "routine"]),
+            previous=list(self._last_plan),
         )
         planned = self.planner.plan(ctx)
         if self.audit is not None:
@@ -280,6 +286,8 @@ class Orchestrator:
             notes=planned.notes,
             expired=self._cycle_expired,
             wall_s=round(time.perf_counter() - t0, 2),
+            planner=planned.planner,
+            churn=planned.churn,
         )
         self._cycle_expired = []
         self.cycles.append(record)
@@ -459,6 +467,9 @@ class Orchestrator:
             # executing it makes happen (the sandbox replay) rather than the rounded times (VER-FRZ-01)
             made = cand.decisions if cand.g1 is None else cand.g3.departures
             realised = {(d.run_id, d.station): d for d in made}
+            # the world now follows the accepted option: it is the plan the next cycle freezes (issue #152;
+            # the planner's own plan may be another option)
+            self._last_plan = [Decision(d.run_id, d.station, d.line_no, d.dep_s) for d in made]
             for oid, action in zip(
                 self.executor.current[rec_id], self.executor.options[rec_id].actions, strict=True
             ):

@@ -59,6 +59,7 @@ class PlanContext:
     policy_from_s: float
     verify: bool  # build and verify the options (False: only the greedy plan that carries the rolling state)
     time_limit_s: float
+    previous: list[Decision] = field(default_factory=list)  # the last plan: kept by the stability term
 
 
 @dataclass
@@ -129,6 +130,8 @@ class PlanSet:
     baseline: dict[str, float] = field(default_factory=dict)  # BL-0 window KPIs: the baseline option
     runtime_s: float = 0.0
     notes: list[str] = field(default_factory=list)
+    planner: str = "greedy"  # which plan carries the rolling state: greedy | cpsat (issue #152)
+    churn: int | None = None  # decisions of the previous plan changed by this one (opt.stability.churn_s)
 
 
 class Dss(Protocol):

@@ -796,6 +796,21 @@ parameters:
     status: SA
     owner: dss
     valid_from: 2026-11-03
+  - key: opt.stability
+    value: {per_s: 1, drop: 600, churn_s: 60, freeze_tolerance_s: 5}
+    unit: null
+    source: "spec FR-OPT-07 (stability of re-plans); issue #152"
+    status: SA
+    owner: dss
+    valid_from: 2026-11-20
+    notes: >-
+      CP-SAT rolling horizon (issue #152). A decision of the previous plan that is not frozen is kept
+      by a penalty in the solver objective, in its units (policy weight x seconds of delay): per_s per
+      second its departure moves, drop when the train no longer uses that station line. churn_s:
+      a re-plan counts a decision as changed when its line changes or its departure moves by more
+      than this (the plan churn of the report). freeze_tolerance_s: a frozen decision binds the CP-SAT
+      model to within this many seconds of its departure (the IR floors its times; the G3 replay imposes
+      the frozen departure exactly).
 
   # ------------------------------------------------------------------ precedence policy (spec REC-09, OD-04)
   - key: policy.weights

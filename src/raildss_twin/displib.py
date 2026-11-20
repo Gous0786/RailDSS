@@ -302,14 +302,20 @@ def _weight(plan: Plan, register: Register) -> float:
 
 
 def _station_lines(layout: Layout, plan: Plan, op: str) -> list[Any]:
+    """Lines the train may be received on. As in the twin (VER-XNG-02), a line whose CSR is shorter than the
+    train is not one of them: a train may stand on any line it is received on (issue #152). Where no line
+    fits, all are kept and the twin decides."""
     passenger = plan.kind == "passenger"
-    return [
+    usable = [
         sl
         for sl in layout.station_lines.get(op, [])
         if sl.kind in ("main", "loop")
         and sl.status == "in_use"
         and (sl.passenger_ok if passenger else sl.goods_ok)
     ]
+    length = plan.template.length_m
+    fitting = [sl for sl in usable if sl.csr_m is None or sl.csr_m >= length]
+    return fitting or usable
 
 
 def _block_duration(

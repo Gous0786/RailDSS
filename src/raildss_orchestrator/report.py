@@ -35,6 +35,7 @@ def render(summary: RunSummary, comparison: dict[str, Any], date: str, *, solver
         f"| Control orders issued | {summary.orders} ({summary.declined} declined) |",
         f"| Most options for one decision | {summary.max_options_per_decision} |",
         f"| Final statuses | {', '.join(f'{k} {v}' for k, v in sorted(summary.statuses.items())) or '-'} |",
+        *_planner_rows(summary),
         "",
         "## KPIs: DSS against BL-0",
         "",
@@ -51,3 +52,32 @@ def render(summary: RunSummary, comparison: dict[str, Any], date: str, *, solver
                 + ", ".join(f"{m['run_id']} {m['delta_exit_delay_min']:+g}" for m in delta["most_affected"]),
             ]
     return "\n".join(lines) + "\n"
+
+
+def _planner_rows(summary: RunSummary) -> list[str]:
+    """CP-SAT rolling horizon (issue #152): which plan carried the rolling state, the CP-SAT plans against
+    the greedy hint, kept frozen decisions and the plan churn."""
+    cycles = summary.cycles
+    primary = [c for cy in cycles for c in cy.candidates if c.solver.get("primary")]
+    if not primary:
+        return []
+    by_cpsat = sum(cy.planner == "cpsat" for cy in cycles)
+    no_worse = sum(
+        c.solver.get("objective") is not None
+        and c.solver.get("hint_objective") is not None
+        and c.solver["objective"] <= c.solver["hint_objective"]
+        for c in primary
+    )
+    hinted = sum(c.solver.get("hint_objective") is not None for c in primary)
+    churns = [cy.churn for cy in cycles if cy.churn is not None]
+    fixed = sum(int(c.solver.get("fixed") or 0) for c in primary)
+    outside = sum(int(c.solver.get("fixed_outside_ir") or 0) for c in primary)
+    return [
+        f"| Rolling plan by CP-SAT / cycles | {by_cpsat} / {len(cycles)} "
+        f"(greedy fallback {len(cycles) - by_cpsat}) |",
+        f"| CP-SAT plans verified (G0-G3) / solved | {sum(c.verified for c in primary)} / {len(primary)} |",
+        f"| CP-SAT delay objective <= greedy hint | {no_worse} / {hinted} |",
+        f"| Frozen decisions imposed (outside the IR) | {fixed} ({outside}) |",
+        f"| Plan churn per re-plan (mean, max) | "
+        f"{(sum(churns) / len(churns)) if churns else 0:.1f}, {max(churns, default=0)} |",
+    ]
