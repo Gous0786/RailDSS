@@ -1,0 +1,31 @@
+# Scenario SCN-09 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-09
+title: "OHE trip on a feeding zone"
+family: "Traction power"
+spec: "R05 §7.4"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-14"
+freight_day: aug25-day-14
+seed: 9
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN09-OHE-TRIP-DN
+    type: ohe_trip
+    block_id: PDU-DUSI
+    through_block: CHE-ULM
+    start: "14:00"
+    duration_min: {low_min: 20, high_min: 60}
+    etr: {offset_min: 0, sigma_min: 20}
+    note: "Unplanned trip of the feeding zone PDU-ULM, DN direction."
+  - incident_id: SCN09-OHE-TRIP-UP
+    type: ohe_trip
+    block_id: ULM-CHE
+    through_block: DUSI-PDU
+    start: "14:00"
+    duration_min: {low_min: 20, high_min: 60}
+    etr: {offset_min: 0, sigma_min: 20}
+    note: "The same zone, UP direction."
+requires: [injector-ohe-crew]
+notes: "Needs the OHE injector (#147)."

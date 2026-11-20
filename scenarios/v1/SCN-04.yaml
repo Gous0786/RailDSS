@@ -1,0 +1,31 @@
+# Scenario SCN-04 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-04
+title: "Freight loco failure in an AB block section on VZM-PSA: one line blocked, relief loco, single-line working"
+family: "Single-line working"
+spec: "R01 §7.11, R04 §5.1, REC-29"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-11"
+freight_day: aug25-day-11
+seed: 4
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN04-LOCO-FRT
+    type: loco_failure
+    train_no: "STDVTLHR10082025230247"
+    start: "08:00"
+    duration_min: {low_min: 60, high_min: 120}
+    etr: {offset_min: 30, sigma_min: 20}
+    note: "A freight train (entered at KTV 06:55, bound for PUN) fails in the section."
+  - incident_id: SCN04-DN-TIU-KBM
+    type: line_block
+    block_id: TIU-KBM
+    line_id: DN
+    single_line_working: true
+    start: "08:00"
+    duration_min: {low_min: 60, high_min: 120}
+    etr: {offset_min: 30, sigma_min: 20}
+    note: "The failed train blocks the DN line of TIU-KBM until relief: the UP line is worked both ways."
+requires: [injector-loco]
+notes: "Becomes executable with the loco-failure injector (#146): the line block is then caused by the failed freight train."

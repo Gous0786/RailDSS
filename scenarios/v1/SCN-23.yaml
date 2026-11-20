@@ -1,0 +1,22 @@
+# Scenario SCN-23 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-23
+title: "Junction exit blocked: boundary closed towards Visakhapatnam at KTV"
+family: "Boundary closure"
+spec: "R06 §7; FR-OPT-20"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-24"
+freight_day: aug25-day-24
+seed: 23
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN23-EXIT-KTV-VSKP
+    type: exit_blocked
+    boundary: KTV-VSKP
+    start: "14:00"
+    duration_min: {low_min: 90, high_min: 120}
+    etr: {offset_min: 0, sigma_min: 20}
+    note: "The acceptance window of KTV-VSKP closes: UP trains cannot leave the section at KTV."
+requires: [injector-special-exit]
+notes: "Needs the closed-exit injector (#148) and boundary acceptance windows (acceptance_windows in config/boundaries.yaml)."

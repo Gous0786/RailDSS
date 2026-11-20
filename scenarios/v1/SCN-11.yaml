@@ -1,0 +1,23 @@
+# Scenario SCN-11 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-11
+title: "Unplanned special train inserted at KTV"
+family: "Special train"
+spec: "R01 §7.11, R06 App. A.5"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-18"
+freight_day: aug25-day-18
+seed: 11
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN11-SPECIAL-KTV
+    type: special_train
+    train_no: "SPL-11"
+    station: KTV
+    category: special
+    direction: DN
+    start: "13:00"
+    note: "A special train (TOD / HSP type) enters at KTV at 13:00 towards PSA with no WTT path."
+requires: [injector-special-exit]
+notes: "Needs special-train insertion (#148)."

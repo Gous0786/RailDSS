@@ -260,18 +260,20 @@ def _scenario(args: argparse.Namespace) -> int:
     from raildss_etl.publish import PUBLISHED_DIR, read_export
     from raildss_twin import run, scenario
 
-    library = scenario.load_library()
+    library = scenario.load_library_v1() if args.library == "v1" else scenario.load_library()
     if args.action == "index":
-        text = scenario.index_markdown(library)
+        text = scenario.index_markdown(library, v1=args.library == "v1")
+        index = scenario.V1_INDEX_FILE if args.library == "v1" else scenario.INDEX_FILE
         if args.write:
-            scenario.INDEX_FILE.write_text(text, encoding="utf-8", newline="\n")
-            print(f"wrote {scenario.INDEX_FILE.name}: {len(library)} scenarios")
+            index.write_text(text, encoding="utf-8", newline="\n")
+            print(f"wrote {index.parent.name}/{index.name}: {len(library)} scenarios")
         else:
             sys.stdout.write(text)
         return 0
     if args.action == "check":
         meta, tables, _ = read_export(PUBLISHED_DIR / scenario.NETWORK_VERSION)
         bad = [f"{s.id}: {p}" for s in library for p in scenario.check_references(s, meta, tables)]
+        bad += scenario.check_library(library)
         print("\n".join(bad) or f"scenarios: {len(library)} valid")
         return 1 if bad else 0
     chosen = [s for s in library if s.executable and (not args.ids or s.id in args.ids)]
@@ -281,7 +283,7 @@ def _scenario(args: argparse.Namespace) -> int:
         report = scenario.run_scenario(world, s)
         same = report.trace_hash == s.expected_gt_hash
         if args.record and not same:
-            scenario.record_hash(scenario.LIBRARY_DIR / f"{s.id}.yaml", report.trace_hash)
+            scenario.record_hash(scenario.path_of(s), report.trace_hash)
         ok = report.completed and (same or args.record)
         failed += not ok
         print(f"{s.id}: {'OK' if ok else 'FAILED'} {report.trace_hash} ({report.wall_s} s)")
@@ -334,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:
     p_sc = sub.add_parser("scenario", help="check, index or run the scenario library (issue #21)")
     p_sc.add_argument("action", choices=["check", "index", "run"])
     p_sc.add_argument("ids", nargs="*", help="scenario ids to run (default: every executable one)")
+    p_sc.add_argument(
+        "--library", choices=["v0", "v1"], default="v1", help="v1 = the v0 ten plus scenarios/v1 (default)"
+    )
     p_sc.add_argument("--write", action="store_true", help="index: write INDEX.md")
     p_sc.add_argument("--record", action="store_true", help="run: record the trace hash in the file")
     args = ap.parse_args(argv)

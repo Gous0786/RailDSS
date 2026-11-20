@@ -1,0 +1,30 @@
+# Scenario SCN-15 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-15
+title: "Cascading failures: TSR followed by a freight loco failure"
+family: "Cascading failures"
+spec: "R04 §11.1, R05 §7.4"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-19"
+freight_day: aug25-day-19
+seed: 15
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN15-TSR-SGDM-PDU
+    type: tsr
+    block_id: SGDM-PDU
+    line_id: DN
+    speed_kmh: 30
+    start: "09:00"
+    duration_min: {low_min: 240, high_min: 360}
+    etr: {offset_min: 0, sigma_min: 30}
+  - incident_id: SCN15-LOCO-FRT
+    type: loco_failure
+    train_no: "AKPKCDGR17082025152056"
+    start: "10:30"
+    duration_min: {low_min: 60, high_min: 90}
+    etr: {offset_min: 30, sigma_min: 20}
+    note: "A freight train (entered at KTV 07:35) fails while the TSR still holds the DN line."
+requires: [injector-loco]
+notes: "Needs the loco-failure injector (#146) for a freight train."

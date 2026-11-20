@@ -386,6 +386,13 @@ disruption injector, which applies the scripted incident to the ground truth and
 docs/kpi/scenarios-v0.md` reports each scenario's KPIs under BL-0 and, for the two line-block scenarios, the
 decision loop against BL-0 under the same closure.
 
+**Library v1** (issue #165): `python -m raildss_twin scenario check|index|run` now covers the v0 ten plus
+the twelve definitions in `scenarios/v1` (SCN-04, 07-11, 14, 15, 19, 21, 23, 24): 22 scenarios, indexed by
+family in [`scenarios/v1/INDEX.md`](scenarios/v1/INDEX.md). SCN-07, 14, 19 and 21 run in the twin today and
+carry their `gt.*` hash; the other eight name the component they wait for under `requires` (loco-failure,
+OHE and crew, special-train and closed-exit injectors, #146-#148, and the SCN-24 sensitivity run) and get
+their hash with `scenario run --record` when it lands. `--library v0` keeps the v0 view.
+
 ## Licence
 
 RailDSS code is licensed under the [Apache License 2.0](LICENSE). The KTV–PSA dataset under

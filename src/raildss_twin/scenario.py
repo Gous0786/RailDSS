@@ -12,6 +12,10 @@ and the expected ground-truth trace hash.
   ``entry_delay`` is a late entry of one train (:meth:`ScenarioDisruption.entry_delay_s`).
 * ``requires`` stays in the format for scenarios that need a component that is not there yet (issue #57
   removed ``injector`` from the v0 library); such a scenario is validated, not executed.
+* **Library v1** (issue #165, spec FR-SCN-04) is the v0 ten (``scenarios/v0``) plus the twelve scenarios of
+  ``scenarios/v1``: :func:`load_library_v1`. A v1 scenario whose injector is not built yet names it in
+  ``requires`` (the issue that builds it) and becomes executable when the tag is removed and its hash is
+  recorded (``scenario run --record``).
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ import random
 import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -34,8 +38,29 @@ SCHEMA_VERSION = 1
 NETWORK_VERSION = "KTV-PSA-2025-08-r2"
 LIBRARY_DIR = REPO / "scenarios" / "v0"
 INDEX_FILE = LIBRARY_DIR / "INDEX.md"
-DISRUPTION_TYPES = ("line_block", "point_failure", "signal_failure", "tsr", "loco_failure", "entry_delay")
-REQUIRES = ("injector",)
+V1_DIR = REPO / "scenarios" / "v1"
+V1_INDEX_FILE = V1_DIR / "INDEX.md"
+DISRUPTION_TYPES = (
+    "line_block",
+    "point_failure",
+    "signal_failure",
+    "tsr",
+    "loco_failure",
+    "entry_delay",
+    "ohe_block",
+    "ohe_trip",
+    "crew_hours",
+    "special_train",
+    "exit_blocked",
+)
+INJECTOR_KINDS = ("line_block", "point_failure", "signal_failure", "tsr", "loco_failure")  # built today
+# Components a scenario waits for: ``injector`` (the v0 tag, no scenario carries it any more) and, in M2,
+# the injectors of #146 (loco and signal failure), #147 (OHE and crew hours) and #148 (special train and
+# closed exit), and the parameter sensitivity run of SCN-24.
+REQUIRES = ("injector", "injector-loco", "injector-ohe-crew", "injector-special-exit", "sensitivity-run")
+Requirement = Literal[
+    "injector", "injector-loco", "injector-ohe-crew", "injector-special-exit", "sensitivity-run"
+]
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 FREIGHT_DAY_PREFIX = "aug25-day-"
 HASH_LINE = re.compile(r"^expected_gt_hash:.*$", re.MULTILINE)
@@ -67,9 +92,21 @@ class Etr(_Strict):
 
 class ScenarioDisruption(_Strict):
     incident_id: str = Field(pattern=r"^[A-Za-z0-9._:-]+$")
-    type: Literal["line_block", "point_failure", "signal_failure", "tsr", "loco_failure", "entry_delay"]
+    type: Literal[
+        "line_block",
+        "point_failure",
+        "signal_failure",
+        "tsr",
+        "loco_failure",
+        "entry_delay",
+        "ohe_block",
+        "ohe_trip",
+        "crew_hours",
+        "special_train",
+        "exit_blocked",
+    ]
     start: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="HH:MM on the scenario day")
-    duration_min: Uniform
+    duration_min: Uniform | None = None  # every type but special_train (an insertion has no duration)
     etr: Etr | None = None
     block_id: str | None = None
     line_id: str | None = None  # None: every line of the block
@@ -77,7 +114,12 @@ class ScenarioDisruption(_Strict):
     line_no: int | None = None
     train_no: str | None = None
     speed_kmh: float | None = Field(default=None, gt=0)
-    through_block: str | None = None  # line_block: the range runs from block_id to this block, inclusive
+    through_block: str | None = (
+        None  # line_block, ohe_block, ohe_trip: from block_id to this block, inclusive
+    )
+    category: str | None = None  # special_train: the precedence class of the inserted train
+    direction: Literal["DN", "UP"] | None = None  # special_train: the direction it runs
+    boundary: str | None = None  # exit_blocked: a boundary of config/boundaries.yaml
     single_line_working: bool = False  # line_block: work the other line both ways meanwhile (FR-TWIN-18)
     note: str = ""
 
@@ -90,7 +132,14 @@ class ScenarioDisruption(_Strict):
             "point_failure": ("station", "line_no"),
             "loco_failure": ("train_no",),
             "entry_delay": ("train_no", "station"),
+            "ohe_block": ("block_id",),
+            "ohe_trip": ("block_id",),
+            "crew_hours": ("train_no", "station"),
+            "special_train": ("train_no", "station", "category", "direction"),
+            "exit_blocked": ("boundary",),
         }[self.type]
+        if self.type != "special_train":
+            need = (*need, "duration_min")
         missing = [f for f in need if getattr(self, f) is None]
         if missing:
             raise ValueError(f"{self.type} needs {', '.join(missing)}")
@@ -103,6 +152,7 @@ class ScenarioDisruption(_Strict):
 
     def entry_delay_s(self, seed: int) -> float:
         """Seconds an ``entry_delay`` train enters late: drawn from the duration range with the seed."""
+        assert self.duration_min is not None
         rng = random.Random(f"raildss-scn/{seed}/{self.incident_id}")
         return rng.uniform(self.duration_min.low_min, self.duration_min.high_min) * SECONDS_PER_MIN
 
@@ -110,6 +160,8 @@ class ScenarioDisruption(_Strict):
         """The injector disruption for this seed; ``None`` for an ``entry_delay`` (not an injector kind)."""
         if self.type == "entry_delay":
             return None
+        if self.type not in INJECTOR_KINDS or self.duration_min is None:
+            raise ValueError(f"{self.incident_id}: the {self.type} injector is not built yet")
         rng = random.Random(f"raildss-scn/{seed}/{self.incident_id}")
         duration_s = rng.uniform(self.duration_min.low_min, self.duration_min.high_min) * SECONDS_PER_MIN
         etr_s = (
@@ -118,7 +170,7 @@ class ScenarioDisruption(_Strict):
         run_id = f"{self.train_no}@{day.isoformat()}" if self.train_no else None
         return Disruption(
             incident_id=self.incident_id,
-            kind=self.type,
+            kind=cast(Any, self.type),  # one of INJECTOR_KINDS, checked above
             start_s=self.start_s,
             duration_s=duration_s,
             etr_s=etr_s,
@@ -150,7 +202,11 @@ class Scenario(_Strict):
     density: float = Field(default=1.0, gt=0)
     degradation_profile: Literal["D0", "D1", "D2", "D3"] = "D1"
     disruptions: list[ScenarioDisruption] = Field(default_factory=list)
-    requires: list[Literal["injector"]] = Field(default_factory=list)  # none in v0 since issue #57
+    requires: list[Requirement] = Field(default_factory=list)  # components not built yet; none in v0
+    base: list[str] = Field(default_factory=list, description="scenarios this one is run on top of")
+    sensitivity: dict[str, Literal["low", "high"]] = Field(
+        default_factory=dict, description="register key -> bound to use (SCN-24: station_line.csr.psa low)"
+    )
     expected_gt_hash: str | None = None
     notes: str = ""
 
@@ -191,6 +247,38 @@ def load_library(directory: Path = LIBRARY_DIR) -> list[Scenario]:
     return [load(p) for p in sorted(directory.glob("SCN-*.yaml"))]
 
 
+def load_library_v1() -> list[Scenario]:
+    """Library v1: the v0 ten plus the scenarios of ``scenarios/v1``, by id (issue #165)."""
+    return sorted([*load_library(LIBRARY_DIR), *load_library(V1_DIR)], key=lambda s: s.id)
+
+
+def path_of(sc: Scenario) -> Path:
+    """The file of a scenario: ``scenarios/v1`` first, then v0."""
+    for directory in (V1_DIR, LIBRARY_DIR):
+        if (directory / f"{sc.id}.yaml").exists():
+            return directory / f"{sc.id}.yaml"
+    raise FileNotFoundError(sc.id)
+
+
+def check_library(scenarios: Sequence[Scenario]) -> list[str]:
+    """Problems of a library as a whole: duplicate ids, unknown bases, sensitivity keys without bounds."""
+    from raildss_params import load as load_register
+
+    ids = [s.id for s in scenarios]
+    problems = [f"{i}: defined twice" for i in sorted({i for i in ids if ids.count(i) > 1})]
+    register = load_register()
+    for s in scenarios:
+        problems += [f"{s.id}: base {b} is not in the library" for b in s.base if b not in ids]
+        for key in s.sensitivity:
+            try:
+                has_bounds = register.get(key).bounds is not None
+            except KeyError:
+                has_bounds = False
+            if not has_bounds:
+                problems.append(f"{s.id}: sensitivity key {key} has no bounds in the register")
+    return problems
+
+
 def check_references(sc: Scenario, meta: Mapping[str, Any], tables: Mapping[str, Sequence[Any]]) -> list[str]:
     """Problems with the network the scenario names: version, blocks, lines, stations, loops."""
     problems = []
@@ -211,18 +299,43 @@ def check_references(sc: Scenario, meta: Mapping[str, Any], tables: Mapping[str,
             problems.append(f"{d.incident_id}: station {d.station} is not in the network")
         if d.type == "point_failure" and (d.station, d.line_no) not in loops:
             problems.append(f"{d.incident_id}: station {d.station} has no line {d.line_no}")
+        if d.through_block is not None and d.through_block not in blocks:
+            problems.append(f"{d.incident_id}: block {d.through_block} is not in the network")
+        if d.boundary is not None and d.boundary not in load_boundaries().boundaries:
+            problems.append(f"{d.incident_id}: boundary {d.boundary} is not in config/boundaries.yaml")
     return problems
 
 
-def index_markdown(scenarios: Sequence[Scenario]) -> str:
-    """The library index, by family."""
-    out = [
-        "# Scenario library v0 (KTV-PSA)",
-        "",
-        "Generated by `python -m raildss_twin scenario index --write` (spec FR-SCN-04, issue #21).",
-        f"{len(scenarios)} scenarios. *Executable* ones run in the twin and carry the expected `gt.*` trace",
-        "hash, the disruption scenarios included (issue #57).",
-    ]
+def load_boundaries() -> Any:
+    from raildss_etl.boundaries import load_config
+
+    return load_config()
+
+
+def index_markdown(scenarios: Sequence[Scenario], *, v1: bool = False) -> str:
+    """The library index, by family (v0 by default; ``v1`` for the v0 ten plus the v1 twelve)."""
+    waiting = [s for s in scenarios if not s.executable]
+    out = (
+        [
+            "# Scenario library v1 (KTV-PSA)",
+            "",
+            "Generated by `python -m raildss_twin scenario index --write` (spec FR-SCN-04, issue #165).",
+            f"{len(scenarios)} scenarios: the v0 ten (`scenarios/v0`) and the v1 definitions",
+            "(`scenarios/v1`).",
+            f"{len(scenarios) - len(waiting)} are *executable* (they run in the twin and carry the expected",
+            f"`gt.*` trace hash); {len(waiting)} wait for the component named under `requires` and become",
+            "executable when it lands (M2-T3 to T5: #146, #147, #148), then get their hash with",
+            "`scenario run --record`.",
+        ]
+        if v1
+        else [
+            "# Scenario library v0 (KTV-PSA)",
+            "",
+            "Generated by `python -m raildss_twin scenario index --write` (spec FR-SCN-04, issue #21).",
+            f"{len(scenarios)} scenarios. *Executable* ones run in the twin and carry the expected `gt.*` trace",  # noqa: E501
+            "hash, the disruption scenarios included (issue #57).",
+        ]
+    )
     for family in sorted({s.family for s in scenarios}):
         out += [
             "",

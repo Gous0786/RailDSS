@@ -1,0 +1,25 @@
+# Scenario SCN-21 (spec §12.1). Format: raildss_twin/scenario.py, schema_version 1. Library v1 (issue #165).
+schema_version: 1
+id: SCN-21
+title: "Single-line working on one KTV-VZM line: the other two lines remain"
+family: "Single-line working"
+spec: "R06 §5; REC-29"
+network_version: KTV-PSA-2025-08-r2
+wtt_date: "2025-08-10"
+freight_day: aug25-day-10
+seed: 21
+density: 1.0
+degradation_profile: D1
+disruptions:
+  - incident_id: SCN21-DN-KPL-ALM
+    type: line_block
+    block_id: KPL-ALM
+    line_id: DN
+    single_line_working: true
+    start: "11:00"
+    duration_min: {low_min: 120, high_min: 180}
+    etr: {offset_min: 30, sigma_min: 20}
+    note: "The DN line of KPL-ALM is blocked; trains of both directions use the remaining lines (3-line block)."
+requires: []
+expected_gt_hash: "6a22fb8986b80049129e00a75dcf1d4dbb6ceb7b4023a96e8db7dca1194707e1"
+notes: "Single-line working on a 3-line KTV-VZM block section (FR-TWIN-18)."
