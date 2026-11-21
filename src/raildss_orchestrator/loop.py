@@ -133,6 +133,10 @@ class Orchestrator:
     decline: Callable[[dict[str, Any]], bool] | None = None  # a station master declines this order
     max_conflicts: int = 6  # conflicts released per cycle, most urgent first
     audit: AuditRecorder | None = None  # the tamper-evident trail (FR-AUD-01)
+    # incidents the plans model once announced (injector disruptions: TSR, loop out of use, signal failure)
+    # and known late entries (run id -> seconds late), issue #155
+    incidents: tuple[tuple[Any, float], ...] = ()
+    entry_delays: Mapping[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.cadence = Cadence(self.register)
@@ -159,6 +163,7 @@ class Orchestrator:
         self._events: set[str] = set()
         self._seen: set[tuple[Any, ...]] = set()
         self._announced: set[int] = set()
+        self._announced_incidents: set[int] = set()
         self._last_plan: list[Decision] = []
         self._view: DssView | None = None
         self._version: int | None = None
@@ -215,6 +220,10 @@ class Orchestrator:
             if i not in self._announced and d.announced_s <= self.now_s:
                 self._announced.add(i)
                 events.add("disruption")
+        for i, (_, announced) in enumerate(self.incidents):
+            if i not in self._announced_incidents and announced <= self.now_s:
+                self._announced_incidents.add(i)
+                events.add("disruption")
         self._events = events
         return events
 
@@ -260,6 +269,8 @@ class Orchestrator:
             verify=bool(targets),
             time_limit_s=float(limits["disruption" if disruption else "routine"]),
             previous=list(self._last_plan),
+            incidents=[d for d, announced in self.incidents if announced <= now],
+            entry_delays=dict(self.entry_delays),
         )
         planned = self.planner.plan(ctx)
         if self.audit is not None:

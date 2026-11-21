@@ -117,6 +117,9 @@ class Directives:
     exit_windows: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
     # scripted late entries (scenario entry_delay, FR-SCN-02): run id -> seconds late at the first station
     entry_delays: dict[str, float] = field(default_factory=dict)
+    # incidents the planner knows of (TSR, loop out of use, signal failure, ...: injector disruptions,
+    # issue #155): the run applies them with the injector, as the ground truth does
+    incidents: list[Any] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

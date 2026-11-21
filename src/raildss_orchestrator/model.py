@@ -60,6 +60,8 @@ class PlanContext:
     verify: bool  # build and verify the options (False: only the greedy plan that carries the rolling state)
     time_limit_s: float
     previous: list[Decision] = field(default_factory=list)  # the last plan: kept by the stability term
+    incidents: list[Any] = field(default_factory=list)  # announced incidents the plan models (issue #155)
+    entry_delays: dict[str, float] = field(default_factory=dict)  # known late entries: run id -> s late
 
 
 @dataclass

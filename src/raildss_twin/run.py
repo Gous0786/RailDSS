@@ -110,6 +110,10 @@ def run_day(
         o.attach(sim, sink)
     if setup is not None:  # attach injector / station-master agents (issue #53) before the run
         setup(sim)
+    if directives is not None and directives.incidents:  # the incidents a plan knows of (issue #155)
+        from raildss_twin.injector import Injector
+
+        Injector(sim, directives.incidents)
     t0 = time.perf_counter()
     report = sim.run()
     for o in observers:

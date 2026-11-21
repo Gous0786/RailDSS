@@ -36,6 +36,13 @@ The replay report adds the cycles carried by CP-SAT, the CP-SAT plans verified a
 plans no worse than greedy, the frozen decisions imposed, and the plan churn (decisions of the previous
 plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-ktv-psa-2025-08-20.md`.
 
+**Disruptions the planner models** (issue #155):
+- **Plans and G3.** Announced incidents travel with every plan in `PlanContext.incidents`, as injector disruptions: a speed restriction (TSR), caution working after a signal failure (with a paper-line-clear wait for a block-instrument failure), and a station line out of use (a point or loop failure). The greedy plan, the G3 replay and the day's KPI arms run them through the injector, as the ground truth does.
+- **CP-SAT.** The IR (`displib.effects_of`) lengthens the block operations of a restricted line, drops an out-of-use station line, and raises a late train's entry bound.
+- **Late entries.** Known late entries (`entry_delays`) are directives of every run.
+- **Recovery.** The CP-SAT objective weighs each train's delay at the section exit `opt.recovery.exit_weight` times its class weight, pulling trains back to the booked plan.
+- **Scenarios.** `python -m raildss_orchestrator scenarios SCN-02 SCN-03 SCN-06 SCN-07 --report ...` runs the loop with two arms: BL-1 (greedy planner) and DSS (CP-SAT rolling horizon). Each is compared with BL-0 under the same disruptions; see `docs/kpi/scenarios-disruption-loop.md`.
+
 Limits: the planner forks the twin, so its state equals the DSS estimate only while nothing diverges; the
 CP-SAT instance does not model closures (a plan that uses a closed line fails G3); CP-SAT needs about
 6 s to build its model, so `opt.time_limit_s.routine` (15 s) leaves it about 9 s to improve the hint.
