@@ -36,6 +36,16 @@ Window 8-10 h, options by greedy, evaluation auto-accept, identical seed and dem
 | C2_freight_detention_h | 20.89 | 18.27 |
 | F1_unplanned_stops | 623 | 662 |
 
+
+## Conflicts: lead time and resolution (D1, D2)
+
+The DS-5 conflict log over the window against the ground truth of the DSS arm: a conflict is resolved if it is no longer predicted before its time and no train of it was held at its resource in the ground truth; still-open conflicts are left out of D2.
+
+| KPI | Value | Target |
+|---|---:|---|
+| Conflicts detected | 276 (0 near-conflicts) | |
+| D1 median conflict lead time | 41 min | >= 15 min (DSC-05) |
+| D2 resolved before occurrence | 62.1 % (136 resolved, 83 occurred, 57 still open) | >= 90 % (DSC-04) |
 ### DSS minus BL-0
 
 | KPI | Delta |

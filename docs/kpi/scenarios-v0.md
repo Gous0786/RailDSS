@@ -36,6 +36,14 @@ Window 9.75-11.25 h, 34 plans (34 of 34 candidate plans passed G0-G3), 13 recomm
 | C2_freight_detention_h | 15.99 | 15.99 | +0.00 |
 | F1_unplanned_stops | 474 | 486 | -12.00 |
 
+Conflicts (D1, D2):
+
+| KPI | Value | Target |
+|---|---:|---|
+| Conflicts detected | 96 (0 near-conflicts) | |
+| D1 median conflict lead time | 38.4 min | >= 15 min (DSC-05) |
+| D2 resolved before occurrence | 65.71 % (46 resolved, 24 occurred, 26 still open) | >= 90 % (DSC-04) |
+
 ### SCN-20: Planned line block on DUSI-CHE (maintenance corridor) with overrun
 
 Window 10.75-12.25 h, 39 plans (29 of 39 candidate plans passed G0-G3), 30 recommendations accepted, 32 orders.
@@ -50,3 +58,11 @@ Window 10.75-12.25 h, 39 plans (29 of 39 candidate plans passed G0-G3), 30 recom
 | B1_trains_exited | 175 | 175 | +0.00 |
 | C2_freight_detention_h | 4.47 | 4.62 | -0.15 |
 | F1_unplanned_stops | 375 | 399 | -24.00 |
+
+Conflicts (D1, D2):
+
+| KPI | Value | Target |
+|---|---:|---|
+| Conflicts detected | 151 (0 near-conflicts) | |
+| D1 median conflict lead time | 26.7 min | >= 15 min (DSC-05) |
+| D2 resolved before occurrence | 46.72 % (57 resolved, 65 occurred, 29 still open) | >= 90 % (DSC-04) |

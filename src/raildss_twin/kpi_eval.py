@@ -56,6 +56,7 @@ def run_arm(
     seed: int | None = None,
     day_instance: str | None = None,
     setup: Callable[[Sim], object] | None = None,
+    events_out: list[Any] | None = None,
 ) -> KpiReport:
     """Replay the day under BL-0 (with a candidate's directives, if any) and compute its KPIs."""
     plans, _, _ = run.plans_for(world, day, day_instance)
@@ -69,6 +70,8 @@ def run_arm(
         directives=directives,
         setup=setup,
     )
+    if events_out is not None:  # the ground truth of the arm, for KPIs that need it (D2)
+        events_out.extend(sim.events)
     return compute(
         sim.events,
         train_table(world, plans),

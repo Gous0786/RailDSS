@@ -188,3 +188,6 @@ src/raildss_orchestrator/scenarios.py: 15  # minutes the report window starts be
 src/raildss_orchestrator/scenarios.py: 90  # minutes the report window runs, not a rule value
 src/raildss_orchestrator/scenarios.py: 30  # minutes a closure is known before it starts in the report, not a rule value
 src/raildss_orchestrator/scenarios.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/conflict_kpi.py: 60  # seconds per minute, not a rule value
+src/raildss_dss/conflict_kpi.py: 100  # percent, not a rule value
+src/raildss_dss/conflict_kpi.py: 2  # digits of the rounded share, not a rule value

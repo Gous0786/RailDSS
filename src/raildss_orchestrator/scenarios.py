@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from raildss_dss.conflict_kpi import gt_occurrence
 from raildss_dss.kpi import KpiReport
 from raildss_optimiser.greedy import GreedyDispatcher
 from raildss_orchestrator.loop import Disruption, Orchestrator, RunSummary
+from raildss_orchestrator.report import conflict_rows
 from raildss_orchestrator.twin import TwinDss, TwinPlanner, day_kpis
 from raildss_twin import run, scenario
 from raildss_twin.kpi_eval import run_arm
@@ -74,7 +76,14 @@ def with_loop(world: run.World, sc: Scenario) -> tuple[RunSummary, dict[str, Any
     )
     summary = loop.run(from_s, to_s, TICK_S)
     holds, lines = loop.commitments()
-    comparison = day_kpis(world, day, closures=closures, exit_windows={}, holds=holds, lines=lines)
+    gt: list[Any] = []
+    comparison = day_kpis(
+        world, day, closures=closures, exit_windows={}, holds=holds, lines=lines, events_out=gt
+    )
+    if loop.conflict_log is not None:  # D1 and D2: the DS-5 log against the ground truth
+        comparison["conflicts"] = loop.conflict_log.kpis(
+            gt_occurrence(gt, dss.origin, world.register), to_s=to_s
+        ).as_dict()
     return summary, comparison
 
 
@@ -121,6 +130,8 @@ def render(
             "|---|---:|---:|---:|",
         ]
         out += [f"| {k} | {dss[k]:g} | {base[k]:g} | {dss[k] - base[k]:+.2f} |" for k in SHOWN]
+        if "conflicts" in comp:
+            out += ["", "Conflicts (D1, D2):", "", *conflict_rows(comp["conflicts"])]
     return "\n".join(out) + "\n"
 
 

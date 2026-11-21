@@ -609,8 +609,11 @@ def day_kpis(
     exit_windows: Mapping[str, list[tuple[float, float]]],
     holds: Mapping[tuple[str, str], float],
     lines: Mapping[tuple[str, str], int],
+    events_out: list[Any] | None = None,
 ) -> dict[str, Any]:
-    """FR-KPI-05: the day under the loop's orders (DSS arm) against BL-0 with the same disruptions."""
+    """FR-KPI-05: the day under the loop's orders (DSS arm) against BL-0 with the same disruptions.
+
+    ``events_out`` receives the ground-truth events of the DSS arm (for D2, issue #162)."""
     from raildss_dss.kpi import compare_runs
 
     scope = f"day {day.isoformat()}"
@@ -619,6 +622,6 @@ def day_kpis(
         world, day, closures=closures, exit_windows=exit_windows, holds=holds, lines=lines
     )
     return compare_runs(
-        run_arm(world, day, "DSS", scope, directives=dss),
+        run_arm(world, day, "DSS", scope, directives=dss, events_out=events_out),
         [run_arm(world, day, "BL-0", scope, directives=base)],
     )
