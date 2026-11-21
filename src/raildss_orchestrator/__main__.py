@@ -56,6 +56,12 @@ def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
     )
     r.add_argument("--noise-seed", type=int, default=0, help="seed of the BL-3 ETA noise")
     r.add_argument("--alternatives", type=int, default=1, help="extra CP-SAT solutions (other seeds)")
+    r.add_argument(
+        "--planner",
+        choices=["greedy", "cpsat"],
+        default="greedy",
+        help="the plan that carries the rolling state; cpsat: CP-SAT with freeze and stability (issue #152)",
+    )
     r.add_argument("--out", type=Path, default=None, help="write the run summary as JSON")
     r.add_argument("--audit-dir", type=Path, default=None, help="record the audit trail here (FR-AUD-01)")
     if replay:
@@ -128,7 +134,11 @@ def main(argv: list[str] | None = None) -> int:
         return _audit_replay(args)
     replay = args.cmd == "replay"
     if replay:  # the M1 demo: greedy recommendations, evaluation auto-accept, KPIs against BL-0
-        args.no_cpsat, args.no_auto_accept, args.kpis = not args.cpsat, False, True
+        args.no_cpsat, args.no_auto_accept, args.kpis = (
+            not (args.cpsat or args.planner == "cpsat"),
+            False,
+            True,
+        )
 
     world = run.load_world()
     day = dt.date.fromisoformat(args.date)
@@ -154,7 +164,9 @@ def main(argv: list[str] | None = None) -> int:
         degraded_predictor=args.degraded_predictor,
         noise_seed=args.noise_seed,
     )
-    planner = TwinPlanner(world, day, cpsat_enabled=not args.no_cpsat, alternatives=args.alternatives)
+    planner = TwinPlanner(
+        world, day, cpsat_enabled=not args.no_cpsat, planner=args.planner, alternatives=args.alternatives
+    )
     recorder = None
     if args.audit_dir is not None:
         from raildss_audit.chain import AuditLog
@@ -200,7 +212,14 @@ def main(argv: list[str] | None = None) -> int:
     if replay:
         from raildss_orchestrator.report import render
 
-        text = render(summary, doc["kpis"], args.date, solver="greedy + CP-SAT" if args.cpsat else "greedy")
+        solver = (
+            "CP-SAT (primary) + greedy"
+            if args.planner == "cpsat"
+            else "greedy + CP-SAT"
+            if args.cpsat
+            else "greedy"
+        )
+        text = render(summary, doc["kpis"], args.date, solver=solver)
         if args.report is not None:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(text, encoding="utf-8", newline=NEWLINE)

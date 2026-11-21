@@ -15,6 +15,27 @@ with them. Headless, the best option is accepted, the executor (#83) issues the 
 masters acknowledge them and the twin is re-simulated under them. `--kpis` ends with the day's KPIs, DSS
 arm against BL-0 (#81).
 
+**CP-SAT as the primary planner** (`--planner cpsat`, issue #152, FR-OPT-07). By default the greedy plan
+carries the rolling state (what the next re-plan freezes). With `--planner cpsat` the verified CP-SAT plan
+carries it instead:
+
+- **Freeze.** Frozen decisions and accepted orders are hard constraints of the model (their station
+  operation is used and ends within `opt.stability.freeze_tolerance_s`). The G3 replay imposes them
+  exactly.
+- **Stability.** The previous plan's other decisions in the window are kept by a penalty in the objective
+  (`opt.stability`: `per_s` per second a departure moves, `drop` when its station line changes).
+- **Never worse than greedy.** When the greedy hint keeps the frozen decisions, the delay objective is
+  capped by the hint's (DSC-07).
+- **Fallback.** Greedy carries the state when CP-SAT has no verified plan in time. Greedy then imposes the
+  frozen decisions as holds and lines, since they come from another planner's plan.
+- **One plan to freeze.** Once an option is accepted and its orders are issued, its realised departures
+  become the plan the next cycle freezes. Frozen decisions are one per train and station, and an accepted
+  order wins over the last plan.
+
+The replay report adds the cycles carried by CP-SAT, the CP-SAT plans verified against those solved, the
+plans no worse than greedy, the frozen decisions imposed, and the plan churn (decisions of the previous
+plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-ktv-psa-2025-08-20.md`.
+
 Limits: the planner forks the twin, so its state equals the DSS estimate only while nothing diverges; the
 CP-SAT instance does not model closures (a plan that uses a closed line fails G3); CP-SAT needs about
 6 s to build its model, so `opt.time_limit_s.routine` (15 s) leaves it about 9 s to improve the hint.

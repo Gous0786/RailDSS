@@ -12,6 +12,11 @@ returns a DISPLIB solution, so the independent G1 evaluator (#77) can check it. 
   the intervals of a resource do not overlap (DISPLIB resources are exclusive).
 * **Objective.** ``op_delay``: ``coeff * max(0, t - threshold) + increment * [t > threshold]``.
 * **Hint.** A known feasible schedule (the BL-0 twin's, FR-OPT-03) can warm-start the search.
+* **Rolling horizon** (issue #152, FR-OPT-07). ``fixed`` operations (frozen decisions and accepted orders)
+  must be used and end within their bounds. ``preferred`` operations (the previous plan's decisions)
+  are kept by a stability penalty: ``per_s`` per second their end moves and ``drop`` when the operation
+  is not used. ``delay_cap`` bounds the delay objective, e.g. by the greedy hint's, so the plan is never
+  worse than greedy on the delay objective (DSC-07).
 
 Events of equal time are ordered so that a train releasing a resource comes before the train that
 takes it (the DISPLIB global-order rule).
@@ -34,7 +39,8 @@ Path = list[tuple[int, int]]  # [(operation index, start time)] from entry to ex
 
 class SolveResult(BaseModel):
     status: str
-    objective: float | None = None
+    objective: float | None = None  # the delay objective (op_delay components), without stability
+    stability: float | None = None  # the stability penalty of the solution (rolling horizon)
     bound: float | None = None
     wall_s: float
     first_feasible_s: float | None = None
@@ -114,6 +120,21 @@ def objective_of(problem: Problem, paths: Mapping[int, Path]) -> float:
     return total
 
 
+Fixed = tuple[int, int, int, int]  # (train, operation, end lower bound, end upper bound)
+Preferred = tuple[int, int, int]  # (train, operation, end): an operation of the previous plan
+
+
+def stability_of(paths: Mapping[int, Path], preferred: Sequence[Preferred], per_s: int, drop: int) -> float:
+    """Stability penalty of a schedule: ``per_s`` per second a preferred operation's end moves, ``drop``
+    when it is not used. An operation ends when the train starts its next one."""
+    ends = {(ti, a): t for ti, p in paths.items() for (a, _), (_, t) in itertools.pairwise(p)}
+    total = 0.0
+    for ti, oi, t in preferred:
+        e = ends.get((ti, oi))
+        total += drop if e is None else per_s * abs(e - t)
+    return total
+
+
 def solve(
     problem: Problem,
     *,
@@ -121,6 +142,10 @@ def solve(
     workers: int,
     hint: Mapping[str, Any] | None = None,
     seed: int = 0,
+    fixed: Sequence[Fixed] = (),
+    preferred: Sequence[Preferred] = (),
+    stability: tuple[int, int] = (0, 0),
+    delay_cap: float | None = None,
 ) -> SolveResult:
     """Build and solve the CP-SAT model; the result carries a DISPLIB solution when one is found."""
     trains: Sequence[Sequence[Mapping[str, Any]]] = problem["trains"]
@@ -184,7 +209,20 @@ def solve(
             late = m.new_bool_var(f"l{k}")
             m.add(s[ti][oi] <= thr).only_enforce_if([x[ti][oi], ~late])
             terms.append(incr * late)
-    m.minimize(sum(terms))
+    for ti, oi, lo, hi in fixed:
+        m.add(x[ti][oi] == 1)
+        m.add(end[ti][oi] >= lo)
+        m.add(end[ti][oi] <= hi)
+    if delay_cap is not None:
+        m.add(sum(terms) <= int(delay_cap))
+    per_s, drop = stability
+    penalties = []
+    for k, (ti, oi, t) in enumerate(preferred):
+        dev = m.new_int_var(0, 2 * horizon, f"dev{k}")
+        m.add(dev >= end[ti][oi] - t).only_enforce_if(x[ti][oi])
+        m.add(dev >= t - end[ti][oi]).only_enforce_if(x[ti][oi])
+        penalties.append(per_s * dev + drop * (1 - x[ti][oi]))
+    m.minimize(sum(terms) + sum(penalties))
     if hint is not None:
         for ti, path in paths_from_solution(problem, hint).items():
             on = {oi for oi, _ in path}
@@ -229,6 +267,7 @@ def solve(
             paths[ti] = path
         value = objective_of(problem, paths)
         result.objective = value
+        result.stability = stability_of(paths, preferred, per_s, drop)
         result.bound = solver.best_objective_bound
         result.solution = {"objective_value": value, "events": order_events(problem, paths)}
     return result

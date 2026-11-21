@@ -341,7 +341,7 @@ builds greedy options, checks them with gates G0-G3 and releases only verified o
 recommendation lifecycle. The evaluation policy accepts the best option, the executor issues its control
 orders and the station masters acknowledge them; the day is then re-simulated under those orders. The
 report compares the KPIs of the DSS arm with BL-0 (same seed, same demand) and lists what the loop did.
-`--from-h/--to-h` set the window, `--cpsat` adds warm-started CP-SAT options, `--close SEG/LINE@FROM-TO`
+`--from-h/--to-h` set the window, `--cpsat` adds warm-started CP-SAT options, `--planner cpsat` makes CP-SAT the primary planner with freeze and stability (issue #152), `--close SEG/LINE@FROM-TO`
 adds a closure and `--out run.json` keeps the full log. `python -m raildss_orchestrator run` is the same
 loop without the report. See `docs/dss/orchestrator.md`. The result of the committed run is in
 `docs/kpi/replay-ktv-psa-2025-08-20.md`.

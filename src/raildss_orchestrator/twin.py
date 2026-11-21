@@ -16,6 +16,7 @@ does not model closures: a plan that uses a closed line fails G3 and is never re
 from __future__ import annotations
 
 import datetime as dt
+import itertools
 import math
 import time
 from collections.abc import Mapping, Sequence
@@ -231,8 +232,48 @@ def decisions_of(
     return decisions, holds
 
 
+def decision_ops(instance: displib.Instance) -> dict[tuple[str, str, int], tuple[int, int]]:
+    """``(run id, station, line) -> (train, operation)`` in the DISPLIB document: the inverse of
+    :func:`decisions_of` (a decision is the end of its station operation)."""
+    out: dict[tuple[str, str, int], tuple[int, int]] = {}
+    for ti, train in enumerate(instance.trains):
+        preds = {e.operation for o in train.operations for e in o.successors}
+        shift = int(len([o for o in train.operations if o.id not in preds]) > 1)
+        run_id = token(train.id)
+        for oid, op in enumerate(train.operations):
+            if op.kind != "station" or not op.resources:
+                continue
+            line_no = int(op.resources[0].resource.rpartition("/")[2])
+            out.setdefault((run_id, op.node, line_no), (ti, oid + shift))
+    return out
+
+
+def _keeps(solution: Mapping[str, Any], fixed: Sequence[cpsat.Fixed]) -> bool:
+    """Whether a DISPLIB solution uses every fixed operation and ends it within its bounds."""
+    paths = cpsat.paths_from_solution({}, solution)
+    ends = {(ti, a): t for ti, p in paths.items() for (a, _), (_, t) in itertools.pairwise(p)}
+    return all((e := ends.get((ti, oi))) is not None and lo <= e <= hi for ti, oi, lo, hi in fixed)
+
+
+def churn(previous: Sequence[Decision], current: Sequence[Decision], tolerance_s: float) -> int:
+    """Decisions of the previous plan that the current one changes: another line, or a departure moved
+    by more than ``tolerance_s`` (decisions only one of the plans covers are not counted)."""
+    now = {(d.run_id, d.station): d for d in current}
+    changed = 0
+    for d in previous:
+        c = now.get((d.run_id, d.station))
+        if c is not None and (c.line_no != d.line_no or abs(c.dep_s - d.dep_s) > tolerance_s):
+            changed += 1
+    return changed
+
+
 class TwinPlanner:
-    """Builds and verifies the options of one cycle (greedy + warm-started CP-SAT)."""
+    """Builds and verifies the options of one cycle (greedy + warm-started CP-SAT).
+
+    ``planner="cpsat"`` (issue #152) makes CP-SAT the primary planner: its verified plan carries the
+    rolling state, with the frozen decisions and accepted orders as constraints, the previous plan kept
+    by a stability term and the delay objective capped by the greedy hint's. Greedy is the fallback when
+    CP-SAT has no verified plan in time."""
 
     def __init__(
         self,
@@ -240,6 +281,7 @@ class TwinPlanner:
         day: dt.date,
         *,
         cpsat_enabled: bool = True,
+        planner: str = "greedy",
         alternatives: int = 1,
         workers: int | None = None,
         time_limit_s: float | None = None,
@@ -248,12 +290,18 @@ class TwinPlanner:
         self.world, self.day = world, day
         self.reg = register or world.register
         self.dispatcher = GreedyDispatcher(world, self.reg)
-        self.cpsat_enabled, self.alternatives = cpsat_enabled, alternatives
+        self.planner = planner
+        self.cpsat_enabled, self.alternatives = cpsat_enabled or planner == "cpsat", alternatives
+        stab = self.reg.value("opt.stability")
+        self.stability = (int(stab["per_s"]), int(stab["drop"]))
+        self.churn_s = float(stab["churn_s"])
+        self.freeze_tol = int(stab["freeze_tolerance_s"])
         self.time_limit_s = time_limit_s  # None: opt.time_limit_s of the cycle (routine or disruption)
         self.workers = workers if workers is not None else int(self.reg.value("opt.workers"))
 
     def solver_info(self) -> dict[str, Any]:
         return {
+            "planner": self.planner,
             "cpsat": self.cpsat_enabled,
             "alternatives": self.alternatives,
             "workers": self.workers,
@@ -287,7 +335,7 @@ class TwinPlanner:
 
     def plan(self, ctx: PlanContext) -> PlanSet:
         t0 = time.perf_counter()
-        imposed, checked = self._frozen_of(ctx)
+        imposed, checked = self._frozen_of(ctx, impose=self.planner == "cpsat")
         gp = self.dispatcher.plan(
             self.day,
             ctx.now_s,
@@ -346,20 +394,33 @@ class TwinPlanner:
                 if sig not in seen:
                     seen.add(sig)
                     out.candidates.append(cand)
+                elif k == 0 and self.planner == "cpsat":
+                    out.candidates.append(cand)  # the primary plan, even when it equals greedy's
+        if self.planner == "cpsat":
+            primary = next((c for c in out.candidates if c.name == "cpsat" and c.verified), None)
+            if primary is not None:
+                out.decisions = [
+                    Decision(d.run_id, d.station, d.line_no, d.dep_s) for d in primary.g3.departures
+                ]
+                out.planner = "cpsat"
+            else:
+                out.notes.append("planner: no verified CP-SAT plan, greedy fallback")
+        out.churn = churn(ctx.previous, out.decisions, self.churn_s) if ctx.previous else None
         out.runtime_s = round(time.perf_counter() - t0, 2)
         return out
 
     # ------------------------------------------------------------------ candidates
     @staticmethod
-    def _frozen_of(ctx: PlanContext) -> tuple[list[Decision], list[Decision]]:
+    def _frozen_of(ctx: PlanContext, impose: bool = False) -> tuple[list[Decision], list[Decision]]:
         """What the greedy plan must keep: (imposed as directives, only checked by G2).
 
         The plan is a pure function of the day and its directives, so an unchanged world reproduces its
         own earlier decisions; a hold directive on a train that was queueing would send it to the back of
         the queue. Decisions are imposed only when the world changed (closures, closed exits), and checked
-        always (VER-FRZ-01, issue #127)."""
+        always (VER-FRZ-01, issue #127). With CP-SAT as the primary planner (issue #152) the frozen decisions
+        come from another planner's plan, so greedy (the fallback and the hint) imposes them too."""
         fixed = ctx.frozen + ctx.history
-        return (fixed, ctx.committed) if ctx.impose else ([], fixed + ctx.committed)
+        return (fixed, ctx.committed) if ctx.impose or impose else ([], fixed + ctx.committed)
 
     @staticmethod
     def _signature(c: Candidate) -> tuple[Any, ...]:
@@ -454,12 +515,23 @@ class TwinPlanner:
                 hint = None
         except Exception:  # a hint that cannot be built is no reason to skip the solve
             hint = None
+        fixed, preferred, missing = self._rolling(ctx, instance, end_s)
+        rolling = self.planner == "cpsat"  # every CP-SAT option keeps the frozen decisions
+        primary = rolling and seed == 0  # the primary plan also keeps the previous one (stability)
+        if not rolling:
+            fixed, missing = [], 0
+        # the hint bounds the delay objective only when it is a schedule of the constrained model
+        capped = primary and hint is not None and _keeps(hint, fixed)
         result = cpsat.solve(
             doc,
             time_limit_s=self.time_limit_s or ctx.time_limit_s,
             workers=self.workers,
             hint=hint,
             seed=seed,
+            fixed=fixed,
+            preferred=preferred if primary else (),
+            stability=self.stability if primary else (0, 0),
+            delay_cap=hint["objective_value"] if capped and hint else None,
         )
         if result.solution is None:
             return None
@@ -490,8 +562,42 @@ class TwinPlanner:
                 "warm_started": hint is not None,
                 "hint_objective": hint["objective_value"] if hint else None,
                 "trains": result.size.get("trains"),
+                "primary": primary,
+                "capped": capped,
+                "fixed": len(fixed),
+                "fixed_outside_ir": missing,
+                "stability": result.stability,
             },
         )
+
+    def _rolling(
+        self, ctx: PlanContext, instance: displib.Instance, end_s: float
+    ) -> tuple[list[cpsat.Fixed], list[cpsat.Preferred], int]:
+        """The rolling-horizon terms of the primary solve: frozen decisions and accepted orders are fixed
+        (their end within ``opt.stability.freeze_tolerance_s`` of the decision), the previous plan's other
+        decisions in the window are preferred. Returns how many frozen decisions the IR does not model."""
+        ops = decision_ops(instance)
+        fixed: list[cpsat.Fixed] = []
+        keys: set[tuple[str, str]] = set()
+        missing = 0
+        for d in [*ctx.frozen, *ctx.committed]:
+            if (d.run_id, d.station) in keys or not ctx.now_s <= d.dep_s < end_s:
+                continue
+            at = ops.get((d.run_id, d.station, d.line_no))
+            if at is None:
+                missing += 1
+                continue
+            keys.add((d.run_id, d.station))
+            tol = self.freeze_tol
+            fixed.append((at[0], at[1], math.floor(d.dep_s) - tol, math.ceil(d.dep_s) + tol))
+        preferred: list[cpsat.Preferred] = []
+        for d in ctx.previous:
+            if (d.run_id, d.station) in keys or not ctx.now_s <= d.dep_s < end_s:
+                continue
+            at = ops.get((d.run_id, d.station, d.line_no))
+            if at is not None:
+                preferred.append((at[0], at[1], round(d.dep_s)))
+        return fixed, preferred, missing
 
 
 # --------------------------------------------------------------------------- the day's KPIs
