@@ -120,7 +120,8 @@ class ScenarioDisruption(_Strict):
     category: str | None = None  # special_train: the precedence class of the inserted train
     direction: Literal["DN", "UP"] | None = None  # special_train: the direction it runs
     boundary: str | None = None  # exit_blocked: a boundary of config/boundaries.yaml
-    single_line_working: bool = False  # line_block: work the other line both ways meanwhile (FR-TWIN-18)
+    single_line_working: bool = False  # line_block, loco_failure: work the other line both ways meanwhile
+    block_instrument: bool = False  # signal_failure: block instruments failed too, paper line clear (#146)
     note: str = ""
 
     @model_validator(mode="after")
@@ -183,6 +184,7 @@ class ScenarioDisruption(_Strict):
             speed_kmh=self.speed_kmh,
             through_block=self.through_block,
             single_line_working=self.single_line_working,
+            block_instrument=self.block_instrument,
         )
 
 
