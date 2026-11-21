@@ -18,7 +18,9 @@ import datetime as dt
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
+from raildss_dss.conflict_kpi import gt_occurrence
 from raildss_orchestrator.loop import Disruption, Orchestrator
 from raildss_orchestrator.twin import TwinDss, TwinPlanner, day_kpis
 from raildss_twin import run
@@ -207,7 +209,15 @@ def main(argv: list[str] | None = None) -> int:
     doc = summary.model_dump(mode="json")
     if args.kpis:
         holds, lines = loop.commitments()
-        doc["kpis"] = day_kpis(world, day, closures=closures, exit_windows=exits, holds=holds, lines=lines)
+        gt: list[Any] = []
+        doc["kpis"] = day_kpis(
+            world, day, closures=closures, exit_windows=exits, holds=holds, lines=lines, events_out=gt
+        )
+        if loop.conflict_log is not None:  # D1 and D2 (DSC-05, DSC-04): the DS-5 log against the ground truth
+            doc["conflict_kpis"] = loop.conflict_log.kpis(
+                gt_occurrence(gt, dss.origin, world.register), to_s=to_s
+            ).as_dict()
+            print(json.dumps(doc["conflict_kpis"]))
         print(json.dumps(doc["kpis"]["deltas"], indent=1))
     if replay:
         from raildss_orchestrator.report import render
@@ -219,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.cpsat
             else "greedy"
         )
-        text = render(summary, doc["kpis"], args.date, solver=solver)
+        text = render(summary, doc["kpis"], args.date, solver=solver, conflicts=doc.get("conflict_kpis"))
         if args.report is not None:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(text, encoding="utf-8", newline=NEWLINE)

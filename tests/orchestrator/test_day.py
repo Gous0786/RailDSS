@@ -96,3 +96,14 @@ def test_replans_keep_the_frozen_decisions_of_earlier_plans(world: run.World) ->
     failed = [(c.now_s, x.fail) for c in cycles for x in c.candidates if not x.verified]
     assert failed == []
     assert summary.accepted > 0  # and the accepted orders are the frozen decisions that must hold
+
+
+def test_the_conflict_log_follows_every_tick_and_yields_d1_and_d2(
+    day: tuple[Orchestrator, TwinDss, RunSummary],
+) -> None:
+    """Issue #162: the DS-5 log is kept by the loop; D1 and D2 are computable from it."""
+    loop, _, summary = day
+    assert loop.conflict_log is not None and loop.conflict_log.ticks == summary.ticks
+    k = loop.conflict_log.kpis(to_s=END_S)
+    assert k.conflicts == len(loop.conflict_log.tracks)
+    assert k.resolved + k.occurred + k.open == k.conflicts

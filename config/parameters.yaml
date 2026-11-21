@@ -988,6 +988,15 @@ parameters:
     status: V
     owner: dss
     valid_from: 2026-11-03
+  - key: kpi.conflict_match_window_min
+    value: 10
+    unit: min
+    source: "spec §12.4 DSC-04 (D2: resolved before occurrence); assumed matching window"
+    status: SA
+    owner: dss
+    bounds: {low: 5, high: 20}
+    valid_from: 2026-11-20
+    notes: "A conflict counts as having occurred when the ground truth holds one of its trains at a station of its resource within this window of the predicted time (raildss_dss.conflict_kpi.gt_occurrence)."
   - key: kpi.recovery.normal_def
     value: {max_delay_min: 15, or_throughput_share: 0.95, sustained_min: 30}
     unit: null

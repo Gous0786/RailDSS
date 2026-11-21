@@ -30,6 +30,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from raildss_audit.chain import pseudonym
+from raildss_dss.conflict_kpi import ConflictLog
 from raildss_hitl.executor import Executor, Option, PlanAction, ReplanRecord, Verdict
 from raildss_hitl.lifecycle import COMMITTED, Lifecycle, Status
 from raildss_optimiser.greedy import Decision
@@ -148,6 +149,8 @@ class Orchestrator:
             validity_s=self.cadence.max_interval_s,
         )
         self.cycles: list[CycleRecord] = []
+        origin = getattr(self.dss, "origin", None)  # the DS-5 log needs the scenario clock
+        self.conflict_log = ConflictLog(origin) if origin is not None else None
         self.published: list[tuple[str, dict[str, Any]]] = []
         self._entries: dict[str, _Entry] = {}  # option id -> what it was built on
         self._alternatives: dict[str, list[Option]] = {}  # rec id -> verified options of the same decision
@@ -184,6 +187,8 @@ class Orchestrator:
         self._answer_acks()
         view = self.dss.advance(now_s)
         self._view = view
+        if self.conflict_log is not None:
+            self.conflict_log.record(now_s, view.conflicts)
         self._audit_view(view)
         if self._version is not None and view.version != self._version:
             self.executor.state_changed()  # a material change: plans in force diverge
