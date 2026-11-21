@@ -17,7 +17,8 @@ disruptions:
     start: "09:30"
     duration_min: {low_min: 60, high_min: 120}
     etr: {offset_min: 15, sigma_min: 15}
-    note: "Degraded (caution) working on SGDM-PDU DN; the injector's caution speed applies."
+    block_instrument: true
+    note: "Signal and block-instrument failure on SGDM-PDU: caution speed, and each train entering the block waits for a paper line clear."
 requires: []
-expected_gt_hash: "0c51d36c00f70d87f68d9d6fecbcea8c022070d56362468785cc7c0282a80e55"
-notes: "Runs today with the signal_failure kind of the injector; #146 refines it with the block-instrument case."
+expected_gt_hash: "8408c749022c0d79d896530fde667894ea1f6a685a26d32b979c2ea7e226cd28"
+notes: "signal_failure with block_instrument (#146): caution speed plus the paper-line-clear wait per train entering the block."

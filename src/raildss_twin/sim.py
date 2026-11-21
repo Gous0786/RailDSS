@@ -138,6 +138,7 @@ class Restriction:
     start_s: float
     end_s: float
     kmh: float
+    extra_s: float = 0.0  # a wait for written authority on entering the block (paper line clear)
 
 
 class Refusal(BaseModel):
@@ -883,6 +884,8 @@ class Sim:
                 ):
                     metres = abs(self.km_of(y.op) - self.km_of(x.op)) * M_PER_KM
                     span = max(span, metres / (r.kmh / KMH_PER_MPS))
+                    if r.extra_s and not self.layout.ops[x.op].is_halt:  # entering the block
+                        span += r.extra_s
         stall = self.stalls.get(t.plan.run_id)
         if stall is not None and stall[0] < now + span and now < stall[1]:
             span += stall[1] - max(now, stall[0])
