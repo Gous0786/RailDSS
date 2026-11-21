@@ -191,3 +191,4 @@ src/raildss_orchestrator/scenarios.py: 60  # seconds per minute (unit conversion
 src/raildss_dss/conflict_kpi.py: 60  # seconds per minute, not a rule value
 src/raildss_dss/conflict_kpi.py: 100  # percent, not a rule value
 src/raildss_dss/conflict_kpi.py: 2  # digits of the rounded share, not a rule value
+src/raildss_twin/displib.py: 60  # seconds per minute (unit conversion), not a rule value

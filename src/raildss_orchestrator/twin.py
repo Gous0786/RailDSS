@@ -54,8 +54,11 @@ def standing_directives(
     exit_windows: Mapping[str, list[tuple[float, float]]],
     holds: Mapping[tuple[str, str], float],
     lines: Mapping[tuple[str, str], int],
+    incidents: Sequence[Any] = (),
+    entry_delays: Mapping[str, float] | None = None,
 ) -> Directives:
-    """What holds in the world: closures, closed exits and the accepted orders (BL-0 does the rest)."""
+    """What holds in the world: closures, closed exits, incidents, late entries and the accepted orders
+    (BL-0 does the rest)."""
     plans, _, _ = run.plans_for(world, day)
     rid = {token(p.run_id): p.run_id for p in plans}
     return Directives(
@@ -64,6 +67,8 @@ def standing_directives(
         from_s=0.0,
         closures=list(closures),
         exit_windows=dict(exit_windows),
+        entry_delays=dict(entry_delays or {}),
+        incidents=list(incidents),
     )
 
 
@@ -117,11 +122,15 @@ class TwinDss:
         exit_windows: Mapping[str, list[tuple[float, float]]] | None = None,
         degraded_predictor: bool = False,
         noise_seed: int = 0,
+        incidents: Sequence[Any] = (),
+        entry_delays: Mapping[str, float] | None = None,
     ) -> None:
-        """``degraded_predictor`` is the BL-3 arm: the same chain with noisy ETAs (``pred.degraded``)."""
+        """``degraded_predictor`` is the BL-3 arm: the same chain with noisy ETAs (``pred.degraded``).
+        ``incidents`` and ``entry_delays`` are the world's disruptions (ground truth, issue #155)."""
         reg = world.register
         self.world, self.day = world, day
         self.closures, self.exit_windows = list(closures), dict(exit_windows or {})
+        self.incidents, self.entry_delays = list(incidents), dict(entry_delays or {})
         self.origin = day_start(day)
         self.directory = PlanDirectory.from_published(register=reg)
         self.estimator = StateEstimator(self.directory, reg)
@@ -145,6 +154,8 @@ class TwinDss:
             exit_windows=self.exit_windows,
             holds=holds,
             lines=lines,
+            incidents=self.incidents,
+            entry_delays=self.entry_delays,
         )
 
     def commit(self, holds: Mapping[tuple[str, str], float], lines: Mapping[tuple[str, str], int]) -> None:
@@ -319,6 +330,8 @@ class TwinPlanner:
             exit_windows=ctx.exit_windows,
             holds=ctx.commit_holds,
             lines=ctx.commit_lines,
+            incidents=ctx.incidents,
+            entry_delays=ctx.entry_delays,
         )
         plans, _, inst = run.plans_for(self.world, self.day)
         end_s = ctx.now_s + self.dispatcher.horizon_s
@@ -345,6 +358,8 @@ class TwinPlanner:
             exit_windows=ctx.exit_windows,
             plan_id=ctx.plan_id,
             policy_from_s=ctx.policy_from_s,
+            incidents=ctx.incidents,
+            entry_delays=ctx.entry_delays,
         )
         out = PlanSet(decisions=gp.decisions)
         if not ctx.verify:
@@ -358,6 +373,8 @@ class TwinPlanner:
             exit_windows=ctx.exit_windows,
             holds=ctx.commit_holds,
             lines=ctx.commit_lines,
+            incidents=ctx.incidents,
+            entry_delays=ctx.entry_delays,
         )
         plans, _, inst = run.plans_for(self.world, self.day)
         baseline = run.run_day(
@@ -384,6 +401,8 @@ class TwinPlanner:
                 exit_windows=ctx.exit_windows,
                 plan_id=f"{ctx.plan_id}-hint",
                 policy_from_s=ctx.policy_from_s,
+                incidents=ctx.incidents,
+                entry_delays=ctx.entry_delays,
             )
             for k in range(self.alternatives + 1):
                 cand = self._cpsat(ctx, gp, full, standing, baseline, seed=k)
@@ -506,7 +525,15 @@ class TwinPlanner:
     ) -> Candidate | None:
         end_s = ctx.now_s + self.dispatcher.horizon_s
         snap = displib.snapshot_from_occupancy(full.occupancy, ctx.now_s, self.world.layout.network_version)
-        instance, _ = displib.build_instance(self.world, self.day, ctx.now_s, end_s, snapshot=snap)
+        instance, _ = displib.build_instance(
+            self.world,
+            self.day,
+            ctx.now_s,
+            end_s,
+            snapshot=snap,
+            incidents=ctx.incidents,
+            entry_delays=ctx.entry_delays,
+        )
         doc = instance.to_displib()
         hint: dict[str, Any] | None = None
         try:
@@ -609,19 +636,26 @@ def day_kpis(
     exit_windows: Mapping[str, list[tuple[float, float]]],
     holds: Mapping[tuple[str, str], float],
     lines: Mapping[tuple[str, str], int],
+    incidents: Sequence[Any] = (),
+    entry_delays: Mapping[str, float] | None = None,
+    arm: str = "DSS",
     events_out: list[Any] | None = None,
 ) -> dict[str, Any]:
-    """FR-KPI-05: the day under the loop's orders (DSS arm) against BL-0 with the same disruptions.
+    """FR-KPI-05: the day under the loop's orders (the ``arm``) against BL-0 with the same disruptions.
 
-    ``events_out`` receives the ground-truth events of the DSS arm (for D2, issue #162)."""
+    ``events_out`` receives the ground-truth events of that arm (for D2, issue #162)."""
     from raildss_dss.kpi import compare_runs
 
     scope = f"day {day.isoformat()}"
-    base = standing_directives(world, day, closures=closures, exit_windows=exit_windows, holds={}, lines={})
-    dss = standing_directives(
-        world, day, closures=closures, exit_windows=exit_windows, holds=holds, lines=lines
-    )
+    same = {
+        "closures": closures,
+        "exit_windows": exit_windows,
+        "incidents": incidents,
+        "entry_delays": entry_delays,
+    }
+    base = standing_directives(world, day, holds={}, lines={}, **same)  # type: ignore[arg-type]
+    dss = standing_directives(world, day, holds=holds, lines=lines, **same)  # type: ignore[arg-type]
     return compare_runs(
-        run_arm(world, day, "DSS", scope, directives=dss, events_out=events_out),
+        run_arm(world, day, arm, scope, directives=dss, events_out=events_out),
         [run_arm(world, day, "BL-0", scope, directives=base)],
     )

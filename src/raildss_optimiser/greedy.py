@@ -152,6 +152,8 @@ class GreedyDispatcher:
         plan_id: str = "greedy",
         policy_from_s: float | None = None,
         seed: int | None = None,
+        incidents: Sequence[Any] = (),
+        entry_delays: Mapping[str, float] | None = None,
     ) -> GreedyPlan:
         """Plan from ``start_s``. ``policy_from_s`` (rolling horizon) is when the dispatcher took over: the
         history since then ran under the policy, not BL-0. A frozen decision fixes its own line and
@@ -172,6 +174,8 @@ class GreedyDispatcher:
             priority=priority,
             closures=list(closures),
             exit_windows=dict(exit_windows or {}),
+            entry_delays=dict(entry_delays or {}),
+            incidents=list(incidents),  # known incidents: the plan's twin run applies them (issue #155)
         )
         t0 = time.perf_counter()
         report, sim = run.run_day(

@@ -40,7 +40,8 @@ import datetime as dt
 import itertools
 import math
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -49,9 +50,10 @@ from raildss_params import Register, policy
 from raildss_twin.layout import BlockLine, Layout
 from raildss_twin.plans import Node, Plan, Timing
 from raildss_twin.run import World, plans_for
-from raildss_twin.sim import KMH_PER_MPS, SECONDS_PER_HOUR
+from raildss_twin.sim import KMH_PER_MPS, M_PER_KM, SECONDS_PER_HOUR
 
 FORMAT = "raildss-displib-ir"
+SECONDS_PER_MIN = 60
 VERSION = 1
 DEFAULT_WEIGHT_CLASS = "freight_other"
 
@@ -301,7 +303,54 @@ def _weight(plan: Plan, register: Register) -> float:
     return policy.weight_of(plan.category, register)
 
 
-def _station_lines(layout: Layout, plan: Plan, op: str) -> list[Any]:
+@dataclass(frozen=True)
+class Effects:
+    """Known incidents in the IR (issue #155): speed limits on block lines (a TSR, caution working, with a
+    paper-line-clear wait), station lines out of use (a point or loop failure), late entries, and the
+    weight of the recovery term (delay at the section exit)."""
+
+    restrictions: tuple[tuple[str, str | None, float, float], ...] = ()  # segment, line, km/h, extra s
+    out_of_use: frozenset[tuple[str, int]] = frozenset()  # (station, line no)
+    entry_delays: tuple[tuple[str, float], ...] = ()  # (run id, seconds late)
+    recovery: int = 1  # coefficient multiplier of the exit component
+
+
+NO_EFFECTS = Effects()
+
+
+def effects_of(
+    world: World,
+    incidents: Sequence[Any],
+    entry_delays: Mapping[str, float] | None,
+    start_s: float,
+    end_s: float,
+) -> Effects:
+    """The incidents active at some time of the window ``[start_s, end_s)``."""
+    cfg = world.register.value("twin.injector")
+    caution, plc = (
+        float(cfg["signal_failure_speed_kmh"]),
+        float(cfg["paper_line_clear_min"]) * SECONDS_PER_MIN,
+    )
+    layout = world.layout
+    restrictions, out = [], set()
+    for d in incidents:
+        if d.start_s >= end_s or d.end_s <= start_s:
+            continue
+        if d.kind in ("tsr", "signal_failure") and d.block_id in layout.blocks:
+            kmh = float(d.speed_kmh or 0) if d.kind == "tsr" else caution
+            extra = plc if getattr(d, "block_instrument", False) else 0.0
+            for ln in layout.lines[d.block_id]:
+                if d.line_id in (None, ln.line_id):
+                    restrictions.append((ln.segment, ln.line_id, kmh, extra))
+        elif d.kind == "point_failure" and d.station is not None and d.line_no is not None:
+            out.add((d.station, d.line_no))
+    recovery = int(world.register.value("opt.recovery")["exit_weight"])
+    return Effects(tuple(restrictions), frozenset(out), tuple(sorted((entry_delays or {}).items())), recovery)
+
+
+def _station_lines(
+    layout: Layout, plan: Plan, op: str, out_of_use: frozenset[tuple[str, int]] = frozenset()
+) -> list[Any]:
     """Lines the train may be received on. As in the twin (VER-XNG-02), a line whose CSR is shorter than the
     train is not one of them: a train may stand on any line it is received on (issue #152). Where no line
     fits, all are kept and the twin decides."""
@@ -312,6 +361,7 @@ def _station_lines(layout: Layout, plan: Plan, op: str) -> list[Any]:
         if sl.kind in ("main", "loop")
         and sl.status == "in_use"
         and (sl.passenger_ok if passenger else sl.goods_ok)
+        and (op, sl.line_no) not in out_of_use
     ]
     length = plan.template.length_m
     fitting = [sl for sl in usable if sl.csr_m is None or sl.csr_m >= length]
@@ -333,9 +383,10 @@ def _block_duration(
 
 
 def _train(
-    world: World, plan: Plan, horizon: int, resources: dict[str, Resource]
+    world: World, plan: Plan, horizon: int, resources: dict[str, Resource], effects: Effects | None = None
 ) -> tuple[Train, list[tuple[int, float, int]]]:
     layout, timing, reg = world.layout, world.timing, world.register
+    effects = effects or NO_EFFECTS
     cfg = reg.value("twin.sim")
     min_dwell, exit_clear = float(cfg["min_dwell_s"]), float(cfg["exit_clear_s"])
     clear = _clearing_s(plan, reg)
@@ -351,9 +402,10 @@ def _train(
         nxt = layout.block_by_pair[hop] if hop else None
         direction = layout.direction(*hop) if hop else ""
         duration = exit_clear if last else min_dwell if node.stop else 0.0
-        lb = plan.entry_s if k == 0 else (node.arr if plan.timetabled and not node.stop else 0.0)
+        late = dict(effects.entry_delays).get(plan.run_id, 0.0)
+        lb = plan.entry_s + late if k == 0 else (node.arr if plan.timetabled and not node.stop else 0.0)
         station_ops: dict[int, int] = {}
-        for sl in _station_lines(layout, plan, node.op):
+        for sl in _station_lines(layout, plan, node.op, effects.out_of_use):
             res = f"SL:{node.op}/{sl.line_no}"
             resources.setdefault(res, Resource(id=res, kind="station_line", capacity=sl.capacity_trains))
             i = b.add(
@@ -380,13 +432,18 @@ def _train(
         total = _block_duration(timing, plan, route, idx[k + 1] == len(plan.nodes) - 1, min_dwell)
         free_run += total
         after_stop = node.dep if plan.timetabled and node.stop else 0.0
+        metres = abs(layout.km(hop[1]) - layout.km(hop[0])) * M_PER_KM
         for line in layout.lines_for(nxt.id, direction):
+            span_total = total
+            for seg, lid, kmh, extra in effects.restrictions:  # a known speed limit on this line
+                if seg == line.segment and lid in (None, line.line_id) and kmh > 0:
+                    span_total = max(span_total, metres / (kmh / KMH_PER_MPS) + extra)
             subs = layout.canonical_sub_blocks(line.block_id, line.line_id) if line.system == "AUTO" else []
             if subs:
                 length = sum(m for _, m in subs)
-                parts = [(f"SB:{key}", "sub_block", total * m / length) for key, m in subs]
+                parts = [(f"SB:{key}", "sub_block", span_total * m / length) for key, m in subs]
             else:
-                parts = [(f"BL:{line.key}", "block", total)]
+                parts = [(f"BL:{line.key}", "block", span_total)]
             chain: list[int] = []
             for n, (res, kind, span) in enumerate(parts):
                 resources.setdefault(
@@ -442,9 +499,9 @@ def _train(
         node = visits[o.visit]
         last = o.visit == len(idx) - 1
         if plan.timetabled and (node.stop or last):
-            anchors.append((o.id, node.arr, 0))
+            anchors.append((o.id, node.arr, int(last)))
         elif not plan.timetabled and last:
-            anchors.append((o.id, plan.entry_s + free_run, 0))
+            anchors.append((o.id, plan.entry_s + free_run, 1))
     return Train(id=plan.run_id, kind=plan.kind, category=plan.category, operations=ops), anchors
 
 
@@ -504,6 +561,8 @@ def build_instance(
     day_instance: str | None = None,
     plans: list[Plan] | None = None,
     snapshot: Snapshot | None = None,
+    incidents: Sequence[Any] = (),
+    entry_delays: Mapping[str, float] | None = None,
 ) -> tuple[Instance, list[Plan]]:
     """Convert the trains entering in ``[start_s, end_s)`` of ``day``; returns the instance and the plans.
 
@@ -530,14 +589,21 @@ def build_instance(
     resources: dict[str, Resource] = {}
     trains: list[Train] = []
     objective: list[Component] = []
+    effects = effects_of(world, incidents, entry_delays, start_s, end)
     for plan in window_plans:
-        train, anchors = _train(world, plan, horizon, resources)
+        train, anchors = _train(world, plan, horizon, resources, effects)
         if plan.run_id in running:
             train, anchors = _freeze(train, anchors, running[plan.run_id])
         weight = _weight(plan, reg)
         objective += [
-            Component(train=len(trains), operation=op, coeff=weight, threshold=fl(thr))
-            for op, thr, _ in anchors
+            # the exit component carries the recovery weight (return to the booked plan, issue #155)
+            Component(
+                train=len(trains),
+                operation=op,
+                coeff=weight * (effects.recovery if exit_ else 1),
+                threshold=fl(thr),
+            )
+            for op, thr, exit_ in anchors
         ]
         trains.append(train)
     instance = Instance(

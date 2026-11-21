@@ -798,6 +798,16 @@ parameters:
     status: SA
     owner: dss
     valid_from: 2026-11-03
+  - key: opt.recovery
+    value: {exit_weight: 2}
+    unit: null
+    source: "spec FR-OPT-08 (recovery objective); issue #155"
+    status: SA
+    owner: dss
+    valid_from: 2026-11-21
+    notes: >-
+      Recovery objective of the CP-SAT model (issue #155): the delay of a train at the section exit (its
+      return to the booked plan) counts exit_weight times its class weight, the other stops once.
   - key: opt.stability
     value: {per_s: 1, drop: 600, churn_s: 60, freeze_tolerance_s: 5}
     unit: null
