@@ -77,7 +77,8 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy
 uv run lint-imports           # import boundaries (verifier independence, NFR-MNT-02)
-uv run pytest                 # includes the dataset manifest check
+uv run pytest -n auto -m "not slow"   # the fast suite, in parallel (includes the dataset manifest check)
+uv run pytest -n auto                 # everything, in parallel (the slow whole-day twin, loop and scenario tests too)
 ```
 
 Licence gate (NFR-LIC-02), run in CI on runtime dependencies only:
