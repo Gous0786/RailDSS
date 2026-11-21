@@ -32,6 +32,7 @@ dev = [
     "pandas-stubs>=3.1.0.261029",
     "jsonschema>=4.23",
     "rfc3339-validator>=0.1.4",
+    "pytest-xdist>=3.6",
 ]
 
 [build-system]
@@ -111,6 +112,7 @@ addopts = "-ra --strict-markers"
 markers = [
     "db: needs PostgreSQL + PostGIS (RAILDSS_TEST_DB_URL); run in the CI db job",
     "kafka: needs the docker-compose Kafka broker with SASL + ACLs (RAILDSS_TEST_KAFKA_BOOTSTRAP); run in the CI kafka job",
+    "slow: whole-day twin, decision loop, scenario, calibration and full-ETL tests (marked in tests/conftest.py); run in the CI slow jobs",
 ]
 
 # ---------------------------------------------------------------- import-linter
