@@ -612,7 +612,9 @@ class TwinPlanner:
         contends."""
         before = order_of(base.decisions, trains, resource)
         holds = self._contrast_holds(base, trains, first, resource)
-        alt = self._replan(ctx, imposed, checked, "-contrast", promote=[first], holds=holds)
+        # the other trains keep their frozen decisions: imposed, as the re-ordered queues would move them
+        fixed, committed = self._frozen_of(ctx, impose=True)
+        alt = self._replan(ctx, fixed, committed, "-contrast", promote=[first], holds=holds)
         cand = self._greedy(ctx, alt, standing, baseline, name=f"contrast:{first}")
         after = order_of(cand.decisions, trains, resource)
         reversed_ = before[0] != first and after[0] == first

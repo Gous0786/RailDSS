@@ -101,8 +101,9 @@ class ContingentRecord(BaseModel):
 
 
 class DecisionRecord(BaseModel):
-    """The options released for one decision (issue #154): how many, and how many different trains they
-    serve first at its resource (precedences)."""
+    """The options released for one decision (issue #154): how many, and how many different trains the
+    verified plans that give it orders serve first at its resource (precedences; issue #196: the orders
+    already in force count, as they are the standing alternative)."""
 
     trains: list[str]
     resource: str
@@ -233,6 +234,7 @@ class Orchestrator:
         self._rec_trains: dict[str, tuple[str, ...]] = {}
         self._audited: set[tuple[Any, ...]] = set()
         self._last_ctx: PlanContext | None = None
+        self._foreign_plan = False  # the plan in force is an option the planner does not reproduce (#196)
         self._decision_records: list[DecisionRecord] = []
 
     # ------------------------------------------------------------------ the loop
@@ -354,7 +356,9 @@ class Orchestrator:
             triggers=triggers,
             frozen=frozen,
             committed=committed,
-            impose=bool(closures or self.exit_windows),
+            # the frozen decisions are imposed when the world changed, and when the plan in force is not
+            # the planner's own (an accepted contrasting option, issue #196), which it does not reproduce
+            impose=bool(closures or self.exit_windows or self._foreign_plan),
             history=list(past.values()),
             closures=closures,
             exit_windows=self.exit_windows,
@@ -506,18 +510,19 @@ class Orchestrator:
         for conflict in targets:
             options: list[tuple[Candidate, list[PlanAction]]] = []
             seen: set[str] = set()
+            addressing: list[Candidate] = []  # verified plans with orders for it, released or in force
             for cand in ranked:
-                actions = [
-                    x
-                    for x in cand.actions_for(conflict.trains, conflict.resource)
-                    if not self._in_orders(x, holds, lines)
-                ]
+                every = cand.actions_for(conflict.trains, conflict.resource)
+                if every:
+                    addressing.append(cand)
+                actions = [x for x in every if not self._in_orders(x, holds, lines)]
                 sig = "|".join(sorted(a.model_dump_json() for a in actions))
                 if actions and sig not in seen:
                     seen.add(sig)
                     options.append((cand, actions))
             options = options[:MAX_OPTIONS]
-            firsts = {order_of(c.decisions, conflict.trains, conflict.resource)[0] for c, _ in options}
+            # the precedences on offer: the released options and the orders already in force (issue #196)
+            firsts = {order_of(c.decisions, conflict.trains, conflict.resource)[0] for c in addressing}
             if options:  # a decision released (one whose orders are all in force has no options)
                 self._decision_records.append(
                     DecisionRecord(
@@ -625,6 +630,7 @@ class Orchestrator:
             # the world now follows the accepted option: it is the plan the next cycle freezes (issue #152;
             # the planner's own plan may be another option)
             self._last_plan = [Decision(d.run_id, d.station, d.line_no, d.dep_s) for d in made]
+            self._foreign_plan = cand.name not in ("greedy", "cpsat")
             for oid, action in zip(
                 self.executor.current[rec_id], self.executor.options[rec_id].actions, strict=True
             ):

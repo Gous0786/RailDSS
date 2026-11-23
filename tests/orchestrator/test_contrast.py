@@ -109,7 +109,7 @@ def test_the_cycle_contrasts_its_most_urgent_decisions(looped: Orchestrator) -> 
     for d in cycle.decisions:
         rev = [c for c in cycle.contrasts if c.resource == d.resource and c.reversed and c.verified]
         if rev:  # more than one feasible precedence: options with both
-            assert d.options >= 2 and d.precedences >= 2
+            assert d.options >= 1 and d.precedences >= 2  # released, or one of them an order in force
 
 
 def test_why_not_on_the_twin(looped: Orchestrator) -> None:
