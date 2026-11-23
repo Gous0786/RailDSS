@@ -199,3 +199,6 @@ src/raildss_orchestrator/alert_load.py: 24  # hours of the nominal day, not a ru
 src/raildss_dss/alert_kpi.py: 60  # seconds per minute, not a rule value
 src/raildss_orchestrator/scenarios.py: 20  # quantile cut points in 5 % steps (P95 is a cut point), not a rule value
 src/raildss_orchestrator/scenarios.py: 2  # the 95th percentile is the cut point before the last but one, not a rule value
+src/raildss_twin/bl0_check.py: 0.5  # a median under this share of the mean reads as a tail in the note's wording, not a rule value
+src/raildss_twin/bl0_check.py: 0.8  # history over BL-0 below this reads as slower in BL-0, wording only
+src/raildss_twin/bl0_check.py: 1.25  # history over BL-0 above this reads as faster in BL-0, wording only
