@@ -19,8 +19,7 @@ dataset has **no passenger actuals**, so BL-0 passenger delay cannot be checked 
 | Longest arrival delay at any station (min) | 182.01 |
 | Section punctuality (%) | 62.63 |
 
-The median is under a minute: most trains run on time and a few queue for a long time behind others. The mean
-and the 2.9 h maximum come from that tail.
+The median exit delay is 4.2 min against a mean of 24.4 min. Most trains are close to on time and a tail of long delays pulls the mean up: 16 trains are more than 60 min late, the longest arrival delay at a station 3.0 h.
 
 ## Freight: the same loads, history against BL-0
 
@@ -38,16 +37,15 @@ block p10 172.09 h. BL-0 freight standing: 18.27 h.
 
 ## Reading the gap
 
-1. **Freight is much faster in BL-0 than in the log.** The twin runs a freight train from its logged entry at
-   the calibrated running time. It adds no crew changes, no waits for a path and no long halts, and the log
-   has them. History is several times slower than BL-0 for the same loads.
+1. **Freight is faster in BL-0 than in the log.** The twin runs a freight train from its logged entry at the calibrated running time. It
+   adds no crew changes, no waits for a path and no long halts, and the log has them. History is 6.7 times slower than BL-0 (median section time) for the same loads.
 2. **So BL-0 is not a reproduction of the real day.** Its passenger delay comes from its own
    first-come-first-served rule, with no controller decisions and none of the real freight halts. The
    dataset has no passenger log, so how far its passenger delay is from what passengers experienced is
    unknown; this check cannot measure it.
-3. **The tail is a property of the rule, not a measured fact.** The median is under a minute and
-   16 trains are over 60 min late. That is the do-nothing behaviour the
-   DSS has to improve on, which is the use BL-0 is accepted for.
+3. **The delays are a property of the rule, not a measured fact.** Median 4.2 min, mean
+   24.4 min and 16 trains over 60 min late are what the
+   do-nothing rule gives; the DSS has to improve on them, which is the use BL-0 is accepted for.
 
 ## Decision
 
