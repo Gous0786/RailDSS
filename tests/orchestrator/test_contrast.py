@@ -107,7 +107,11 @@ def test_the_cycle_contrasts_its_most_urgent_decisions(looped: Orchestrator) -> 
     for c in cycle.contrasts:
         assert c.verified or c.fail  # a verified plan or the rules that forbid it
     for d in cycle.decisions:
-        rev = [c for c in cycle.contrasts if c.resource == d.resource and c.reversed and c.verified]
+        rev = [
+            c
+            for c in cycle.contrasts
+            if c.resource == d.resource and c.first in d.trains and c.reversed and c.verified
+        ]
         if rev:  # more than one feasible precedence: options with both
             assert d.options >= 1 and d.precedences >= 2  # released, or one of them an order in force
 
@@ -129,3 +133,16 @@ def test_the_contrast_holds_the_first_served_train_until_the_other_has_left() ->
     holds = TwinPlanner._contrast_holds(me, plan, ("A", "B"), "B", "S1~S2")  # type: ignore[arg-type]
     assert holds == {("A", "S1"): NOW0 + 660 + 60}  # issue #196: A waits for B plus the margin
     assert TwinPlanner._contrast_holds(me, plan, ("A", "B"), "A", "S1~S2") == {}  # type: ignore[arg-type]
+
+
+def test_an_accepted_contrast_stays_imposed_until_its_orders_are_executed() -> None:
+    from .test_loop import MIN, candidate
+
+    late = NOW0 + 40 * MIN  # beyond the freeze window: it would only be checked
+    orch, dss, planner = make([candidate("contrast:B", -9.0, hold_until=late)])
+    dss.script = {NOW0: [FakeConflict(2, ("A", "B"), "S1~S2")]}
+    orch.tick(NOW0)  # the contrasting option is accepted (best KPI delta)
+    orch.tick(NOW0 + 2 * MIN)
+    ctx = planner.contexts[-1]
+    assert ctx.impose  # issue #196: the planner does not reproduce that plan by itself
+    assert any(d.run_id == "A" and d.dep_s == late for d in ctx.frozen) and not ctx.committed
