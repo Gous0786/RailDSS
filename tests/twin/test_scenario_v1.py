@@ -46,24 +46,13 @@ def test_the_v1_index_lists_every_scenario_by_family_and_is_current() -> None:
     assert len({s.family for s in LIBRARY}) >= 8
 
 
-def test_which_scenarios_are_executable_now_and_what_the_rest_wait_for() -> None:
-    assert {s.id for s in EXECUTABLE_NEW} == {
-        "SCN-04",
-        "SCN-07",
-        "SCN-08",
-        "SCN-09",
-        "SCN-10",
-        "SCN-11",
-        "SCN-14",
-        "SCN-15",
-        "SCN-19",
-        "SCN-21",
-        "SCN-23",
-    }
-    waits = {s.id: s.requires for s in WAITING}
-    assert waits == {"SCN-24": ["sensitivity-run"]}
-    assert all(s.expected_gt_hash is None for s in WAITING)
-    assert all(s.expected_gt_hash for s in LIBRARY if s.executable)
+def test_every_v1_scenario_is_executable_and_carries_its_recorded_hash() -> None:
+    """Issue #167: no scenario waits for a component any more; the CI tests below run every one of them."""
+    assert [s.id for s in WAITING] == [] and len(LIBRARY) == 22
+    assert {s.id for s in EXECUTABLE_NEW} == set(NEW_IDS)
+    assert all(s.requires == [] and s.expected_gt_hash for s in LIBRARY)
+    hashes = [s.expected_gt_hash for s in LIBRARY]
+    assert len(set(hashes)) == len(hashes)  # no two scenarios share a ground truth
 
 
 def test_the_new_scenarios_cover_the_spec_table_and_name_a_real_day() -> None:
@@ -126,8 +115,9 @@ def test_an_unknown_boundary_is_reported() -> None:
 
 
 def test_a_scenario_waiting_for_a_component_is_validated_not_executed() -> None:
-    sc = scenario.load(scenario.V1_DIR / "SCN-24.yaml")
-    with pytest.raises(ValueError, match="requires sensitivity-run"):
+    sc = Scenario.model_validate(dict(_new(), requires=["injector-loco"], expected_gt_hash=None))
+    assert not sc.executable
+    with pytest.raises(ValueError, match="requires injector-loco"):
         scenario.run_scenario(None, sc)
 
 
@@ -149,3 +139,37 @@ def test_executable_v1_scenarios_run_in_the_twin_with_their_recorded_gt_hash(
 def test_a_v1_disruption_scenario_changes_the_ground_truth(world: run.World, sc: Scenario) -> None:
     plain, _ = run.run_day(world, sc.wtt_date, seed=sc.seed, day_instance=sc.freight_day)
     assert plain.trace_hash != sc.expected_gt_hash
+
+
+def test_a_sensitivity_that_the_scenarios_cannot_apply_is_reported() -> None:
+    base = Scenario.model_validate(_new())
+    unknown = base.model_copy(update={"sensitivity": {"station_line.csr.stats": "low"}})  # has no bounds
+    assert any("can apply" in p for p in scenario.check_library([unknown]))
+    assert scenario.check_library(LIBRARY) == []
+
+
+def test_the_sensitivity_world_sizes_only_the_psa_lines_and_leaves_the_world_alone(world: run.World) -> None:
+    sc = next(s for s in LIBRARY if s.id == "SCN-24")
+    low_lines: list[Any] = list(scenario.sensitivity_world(world, sc).tables["station_line"])
+    lines: list[Any] = list(world.tables["station_line"])
+    bounds = world.register.get("station_line.csr.psa").bounds
+    assert bounds is not None
+    for x in low_lines:
+        if x.op_code == "PSA" and x.kind in bounds.low:
+            assert x.csr_m == bounds.low[x.kind]  # loops 673 m, mains 678 m
+    assert {x.csr_m for x in lines if x.op_code == "PSA"} == {
+        733.0,
+        752.0,
+    }  # the published world is untouched
+    assert [x for x in low_lines if x.op_code != "PSA"] == [x for x in lines if x.op_code != "PSA"]
+    assert scenario.sensitivity_world(world, next(s for s in LIBRARY if s.id == "SCN-01")) is world
+
+
+def test_the_low_bound_changes_the_ground_truth_of_scn_24_and_of_its_base_scenarios(world: run.World) -> None:
+    sc24 = next(s for s in LIBRARY if s.id == "SCN-24")
+    central, _ = run.run_day(world, sc24.wtt_date, seed=sc24.seed, day_instance=sc24.freight_day)
+    assert scenario.run_scenario(world, sc24).trace_hash != central.trace_hash
+    for base_id in sc24.base:
+        base = next(s for s in LIBRARY if s.id == base_id)
+        with_low = scenario.run_scenario(world, base.model_copy(update={"sensitivity": sc24.sensitivity}))
+        assert with_low.completed and not with_low.stuck and not with_low.deadlocks, base_id
