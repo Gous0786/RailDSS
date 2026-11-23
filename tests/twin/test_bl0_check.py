@@ -69,7 +69,7 @@ def test_the_freight_sentence_says_faster_slower_or_about_the_same() -> None:
 
 
 def test_the_rendered_note_has_no_figure_that_the_table_does_not_show() -> None:
-    """Issue #149: nothing left over from one day (no 'under a minute', no '2.9 h'); sentences carry the table."""
+    """Issue #149: nothing is left over from one day; the sentences carry the figures of the table."""
     low = bl0_check.render(_summary(pax_median=0.5, pax_mean=18.0))
     high = bl0_check.render(_summary(pax_median=4.2, pax_mean=24.4))
     for text, median in ((low, "0.5"), (high, "4.2")):
