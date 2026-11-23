@@ -87,3 +87,41 @@ def test_tampering_with_one_record_breaks_the_chain_and_is_detected(
     finally:
         path.write_text(original, encoding="utf-8")
     assert AuditLog(root, "KTV-PSA").verify().ok
+
+
+def test_a_seeded_sample_of_recommendations_reproduces_exactly(
+    world: run.World, recorded: tuple[Orchestrator, Path]
+) -> None:
+    """Issue #164 (DSC-12): replay a seeded sample of the chain's recommendations, each from its record."""
+    from raildss_orchestrator.replay import replay_sample
+
+    _, root = recorded
+    log = AuditLog(root, "KTV-PSA")
+    planner = TwinPlanner(world, DAY, cpsat_enabled=False)
+    available = len(log.query(kind="recommendation"))
+    assert available >= 1
+    sample = replay_sample(log, planner, 20, seed=7)
+    assert (sample.requested, sample.available, sample.sampled) == (20, available, min(20, available))
+    assert sample.identical == sample.sampled and sample.all_identical, [
+        (r.rec_id, r.differences) for r in sample.results if not r.identical
+    ]
+    assert sample.meets_dsc12 is (available >= 20)  # a short chain cannot meet the 20 of 20
+    one = replay_sample(log, planner, 1, seed=7)
+    assert one.meets_dsc12 and one.sampled == 1
+    assert [r.rec_id for r in replay_sample(log, planner, 1, seed=7).results] == [
+        r.rec_id for r in one.results
+    ]
+
+
+def test_the_audit_replay_command_samples_and_reports_the_determinism(
+    recorded: tuple[Orchestrator, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    from raildss_orchestrator.__main__ import main
+
+    _, root = recorded
+    assert main(["audit-replay", "--audit-dir", str(root), "--sample", "1", "--seed", "3"]) == 0
+    out = capsys.readouterr().out
+    assert "replay determinism: 1 / 1 sampled recommendations reproduce exactly" in out
+    assert "DSC-12 met" in out
+    with pytest.raises(SystemExit, match="--rec REC-0001 or --sample N"):
+        main(["audit-replay", "--audit-dir", str(root)])
