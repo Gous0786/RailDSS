@@ -56,9 +56,7 @@ def test_a_short_terminated_train_ends_its_run_at_the_station(world: run.World) 
 
 def test_a_cancelled_train_does_not_enter(world: run.World) -> None:
     rid, first = _passenger(world, entered=False)
-    rep, sim = run.run_day(
-        world, DAY, until_s=END, directives=Directives(from_s=T0, terminations={rid: first})
-    )
+    _, sim = run.run_day(world, DAY, until_s=END, directives=Directives(from_s=T0, terminations={rid: first}))
     train = next(t for t in sim.trains if t.plan.run_id == rid)
     assert train.terminated and not train.entered and _ops(sim, rid) == []
 

@@ -77,7 +77,7 @@ def test_plans_assume_the_announced_etr_until_it_passes() -> None:
         etr_s=etr,
         block_id="GVI-CPP",
     )
-    orch, dss, planner = make([], incidents=((d, NOW0),))
+    orch, _, planner = make([], incidents=((d, NOW0),))
     orch.run(NOW0, NOW0 + 40 * MIN, 60.0)
     first, *_ = planner.contexts
     assert first.incidents[0].end_s == etr and "disruption" in first.triggers
