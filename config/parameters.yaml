@@ -799,16 +799,18 @@ parameters:
     owner: dss
     valid_from: 2026-11-03
   - key: opt.contrast
-    value: {per_cycle: 2}
-    unit: count
-    source: "spec FR-OPT-05/06 (contrasting options, 'why not X'); issue #154"
+    value: {per_cycle: 2, margin_s: 60}
+    unit: null
+    source: "spec FR-OPT-05/06 (contrasting options, 'why not X'); issues #154, #196"
     status: SA
     owner: dss
     valid_from: 2026-11-24
     notes: >-
       Contrasting options (issue #154): for the per_cycle most urgent decisions released in a cycle, the
       planner re-solves with the other precedence (the train the best plan serves last goes first) and,
-      when that plan reverses the precedence and is verified, releases it as a further option.
+      when that plan reverses the precedence and is verified, releases it as a further option. The other
+      precedence is imposed by holding the trains the best plan serves first at their station until the
+      promoted train has departed plus margin_s (s) (issue #196).
   - key: opt.disruption
     value:
       contingent_etr_min: [30, 60]

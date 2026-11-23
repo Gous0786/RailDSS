@@ -339,7 +339,9 @@ class TwinPlanner:
         self.terminate_penalty = float(opts["terminate_penalty_min"])
         self.recross_tries = int(opts["recross_tries"])
         self.plans = {token(p.run_id): p for p in run.plans_for(world, day)[0]}
-        self.contrasts = int(self.reg.value("opt.contrast")["per_cycle"])  # issue #154
+        contrast = self.reg.value("opt.contrast")  # issues #154, #196
+        self.contrasts = int(contrast["per_cycle"])
+        self.contrast_margin_s = float(contrast["margin_s"])
 
     def solver_info(self) -> dict[str, Any]:
         return {
@@ -397,6 +399,7 @@ class TwinPlanner:
         horizon_s: float | None = None,
         terminations: Mapping[str, str] | None = None,
         promote: Sequence[str] = (),
+        holds: Mapping[tuple[str, str], float] | None = None,
     ) -> GreedyPlan:
         """The greedy plan of the cycle; an option adds its short-terminations or promoted trains."""
         return self.dispatcher.plan(
@@ -413,6 +416,7 @@ class TwinPlanner:
             entry_delays=ctx.entry_delays,
             terminations={**ctx.commit_terminations, **(terminations or {})},
             promote=promote,
+            extra_holds=holds,
         )
 
     def plan(self, ctx: PlanContext) -> PlanSet:
@@ -445,12 +449,17 @@ class TwinPlanner:
                 out.contingent = self._contingent(ctx, imposed, checked)
         # contrasting options (issue #154): for the most urgent decisions, the other precedence
         base = out.candidates[0]
-        for trains, resource in ctx.decisions[: self.contrasts]:
+        for trains, resource in ctx.decisions:
+            if len(out.contrasts) >= self.contrasts:  # opt.contrast.per_cycle re-solves a cycle
+                break
             order = order_of(base.decisions, trains, resource)
             stations = set(resource.split("~"))
             served = {d.run_id for d in base.decisions if d.station in stations}
             if len(order) < 2 or not set(order) <= served:  # no precedence of the plan to reverse here
                 continue
+            fixed = {(d.run_id, d.station) for d in [*ctx.frozen, *ctx.committed, *ctx.history]}
+            if set(self._contrast_holds(base, trains, order[-1], resource)) & fixed:
+                continue  # the precedence is already decided (frozen, ordered or under way)
             c = self._contrast(ctx, trains, order[-1], resource, base, standing, baseline, imposed, checked)
             out.contrasts.append(c)
             if c.reversed:
@@ -595,11 +604,16 @@ class TwinPlanner:
         imposed: Sequence[Decision],
         checked: Sequence[Decision],
     ) -> Contrast:
-        """The plan with ``first`` served before the others (a re-solve with that precedence imposed: the
-        train goes first in every queue), verified, and its cost against ``base``."""
-        alt = self._replan(ctx, imposed, checked, "-contrast", promote=[first])
-        cand = self._greedy(ctx, alt, standing, baseline, name=f"contrast:{first}")
+        """The plan with ``first`` served before the others, verified, and its cost against ``base``.
+
+        The precedence is imposed (issue #196): the trains ``base`` serves before ``first`` at the resource
+        are held at their station there until ``first`` has departed plus ``opt.contrast.margin_s``, and
+        ``first`` goes first in every queue. Without the holds the timetable order stands where nothing
+        contends."""
         before = order_of(base.decisions, trains, resource)
+        holds = self._contrast_holds(base, trains, first, resource)
+        alt = self._replan(ctx, imposed, checked, "-contrast", promote=[first], holds=holds)
+        cand = self._greedy(ctx, alt, standing, baseline, name=f"contrast:{first}")
         after = order_of(cand.decisions, trains, resource)
         reversed_ = before[0] != first and after[0] == first
         cand.solver |= {"contrast": {"first": first, "resource": resource, "reversed": reversed_}}
@@ -609,6 +623,20 @@ class TwinPlanner:
             else None
         )
         return Contrast(first=first, resource=resource, candidate=cand, reversed=reversed_, cost_min=cost)
+
+    def _contrast_holds(
+        self, base: Candidate, trains: Sequence[str], first: str, resource: str
+    ) -> dict[tuple[str, str], float]:
+        """The holds that impose ``first`` first at ``resource`` (issue #196): each train ``base`` serves
+        before it is held at its station there until ``first`` has departed plus the margin."""
+        before = order_of(base.decisions, trains, resource)
+        stations = set(resource.split("~"))
+        deps = [d for d in base.decisions if d.station in stations]
+        own = min((d.dep_s for d in deps if d.run_id == first), default=None)
+        ahead = before[: before.index(first)] if first in before else []
+        if own is None:
+            return {}
+        return {(d.run_id, d.station): own + self.contrast_margin_s for d in deps if d.run_id in ahead}
 
     def why_not(self, ctx: PlanContext, trains: Sequence[str], first: str, resource: str) -> Contrast:
         """FR-OPT-06: 'why not ``first`` first at ``resource``?': the re-solve with that precedence imposed,

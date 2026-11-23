@@ -119,3 +119,13 @@ def test_why_not_on_the_twin(looped: Orchestrator) -> None:
     assert ans is not None and ans.first == first
     assert ans.verified or ans.candidate.fail_rules
     assert ans.answer().startswith(f"{first} first at {dec.resource}")
+
+
+def test_the_contrast_holds_the_first_served_train_until_the_other_has_left() -> None:
+    from types import SimpleNamespace
+
+    plan = _cand("greedy", "A", "B", 0.0)  # A leaves S1 at once, B leaves S2 ten minutes later
+    me = SimpleNamespace(contrast_margin_s=60.0)
+    holds = TwinPlanner._contrast_holds(me, plan, ("A", "B"), "B", "S1~S2")  # type: ignore[arg-type]
+    assert holds == {("A", "S1"): NOW0 + 660 + 60}  # issue #196: A waits for B plus the margin
+    assert TwinPlanner._contrast_holds(me, plan, ("A", "B"), "A", "S1~S2") == {}  # type: ignore[arg-type]

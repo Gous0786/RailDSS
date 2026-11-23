@@ -518,14 +518,15 @@ class Orchestrator:
                     options.append((cand, actions))
             options = options[:MAX_OPTIONS]
             firsts = {order_of(c.decisions, conflict.trains, conflict.resource)[0] for c, _ in options}
-            self._decision_records.append(
-                DecisionRecord(
-                    trains=list(conflict.trains),
-                    resource=conflict.resource,
-                    options=len(options),
-                    precedences=len(firsts),
+            if options:  # a decision released (one whose orders are all in force has no options)
+                self._decision_records.append(
+                    DecisionRecord(
+                        trains=list(conflict.trains),
+                        resource=conflict.resource,
+                        options=len(options),
+                        precedences=len(firsts),
+                    )
                 )
-            )
             self.max_options = max(self.max_options, len(options))
             built: list[tuple[int, Candidate, Option]] = []
             for rank, (cand, actions) in enumerate(options, start=1):
