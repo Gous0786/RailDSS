@@ -118,8 +118,10 @@ def _scenarios(args: argparse.Namespace) -> int:
 
 def _audit_replay(args: argparse.Namespace) -> int:
     from raildss_audit.chain import AuditLog
-    from raildss_orchestrator.replay import replay_recommendation
+    from raildss_orchestrator.replay import replay_recommendation, replay_sample
 
+    if (args.rec is None) == (args.sample is None):
+        sys.exit("give one of --rec REC-0001 or --sample N")
     log = AuditLog(args.audit_dir, args.section)
     intact = log.verify()
     print(f"audit chain: {'intact' if intact.ok else 'TAMPERED'} ({intact.records} records)")
@@ -127,6 +129,17 @@ def _audit_replay(args: argparse.Namespace) -> int:
         return 1
     run_rec = log.query(kind="plan_run")[0]
     day = dt.date.fromisoformat(run_rec.payload["day"])
+    if args.sample is not None:  # DSC-12: a seeded sample, every recommendation replayed from its record
+        planner = TwinPlanner(run.load_world(), day, cpsat_enabled=False)
+        sample = replay_sample(log, planner, args.sample, args.seed)
+        for r in sample.results:
+            print(f"{r.rec_id}: {'identical' if r.identical else 'DIFFERS ' + '; '.join(r.differences)}")
+        print(
+            f"replay determinism: {sample.identical} / {sample.sampled} sampled recommendations reproduce "
+            f"exactly ({sample.available} in the chain, {sample.requested} requested, seed {sample.seed}); "
+            f"DSC-12 {'met' if sample.meets_dsc12 else 'NOT met'}"
+        )
+        return 0 if sample.meets_dsc12 else 1
     result = replay_recommendation(log, args.rec, TwinPlanner(run.load_world(), day, cpsat_enabled=False))
     print(json.dumps(result.model_dump(), indent=1))
     return 0 if result.identical else 1
@@ -146,7 +159,11 @@ def main(argv: list[str] | None = None) -> int:
         "audit-replay", help="replay a recorded recommendation from its audit record (issue #85)"
     )
     ar.add_argument("--audit-dir", type=Path, required=True)
-    ar.add_argument("--rec", required=True, help="recommendation id, e.g. REC-0001")
+    ar.add_argument("--rec", default=None, help="recommendation id, e.g. REC-0001")
+    ar.add_argument(
+        "--sample", type=int, default=None, help="replay N recommendations drawn at random (DSC-12: 20)"
+    )
+    ar.add_argument("--seed", type=int, default=0, help="seed of the sample")
     ar.add_argument("--section", default="KTV-PSA")
     al = sub.add_parser("alert-load", help="alert load (H1, H2) of the DSS chain on the nominal days (#163)")
     al.add_argument("ids", nargs="*", help="scenario ids (default SCN-01 SCN-22)")

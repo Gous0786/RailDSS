@@ -372,7 +372,10 @@ policy, rule-catalogue, threshold and user changes with before, after and approv
 - `python -m raildss_orchestrator audit-replay --audit-dir audit --rec REC-0001` replays a recommendation
   from its record and compares the canonical JSON byte for byte: the greedy plan is recomputed, a CP-SAT plan
   is re-verified by the G3 sandbox replay (it is not solved again, G1 is carried from the record), and the
-  recommended orders are derived again.
+  recommended orders are derived again. `audit-replay --audit-dir audit --sample 20 [--seed N]` is the
+  DSC-12 check: it replays a seeded sample of 20 recommendations of the chain (the recommendations of one
+  planning cycle share one replay of the cycle) and exits 0 only if all 20 reproduce exactly (a chain with
+  fewer than 20 recommendations replays them all and reports DSC-12 as not met).
 - Web UI: `L` (or the Audit button) opens the audit and replay view: filterable log, a timeline scrubber that
   moves the chart to that time under the REPLAY banner, and each recommendation card as it was shown. The
   committed `web/public/data/audit.json` is a short demo run.
