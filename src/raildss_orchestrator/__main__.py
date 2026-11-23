@@ -79,6 +79,24 @@ def _common(r: argparse.ArgumentParser, *, replay: bool) -> None:
         )
 
 
+def _alert_load(args: argparse.Namespace) -> int:
+    from raildss_orchestrator import alert_load
+    from raildss_twin import scenario
+
+    world = run.load_world()
+    library = {s.id: s for s in scenario.load_library_v1()}
+    ids = args.ids or alert_load.NOMINAL
+    rows = [(library[i], alert_load.run_day(world, library[i], tick_s=args.tick_s)) for i in ids]
+    text = alert_load.render(rows, tick_s=args.tick_s)
+    if args.report is not None:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(text, encoding="utf-8", newline="\n")
+        print(f"wrote {args.report}")
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
 def _scenarios(args: argparse.Namespace) -> int:
     from raildss_orchestrator.scenarios import render, run_all
 
@@ -130,11 +148,17 @@ def main(argv: list[str] | None = None) -> int:
     ar.add_argument("--audit-dir", type=Path, required=True)
     ar.add_argument("--rec", required=True, help="recommendation id, e.g. REC-0001")
     ar.add_argument("--section", default="KTV-PSA")
+    al = sub.add_parser("alert-load", help="alert load (H1, H2) of the DSS chain on the nominal days (#163)")
+    al.add_argument("ids", nargs="*", help="scenario ids (default SCN-01 SCN-22)")
+    al.add_argument("--tick-s", type=float, default=60.0, help="clock step over the day")
+    al.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
     sc = sub.add_parser("scenarios", help="KPIs of the v0 scenarios under BL-0 and the loop (issue #57)")
     sc.add_argument("ids", nargs="*", help="scenario ids (default: every executable one of library v1)")
     sc.add_argument("--no-loop", action="store_true", help="BL-0 only")
     sc.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
     args = ap.parse_args(argv)
+    if args.cmd == "alert-load":
+        return _alert_load(args)
     if args.cmd == "scenarios":
         return _scenarios(args)
     if args.cmd == "audit-replay":
@@ -218,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         doc["kpis"] = day_kpis(
             world, day, closures=closures, exit_windows=exits, holds=holds, lines=lines, events_out=gt
         )
+        doc["alert_kpis"] = loop.alert_log.kpis(from_s, to_s).as_dict()  # H1, H2 (DSC-09)
         if loop.conflict_log is not None:  # D1 and D2 (DSC-05, DSC-04): the DS-5 log against the ground truth
             doc["conflict_kpis"] = loop.conflict_log.kpis(
                 gt_occurrence(gt, dss.origin, world.register), to_s=to_s
@@ -234,7 +259,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.cpsat
             else "greedy"
         )
-        text = render(summary, doc["kpis"], args.date, solver=solver, conflicts=doc.get("conflict_kpis"))
+        text = render(
+            summary,
+            doc["kpis"],
+            args.date,
+            solver=solver,
+            conflicts=doc.get("conflict_kpis"),
+            alerts=doc.get("alert_kpis"),
+        )
         if args.report is not None:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(text, encoding="utf-8", newline=NEWLINE)
