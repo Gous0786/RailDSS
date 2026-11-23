@@ -392,12 +392,13 @@ decision loop against BL-0 under the same closure.
 
 **Library v1** (issue #165): `python -m raildss_twin scenario check|index|run` now covers the v0 ten plus
 the twelve definitions in `scenarios/v1` (SCN-04, 07-11, 14, 15, 19, 21, 23, 24): 22 scenarios, indexed by
-family in [`scenarios/v1/INDEX.md`](scenarios/v1/INDEX.md). All but SCN-24 run in the twin and carry their
-`gt.*` hash: the line-block, signal, loco, OHE and crew scenarios through the injector, SCN-11 by inserting an
-unplanned special train (an extra plan with an entry time only, mail/express class) and SCN-23 by closing the
-exit of the boundary's station for a seeded window (a directive: a train whose last station is KTV stands at the
-station before it until the window ends). SCN-24 waits for the sensitivity run (`requires: sensitivity-run`) and
-gets its hash with `scenario run --record` when it lands. `--library v0` keeps the v0 view.
+family in [`scenarios/v1/INDEX.md`](scenarios/v1/INDEX.md). **All 22 run in the twin and carry their `gt.*` hash**
+(CI runs every one): the line-block, signal, loco, OHE and crew scenarios through the injector, SCN-11 by
+inserting an unplanned special train (an extra plan with an entry time only, mail/express class), SCN-23 by
+closing the exit of the boundary's station for a seeded window (a directive: a train whose last station is KTV
+stands at the station before it until the window ends) and SCN-24 by sizing the PSA lines at the register's low
+bound (loops 673 m, mains 678 m, `scenario.sensitivity_world`) on the day of SCN-16; SCN-01 and SCN-16 run under the
+same sensitivity. `--library v0` keeps the v0 view.
 
 ## Licence
 

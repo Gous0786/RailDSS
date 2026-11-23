@@ -69,10 +69,11 @@ INJECTOR_KINDS = (  # built today
 # Kinds the scenario plays itself, not the injector: a late entry (directive), an inserted special train
 # (an extra plan) and a closed exit (a boundary acceptance window, a directive).
 SCENARIO_KINDS = ("entry_delay", "special_train", "exit_blocked")
-REQUIRES = ("injector", "injector-loco", "injector-ohe-crew", "injector-special-exit", "sensitivity-run")
-Requirement = Literal[
-    "injector", "injector-loco", "injector-ohe-crew", "injector-special-exit", "sensitivity-run"
-]
+REQUIRES = ("injector", "injector-loco", "injector-ohe-crew", "injector-special-exit")
+Requirement = Literal["injector", "injector-loco", "injector-ohe-crew", "injector-special-exit"]
+# Register keys a scenario's ``sensitivity`` may set to a bound, and the station whose lines they size:
+# the run applies the bound to the published station lines of that station (SCN-24).
+SENSITIVITY_STATIONS = {"station_line.csr.psa": "PSA"}
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 FREIGHT_DAY_PREFIX = "aug25-day-"
 HASH_LINE = re.compile(r"^expected_gt_hash:.*$", re.MULTILINE)
@@ -284,6 +285,8 @@ def check_library(scenarios: Sequence[Scenario]) -> list[str]:
     for s in scenarios:
         problems += [f"{s.id}: base {b} is not in the library" for b in s.base if b not in ids]
         for key in s.sensitivity:
+            if key not in SENSITIVITY_STATIONS:
+                problems.append(f"{s.id}: sensitivity key {key} is not one the scenarios can apply")
             try:
                 has_bounds = register.get(key).bounds is not None
             except KeyError:
@@ -451,6 +454,30 @@ def run_kwargs(sc: Scenario, world: Any = None) -> dict[str, Any]:
     return kw
 
 
+def sensitivity_world(world: Any, sc: Scenario) -> Any:
+    """The world with the scenario's ``sensitivity`` applied: the register bound (low or high) replaces
+    the CSR of the lines of the key's station (the PSA loops and mains for ``station_line.csr.psa``).
+    The published tables of ``world`` are not changed; a scenario without a sensitivity gets ``world``.
+    """
+    if not sc.sensitivity:
+        return world
+    from raildss_twin import run
+    from raildss_twin.layout import build_layout
+    from raildss_twin.plans import Timing
+
+    tables = dict(world.tables)
+    for key, which in sc.sensitivity.items():
+        station = SENSITIVITY_STATIONS[key]
+        bounds = getattr(world.register.get(key).bounds, which)  # {loop: m, main: m}
+        tables["station_line"] = [
+            x.model_copy(update={"csr_m": float(bounds[x.kind])})
+            if x.op_code == station and x.kind in bounds
+            else x
+            for x in tables["station_line"]
+        ]
+    return run.World(tables, build_layout(tables), Timing(tables, world.register), world.register)
+
+
 def run_scenario(world: Any, sc: Scenario) -> Any:
     """Run an executable scenario in the twin; the report carries the ``gt.*`` trace hash.
 
@@ -461,6 +488,7 @@ def run_scenario(world: Any, sc: Scenario) -> Any:
 
     if not sc.executable:
         raise ValueError(f"{sc.id} requires {', '.join(sc.requires)} and is not executed")
+    world = sensitivity_world(world, sc)
     observers = [Observer(world.register, sc.degradation_profile)]
     report, _ = run.run_day(world, sc.wtt_date, observers=observers, **run_kwargs(sc, world))
     return report

@@ -11,7 +11,8 @@ seed: 24
 density: 1.0
 degradation_profile: D1
 disruptions: []
-requires: [sensitivity-run]
+requires: []
 base: [SCN-01, SCN-16]
 sensitivity: {station_line.csr.psa: low}
-notes: "Run SCN-01 and SCN-16 with the register's low bound for the PSA CSR. Needs a scenario runner that applies the sensitivity; its date is that of SCN-16."
+expected_gt_hash: "6ede70ca50090561f7f92d1241ab6da8becec5225d641e1850853bc9977f9c18"
+notes: "The PSA lines are sized at the register's low bound (loops 673 m, mains 678 m) on the day of SCN-16 (the busiest day). The base scenarios SCN-01 and SCN-16 run under the same sensitivity through scenario.sensitivity_world (issue #167)."
