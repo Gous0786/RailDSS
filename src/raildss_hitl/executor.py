@@ -39,7 +39,9 @@ SECONDS_PER_MIN = 60
 
 
 class PlanAction(BaseModel):
-    kind: Literal["receive_on_line", "hold_until"]
+    # short_terminate / cancel (issue #156, FR-OPT-11): the train ends its run at ``station`` / does not
+    # enter the section there
+    kind: Literal["receive_on_line", "hold_until", "short_terminate", "cancel"]
     run_id: str
     station: str
     line_no: int | None = None
@@ -49,6 +51,10 @@ class PlanAction(BaseModel):
         """The order in IR control phrasing (FR-HITL-03)."""
         if self.kind == "receive_on_line":
             return f"SM/{self.station}: receive {self.run_id} on line {self.line_no}"
+        if self.kind == "short_terminate":
+            return f"SM/{self.station}: short-terminate {self.run_id}"
+        if self.kind == "cancel":
+            return f"Control: cancel {self.run_id} (not to enter at {self.station})"
         t = int(self.until_s or 0) % SECONDS_PER_DAY
         hhmm = f"{t // SECONDS_PER_HOUR:02d}:{t % SECONDS_PER_HOUR // SECONDS_PER_MIN:02d}"
         return f"SM/{self.station}: hold {self.run_id} until {hhmm}"

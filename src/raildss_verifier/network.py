@@ -11,6 +11,7 @@ travel order of their block id; sub-block ``k`` of ``n`` on the UP id is ``n + 1
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -158,6 +159,14 @@ def load(version: str, root: Path | None = None) -> Network:
         },
         sub_blocks=subs,
     )
+
+
+def as_worked(net: Network, sessions: Iterable[tuple[str, str]]) -> Network:
+    """The network as a trace worked it: single-line working for each (block id, blocked line id) session
+    (issue #156: the G2 / G3 audit of a plan run under a loco failure with single-line working)."""
+    for block_id, line_id in dict.fromkeys(sessions):
+        net = single_line_working(net, block_id, line_id)
+    return net
 
 
 def single_line_working(net: Network, block_id: str, blocked_line_id: str) -> Network:

@@ -59,6 +59,7 @@ class SandboxPlan(BaseModel):
     actions: list[Action] = Field(default_factory=list)
     maintenance: list[MaintenanceBlock] = Field(default_factory=list)
     frozen: list[FrozenCall] = Field(default_factory=list)
+    terminations: dict[str, str] = Field(default_factory=dict)  # run id -> station it ends at (#156)
 
 
 class G3Violation(BaseModel):
@@ -191,6 +192,11 @@ def replay(
         priority=held.priority,
         closures=list(held.closures),
         exit_windows=dict(held.exit_windows),
+        # the incidents and late entries the world knows of apply under the plan as in the baseline (#155)
+        entry_delays=dict(held.entry_delays),
+        incidents=list(held.incidents),
+        terminations=held.terminations
+        | {rid.get(r, r): s for r, s in plan.terminations.items()},  # issue #156
     )
     report, sim = run.run_day(
         world,
@@ -209,8 +215,15 @@ def replay(
         maintenance=plan.maintenance,
         frozen=plan.frozen,
     )
+    worked = network.as_worked(net, sim.slw_log)  # single-line working under an incident (issue #156)
     result = audit(
-        sim.events, train_meta(sim), net, day_start(day), register=reg, plan_id=plan.plan_id, context=context
+        sim.events,
+        train_meta(sim),
+        worked,
+        day_start(day),
+        register=reg,
+        plan_id=plan.plan_id,
+        context=context,
     )
     violations: list[G3Violation] = []
     warnings = 0
@@ -254,7 +267,13 @@ def replay(
         "FAIL" if violations else "PASS_WITH_WARN" if warnings else "PASS"
     )
     realised = plan_from_trace(
-        sim.events, train_meta(sim), net, day_start(day), register=reg, plan_id=plan.plan_id, context=context
+        sim.events,
+        train_meta(sim),
+        worked,
+        day_start(day),
+        register=reg,
+        plan_id=plan.plan_id,
+        context=context,
     )
     return G3Result(
         plan_id=plan.plan_id,

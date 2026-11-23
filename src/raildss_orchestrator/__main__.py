@@ -100,10 +100,14 @@ def _alert_load(args: argparse.Namespace) -> int:
 def _scenarios(args: argparse.Namespace) -> int:
     from raildss_orchestrator.scenarios import render, run_all
 
-    rows, loops = run_all(run.load_world(), args.ids, with_loops=not args.no_loop)
+    arms = tuple(args.arm) if args.arm else ("BL-1", "DSS")
+    span_s = args.span_min * SECONDS_PER_MIN if args.span_min is not None else None
+    rows, loops = run_all(run.load_world(), args.ids, with_loops=not args.no_loop, arms=arms, span_s=span_s)
     command = " ".join(
         ["python -m raildss_orchestrator scenarios", *args.ids]
         + (["--no-loop"] if args.no_loop else [])
+        + [f"--arm {a}" for a in args.arm or []]
+        + ([f"--span-min {args.span_min:g}"] if args.span_min is not None else [])
         + ([f"--report {args.report.as_posix()}"] if args.report is not None else [])
     )
     text = render(rows, loops, command)
@@ -172,6 +176,10 @@ def main(argv: list[str] | None = None) -> int:
     sc = sub.add_parser("scenarios", help="KPIs of the v0 scenarios under BL-0 and the loop (issue #57)")
     sc.add_argument("ids", nargs="*", help="scenario ids (default: every executable one of library v1)")
     sc.add_argument("--no-loop", action="store_true", help="BL-0 only")
+    sc.add_argument("--arm", action="append", choices=["BL-1", "DSS"], help="loop arm (default: both)")
+    sc.add_argument(
+        "--span-min", type=float, default=None, help="loop window length, min (default 90; issue #156)"
+    )
     sc.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
     args = ap.parse_args(argv)
     if args.cmd == "alert-load":

@@ -45,6 +45,7 @@ from .model import KPI_RANK, MAX_OPTIONS, Candidate, Dss, DssView, PlanContext, 
 
 SECONDS_PER_MIN = 60
 OPEN_CONFLICT_PRIORITIES = ("P1", "P2", "P3")  # P4 is informational
+END_KINDS = ("short_terminate", "cancel")  # orders that end a train's run (issue #156)
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,18 @@ class CandidateRecord(BaseModel):
     solver: dict[str, Any] = Field(default_factory=dict)
 
 
+class ContingentRecord(BaseModel):
+    """A contingent plan for one ETR scenario and its switch rule (FR-OPT-11, issue #156)."""
+
+    name: str
+    etr_s: float
+    switch_at_s: float
+    verified: bool
+    fail: list[str]
+    kpi_delta: dict[str, float]
+    rule: str
+
+
 class CycleRecord(BaseModel):
     cycle: int
     now_s: float
@@ -91,6 +104,8 @@ class CycleRecord(BaseModel):
     wall_s: float
     planner: str = "greedy"  # the plan that carried the rolling state (issue #152)
     churn: int | None = None  # decisions of the previous plan this one changed
+    first_plan_s: float | None = None  # wall time to the first verified option (DSC-06, issue #156)
+    contingent: list[ContingentRecord] = Field(default_factory=list)  # ETR scenarios (issue #156)
 
 
 class RunSummary(BaseModel):
@@ -166,6 +181,10 @@ class Orchestrator:
         self._seen: set[tuple[Any, ...]] = set()
         self._announced: set[int] = set()
         self._announced_incidents: set[int] = set()
+        self._revised_incidents: set[int] = set()  # cleared or past their announced ETR (issue #156)
+        self._reopen = False  # an incident became known or changed: re-open the commit window (#156)
+        self._withdrawn: set[str] = set()  # order ids withdrawn by a re-opened commit window
+        self._ends: dict[str, tuple[str, str]] = {}  # order id -> (run id, station): short-term., cancel
         self._last_plan: list[Decision] = []
         self._view: DssView | None = None
         self._version: int | None = None
@@ -223,15 +242,49 @@ class Orchestrator:
             if i not in self._announced and d.announced_s <= self.now_s:
                 self._announced.add(i)
                 events.add("disruption")
-        for i, (_, announced) in enumerate(self.incidents):
+        for i, (d, announced) in enumerate(self.incidents):
             if i not in self._announced_incidents and announced <= self.now_s:
                 self._announced_incidents.add(i)
                 events.add("disruption")
+                self._reopen = True
+            if i not in self._revised_incidents and announced <= self.now_s and _revealed(d, self.now_s):
+                self._revised_incidents.add(i)
+                if d.etr_s is not None:  # what the plans assumed changes: the end is known (issue #156)
+                    events.add("disruption")
+                    self._reopen = True
         self._events = events
         return events
 
     def _known_closures(self) -> list[Closure]:
         return [d.closure for d in self.disruptions if d.announced_s <= self.now_s]
+
+    def _reopen_window(self) -> int:
+        """An incident became known or its end changed (issue #156): the decisions of the last plan and the
+        orders not yet executed were made without it (a train due to leave into a dead OHE zone cannot), so
+        they are withdrawn and re-planned; the cycle's options give the new orders. Returns how many orders
+        were withdrawn."""
+        self.cadence.release(self.now_s)
+        out = 0
+        for oid, d in list(self._decisions.items()):
+            if d.dep_s >= self.now_s and self._in_force(oid):
+                self._withdrawn.add(oid)
+                out += 1
+        if out:
+            self._commit()
+        return out
+
+    def _known_incidents(self) -> list[Any]:
+        """The announced incidents as the controller knows them (issue #156): until it clears or its
+        announced ETR passes (the injector then announces the real end), an incident is planned to end at
+        its ETR, which stays uncertain (the planner's contingent plans); then at its real end."""
+        out = []
+        for d, announced in self.incidents:
+            if announced > self.now_s:
+                continue
+            if d.etr_s is not None and not _revealed(d, self.now_s):
+                d = d.model_copy(update={"duration_s": max(0.0, d.etr_s - d.start_s)})
+            out.append(d)
+        return out
 
     # ------------------------------------------------------------------ one cycle
     def _cycle(self, view: DssView, triggers: list[str]) -> CycleRecord:
@@ -239,7 +292,9 @@ class Orchestrator:
         now = self.now_s
         closures = self._known_closures()
         targets, blocked = self._releasable(view)
-        frozen = self.cadence.freeze(self._last_plan, now)
+        reopen, self._reopen = self._reopen, False
+        withdrawn = self._reopen_window() if reopen else 0
+        frozen = self.cadence.freeze([] if reopen else self._last_plan, now)
         holds, lines = self.commitments()
         horizon = now + self.cadence.freeze_s
         ahead = [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
@@ -272,10 +327,13 @@ class Orchestrator:
             verify=bool(targets),
             time_limit_s=float(limits["disruption" if disruption else "routine"]),
             previous=list(self._last_plan),
-            incidents=[d for d, announced in self.incidents if announced <= now],
+            incidents=self._known_incidents(),
             entry_delays=dict(self.entry_delays),
+            commit_terminations=self.terminations(),
         )
         planned = self.planner.plan(ctx)
+        if withdrawn:
+            planned.notes.append(f"incident: commit window re-opened, {withdrawn} orders withdrawn")
         if self.audit is not None:
             self._run_id = self.audit.plan_run(ctx, view, planned.candidates)
         self.cadence.mark(now)
@@ -307,6 +365,19 @@ class Orchestrator:
             wall_s=round(time.perf_counter() - t0, 2),
             planner=planned.planner,
             churn=planned.churn,
+            first_plan_s=planned.first_plan_s,
+            contingent=[
+                ContingentRecord(
+                    name=c.candidate.name,
+                    etr_s=c.etr_s,
+                    switch_at_s=c.switch_at_s,
+                    verified=c.candidate.verified,
+                    fail=c.candidate.fail_rules,
+                    kpi_delta=c.candidate.delta,
+                    rule=c.rule(),
+                )
+                for c in planned.contingent
+            ],
         )
         self._cycle_expired = []
         self.cycles.append(record)
@@ -437,6 +508,8 @@ class Orchestrator:
     ) -> bool:
         """An order already in force is not recommended again."""
         key = (a.run_id, a.station)
+        if a.kind in END_KINDS:
+            return False  # a train is short-terminated by one order only: its option is not rebuilt
         return holds.get(key) == a.until_s if a.kind == "hold_until" else lines.get(key) == a.line_no
 
     def accept(self, rec_id: str, controller: str, warn_reason: str | None = None) -> Status:
@@ -492,12 +565,23 @@ class Orchestrator:
             for oid, action in zip(
                 self.executor.current[rec_id], self.executor.options[rec_id].actions, strict=True
             ):
+                if action.kind in END_KINDS:  # short-terminate or cancel (issue #156)
+                    self._ends[oid] = (action.run_id, action.station)
+                    continue
                 d = realised.get((action.run_id, action.station))
                 if d is not None:
                     self._decisions[oid] = Decision(d.run_id, d.station, d.line_no, d.dep_s)
-            holds, lines = self.commitments()
-            self.dss.commit(holds, lines)
+            self._commit()
         return status
+
+    def _commit(self) -> None:
+        """The orders in force change the world the feed observes from now on."""
+        holds, lines = self.commitments()
+        ends = self.terminations()
+        if ends:
+            self.dss.commit(holds, lines, ends)
+        else:
+            self.dss.commit(holds, lines)
 
     # ------------------------------------------------------------------ the audit trail
     def _audit_view(self, view: DssView) -> None:
@@ -638,8 +722,7 @@ class Orchestrator:
             )
             if declined:
                 self._events.add("order_decline")
-                holds, lines = self.commitments()
-                self.dss.commit(holds, lines)
+                self._commit()
 
     def published_order(self, order_id: str) -> dict[str, Any]:
         return next(p for t, p in self.published if t == "ctrl.orders" and p["order_id"] == order_id)
@@ -647,7 +730,7 @@ class Orchestrator:
     # ------------------------------------------------------------------ orders in force
     def _in_force(self, order_id: str) -> bool:
         order = self.executor.orders.get(order_id)
-        return order is not None and order.status != "DECLINED"
+        return order is not None and order.status != "DECLINED" and order_id not in self._withdrawn
 
     def commitments(self) -> tuple[dict[tuple[str, str], float], dict[tuple[str, str], int]]:
         """Holds and lines of the orders in force (issued or acknowledged, not declined)."""
@@ -662,6 +745,10 @@ class Orchestrator:
             elif order.action.line_no is not None:
                 lines[(d.run_id, d.station)] = order.action.line_no
         return holds, lines
+
+    def terminations(self) -> dict[str, str]:
+        """Short-terminations and cancellations in force: run id -> station (issue #156)."""
+        return {rid: station for oid, (rid, station) in self._ends.items() if self._in_force(oid)}
 
     # ------------------------------------------------------------------ result
     def summary(self, from_s: float, to_s: float) -> RunSummary:
@@ -687,6 +774,11 @@ class Orchestrator:
             statuses=statuses,
             max_options_per_decision=self.max_options,
         )
+
+
+def _revealed(d: Any, now_s: float) -> bool:
+    """The incident's real end is known: it cleared, or its announced ETR passed (the revision)."""
+    return now_s >= d.end_s or (d.etr_s is not None and now_s >= d.etr_s)
 
 
 def _author(cand: Candidate) -> Literal["optimiser", "greedy"]:

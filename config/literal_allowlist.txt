@@ -197,3 +197,5 @@ src/raildss_dss/alert_kpi.py: 2  # digits of the rounded alert rate, not a rule 
 src/raildss_orchestrator/alert_load.py: 3600  # seconds per hour, not a rule value
 src/raildss_orchestrator/alert_load.py: 24  # hours of the nominal day, not a rule value
 src/raildss_dss/alert_kpi.py: 60  # seconds per minute, not a rule value
+src/raildss_orchestrator/scenarios.py: 20  # quantile cut points in 5 % steps (P95 is a cut point), not a rule value
+src/raildss_orchestrator/scenarios.py: 2  # the 95th percentile is the cut point before the last but one, not a rule value

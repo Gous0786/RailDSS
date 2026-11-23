@@ -798,6 +798,26 @@ parameters:
     status: SA
     owner: dss
     valid_from: 2026-11-03
+  - key: opt.disruption
+    value:
+      contingent_etr_min: [30, 60]
+      recross_tries: 2
+      short_terminate: true
+      terminate_min_hold_min: 30
+      terminate_penalty_min: 120
+    unit: null
+    source: "spec FR-OPT-11 (disruption options, contingent ETR plans); R04 §5.2-5.3; issue #156"
+    status: SA
+    owner: dss
+    valid_from: 2026-11-23
+    notes: >-
+      Disruption options of the planner (issue #156). Contingent plans are built for the announced ETR and
+      for ETR + each of contingent_etr_min (min); the switch rule names the decision time (the ETR of the
+      plan before). The re-order / re-cross option promotes, in turn, up to recross_tries of the trains the
+      plan holds longest (one held by the incident itself changes nothing). Short-termination or
+      cancellation of a passenger train is policy-gated (short_terminate) and offered only for a train the
+      plan would hold at least terminate_min_hold_min at a station it stops at; it is ranked with a penalty
+      of terminate_penalty_min passenger delay-minutes per train.
   - key: opt.recovery
     value: {exit_weight: 2}
     unit: null

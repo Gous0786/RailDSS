@@ -120,6 +120,9 @@ class Directives:
     # incidents the planner knows of (TSR, loop out of use, signal failure, ...: injector disruptions,
     # issue #155): the run applies them with the injector, as the ground truth does
     incidents: list[Any] = field(default_factory=list)
+    # short-terminations and cancellations (issue #156, FR-OPT-11): run id -> station where the train ends
+    # its run (from the fork on); at its first station the train does not enter (cancelled)
+    terminations: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -185,11 +188,13 @@ class RunReport(BaseModel):
     trace_hash: str
     sim_end_s: float
     wall_s: float = 0.0
+    terminated: int = 0  # short-terminated or cancelled by a directive (issue #156)
 
     @property
     def completed(self) -> bool:
-        """Every planned train entered and exited, none is stuck, no deadlock."""
-        return self.exited == self.planned and not self.stuck and not self.deadlocks
+        """Every planned train entered and exited (or ended its run where a directive said), none is stuck,
+        no deadlock."""
+        return self.exited + self.terminated == self.planned and not self.stuck and not self.deadlocks
 
 
 @dataclass
@@ -212,6 +217,7 @@ class Train:
     stuck_reason: str = ""
     exit_s: float | None = None
     entered: bool = False
+    terminated: bool = False  # short-terminated or cancelled (issue #156)
 
 
 class Option(NamedTuple):
@@ -291,6 +297,7 @@ class Sim:
         # Connections of a borrowed line, kept after the window for a train still on it: only a train that
         # borrowed the line can be on a working line against its own direction.
         self.borrow_connections: dict[tuple[str, str], tuple[str, str]] = {}
+        self.slw_log: list[tuple[str, str]] = []  # (block id, blocked line id) per single-line working
         self.crossings: list[Crossing] = []
         self.directives = directives or Directives()
         self.directive_refusals: list[Refusal] = []
@@ -580,6 +587,7 @@ class Sim:
         other absolute-block lines become reversible; where a direction has no line of its own left, its
         trains use the working line with the Connections of the blocked line. Returns the keys to end."""
         segment = pair_key(*(self.layout.blocks[block_id].from_op, self.layout.blocks[block_id].to_op))
+        self.slw_log.append((block_id, blocked_line_id))
         keys: list[str] = []
         for b in self.layout.blocks.values():
             if pair_key(b.from_op, b.to_op) != segment:
@@ -653,6 +661,11 @@ class Sim:
         entry_delay += self.directives.entry_delays.get(plan.run_id, 0.0)
         yield self.env.timeout(max(0.0, plan.entry_s + entry_delay - self.env.now))
         self.pending -= 1
+        idx = [i for i, n in enumerate(plan.nodes) if not layout.ops[n.op].is_halt]
+        term = self.directives.terminations.get(plan.run_id)
+        if term == plan.nodes[idx[0]].op and plan.entry_s >= self.directives.from_s:
+            self._terminate(t, term)  # cancelled: it does not enter the section
+            return
         t.entered, t.status = True, "running"
         if entry_delay:
             self.emit(
@@ -670,7 +683,6 @@ class Sim:
                 self.km_of(plan.nodes[0].op),
                 plan.nodes[0].op,
             )
-        idx = [i for i, n in enumerate(plan.nodes) if not layout.ops[n.op].is_halt]
         # A train booked before the start of the day is already running: it resumes inside the block it is
         # on at the start, on the booked plan, instead of entering at a station.
         resume_k = self.resume_hop(plan, idx) if plan.entry_s < self.env.now else None
@@ -681,7 +693,10 @@ class Sim:
                 if resume_k is not None and k < resume_k:
                     continue
                 node = plan.nodes[ni]
-                last = k == len(idx) - 1
+                ends = node.op == self.directives.terminations.get(plan.run_id) and (
+                    self.env.now >= self.directives.from_s
+                )
+                last = k == len(idx) - 1 or ends
                 if resume_k == k and not last:
                     incoming = yield from self._resume_in_block(t, k, idx)
                     incoming_labels = [lab for lab in t.held if lab.startswith(("BL:", "SB:"))]
@@ -721,8 +736,12 @@ class Sim:
                 if last:
                     t.status = "dwelling"
                     yield self.env.timeout(self.exit_clear)
+                    if ends:
+                        self._terminate(t, node.op)  # short-terminated: it ends its run here
                     self.release(t, f"SL:{node.op}/{sl.line_no}")
-                    t.status, t.exit_s = "done", self.env.now
+                    t.status = "done"
+                    if not ends:
+                        t.exit_s = self.env.now
                     return
                 # ---- dwell
                 if node.stop:
@@ -788,6 +807,18 @@ class Sim:
             t.status, t.stuck_reason = "stuck", str(exc)
             for label in list(t.held):
                 self.release(t, label)
+
+    def _terminate(self, t: Train, op: str) -> None:
+        """The train ends its run at ``op`` (a short-termination, or a cancellation at its first station)."""
+        t.terminated, t.status = True, "done"
+        self.emit(
+            "gt.state",
+            EventType.TRAIN_STATE,
+            t,
+            {"speed_kmh": 0.0, "status": "terminated", "station": op},
+            self.km_of(op),
+            op,
+        )
 
     def _priority(self, t: Train) -> int:
         """Request priority under a plan from its fork on (BL-0: everyone 0, first come first served)."""
@@ -1157,7 +1188,8 @@ class Sim:
             seed=self.seed,
             planned=len(self.trains),
             entered=sum(t.entered for t in self.trains),
-            exited=sum(t.status == "done" for t in self.trains),
+            exited=sum(t.status == "done" and not t.terminated for t in self.trains),
+            terminated=sum(t.terminated for t in self.trains),
             in_progress=in_progress,
             stuck=stuck,
             deadlocks=self.deadlocks,

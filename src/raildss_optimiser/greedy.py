@@ -154,6 +154,8 @@ class GreedyDispatcher:
         seed: int | None = None,
         incidents: Sequence[Any] = (),
         entry_delays: Mapping[str, float] | None = None,
+        terminations: Mapping[str, str] | None = None,
+        promote: Sequence[str] = (),
     ) -> GreedyPlan:
         """Plan from ``start_s``. ``policy_from_s`` (rolling horizon) is when the dispatcher took over: the
         history since then ran under the policy, not BL-0. A frozen decision fixes its own line and
@@ -162,11 +164,17 @@ class GreedyDispatcher:
 
         ``committed`` decisions (accepted orders beyond the commit window) are only checked, not imposed:
         the plan is a pure function of the day and its directives, so an unchanged world reproduces them,
-        whereas a hold directive would send a train that was queueing to the back of that queue."""
+        whereas a hold directive would send a train that was queueing to the back of that queue.
+
+        Disruption options (issue #156, FR-OPT-11): ``terminations`` short-terminate or cancel trains
+        (run id -> station), ``promote`` serves these trains before every class (a re-order: the crossing
+        or overtaking happens at another station)."""
         end_s = start_s + (horizon_s if horizon_s is not None else self.horizon_s)
         plans, _, inst = run.plans_for(self.world, day)
         rid = {token(p.run_id): p.run_id for p in plans}
         priority = self.priorities(plans)
+        first = min(priority.values(), default=0) - 1
+        priority |= {rid.get(r, r): first for r in promote}
         directives = Directives(
             holds={(rid.get(f.run_id, f.run_id), f.station): f.dep_s for f in frozen},
             lines={(rid.get(f.run_id, f.run_id), f.station): f.line_no for f in frozen},
@@ -176,6 +184,7 @@ class GreedyDispatcher:
             exit_windows=dict(exit_windows or {}),
             entry_delays=dict(entry_delays or {}),
             incidents=list(incidents),  # known incidents: the plan's twin run applies them (issue #155)
+            terminations={rid.get(r, r): s for r, s in (terminations or {}).items()},
         )
         t0 = time.perf_counter()
         report, sim = run.run_day(
@@ -203,19 +212,21 @@ class GreedyDispatcher:
                 for f in (*frozen, *committed)
             ],
         )
+        worked = network.as_worked(self.net, sim.slw_log)  # single-line working (issue #156)
         cand = plan_from_trace(
             sim.events,
             train_meta(sim),
-            self.net,
+            worked,
             day_start(day),
             register=self.reg,
             plan_id=plan_id,
             context=context,
         )
-        g2 = engine.check(cand, self.net, register=self.reg)
+        g2 = engine.check(cand, worked, register=self.reg)
         runtime = time.perf_counter() - t0
         decisions, holds = [], []
         exit_of = {token(p.run_id): p.nodes[-1].op for p in plans} | {p.run_id: p.nodes[-1].op for p in plans}
+        exit_of |= {token(r): s for r, s in (terminations or {}).items()}  # it ends its run there
         for tr in cand.trains:
             # The exit is not a departure decision. A train still inside at the end of the horizon has left
             # its last recorded station (the block run is not complete yet), so that call is a decision.

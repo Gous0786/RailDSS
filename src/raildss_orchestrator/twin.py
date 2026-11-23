@@ -11,6 +11,13 @@
 Planning forks the twin (the greedy dispatcher's own state): on a day nobody has acted on it equals the
 DSS estimate ``S_t``; injecting a diverging estimate is future work, as for G3 (#79). The CP-SAT instance
 does not model closures: a plan that uses a closed line fails G3 and is never released.
+
+Disruption options (issue #156, FR-OPT-11): while an incident or closure is in force in the horizon, the
+planner adds a **re-order / re-cross** option (the train the plan holds longest is served first, so the
+crossing or overtaking happens at another station) and, policy-gated, a **short-termination or cancellation**
+of the passenger train held longest (ranked with a penalty). When an incident is announced with an uncertain
+restoration time (ETR), it builds **contingent plans** for ETR + each ``contingent_etr_min`` (the cycle's
+plan is the one for the ETR), each verified in its own scenario, the switch rule naming the decision time.
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ import itertools
 import math
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any
 
 from raildss_dss.conflicts import Detector, occupations
@@ -38,7 +46,7 @@ from raildss_twin.sim import Closure, Directives, token
 from raildss_verifier import gates
 from raildss_verifier.model import FrozenCall, MaintenanceBlock
 
-from .model import Candidate, DssView, PlanContext, PlanSet
+from .model import Candidate, Contingent, DssView, PlanContext, PlanSet
 
 SECONDS_PER_MIN = 60
 HINT_END_S = 36 * 3600  # the hint run goes to the end of the day: DISPLIB paths run to the exit
@@ -56,9 +64,10 @@ def standing_directives(
     lines: Mapping[tuple[str, str], int],
     incidents: Sequence[Any] = (),
     entry_delays: Mapping[str, float] | None = None,
+    terminations: Mapping[str, str] | None = None,
 ) -> Directives:
-    """What holds in the world: closures, closed exits, incidents, late entries and the accepted orders
-    (BL-0 does the rest)."""
+    """What holds in the world: closures, closed exits, incidents, late entries and the accepted orders,
+    short-terminations and cancellations included (BL-0 does the rest)."""
     plans, _, _ = run.plans_for(world, day)
     rid = {token(p.run_id): p.run_id for p in plans}
     return Directives(
@@ -69,6 +78,7 @@ def standing_directives(
         exit_windows=dict(exit_windows),
         entry_delays=dict(entry_delays or {}),
         incidents=list(incidents),
+        terminations={rid.get(r, r): s for r, s in (terminations or {}).items()},
     )
 
 
@@ -145,7 +155,10 @@ class TwinDss:
         self._alerts_seen = 0
 
     def _directives(
-        self, holds: Mapping[tuple[str, str], float], lines: Mapping[tuple[str, str], int]
+        self,
+        holds: Mapping[tuple[str, str], float],
+        lines: Mapping[tuple[str, str], int],
+        terminations: Mapping[str, str] | None = None,
     ) -> Directives:
         return standing_directives(
             self.world,
@@ -156,10 +169,16 @@ class TwinDss:
             lines=lines,
             incidents=self.incidents,
             entry_delays=self.entry_delays,
+            terminations=terminations,
         )
 
-    def commit(self, holds: Mapping[tuple[str, str], float], lines: Mapping[tuple[str, str], int]) -> None:
-        self.feed.load(self._directives(holds, lines))
+    def commit(
+        self,
+        holds: Mapping[tuple[str, str], float],
+        lines: Mapping[tuple[str, str], int],
+        terminations: Mapping[str, str] | None = None,
+    ) -> None:
+        self.feed.load(self._directives(holds, lines, terminations))
 
     def advance(self, now_s: float) -> DssView:
         now = self.origin + dt.timedelta(seconds=now_s)
@@ -297,7 +316,9 @@ class TwinPlanner:
         workers: int | None = None,
         time_limit_s: float | None = None,
         register: Register | None = None,
+        options: bool = True,
     ) -> None:
+        """``options=False`` leaves out the disruption options and contingent plans (issue #156)."""
         self.world, self.day = world, day
         self.reg = register or world.register
         self.dispatcher = GreedyDispatcher(world, self.reg)
@@ -309,6 +330,14 @@ class TwinPlanner:
         self.freeze_tol = int(stab["freeze_tolerance_s"])
         self.time_limit_s = time_limit_s  # None: opt.time_limit_s of the cycle (routine or disruption)
         self.workers = workers if workers is not None else int(self.reg.value("opt.workers"))
+        opts = self.reg.value("opt.disruption")  # disruption options (issue #156)
+        self.options = options
+        self.contingent_s = [float(m) * SECONDS_PER_MIN for m in opts["contingent_etr_min"]]
+        self.short_terminate = bool(opts["short_terminate"])
+        self.terminate_hold_s = float(opts["terminate_min_hold_min"]) * SECONDS_PER_MIN
+        self.terminate_penalty = float(opts["terminate_penalty_min"])
+        self.recross_tries = int(opts["recross_tries"])
+        self.plans = {token(p.run_id): p for p in run.plans_for(world, day)[0]}
 
     def solver_info(self) -> dict[str, Any]:
         return {
@@ -320,9 +349,19 @@ class TwinPlanner:
         }
 
     def rejudge(
-        self, ctx: PlanContext, plan_id: str, decisions: list[Decision], holds: list[Hold]
+        self,
+        ctx: PlanContext,
+        plan_id: str,
+        decisions: list[Decision],
+        holds: list[Hold],
+        terminations: Mapping[str, str] | None = None,
     ) -> sandbox.G3Result:
         """G3 of a recorded plan: a solver option is replayed by checking its plan, not by solving again."""
+        standing, baseline = self._world(ctx)
+        return self._judge(ctx, plan_id, decisions, holds, standing, baseline, terminations)
+
+    def _world(self, ctx: PlanContext) -> tuple[Directives, Any]:
+        """What holds in the world the plan is judged in, and the BL-0 run in it (the baseline)."""
         standing = standing_directives(
             self.world,
             self.day,
@@ -332,89 +371,86 @@ class TwinPlanner:
             lines=ctx.commit_lines,
             incidents=ctx.incidents,
             entry_delays=ctx.entry_delays,
+            terminations=ctx.commit_terminations,
         )
         plans, _, inst = run.plans_for(self.world, self.day)
-        end_s = ctx.now_s + self.dispatcher.horizon_s
         baseline = run.run_day(
             self.world,
             self.day,
             plans=plans,
-            until_s=end_s,
+            until_s=ctx.now_s + self.dispatcher.horizon_s,
             keep_events=True,
             directives=standing,
             scenario_id=f"{inst}-loop-baseline",
         )
-        return self._judge(ctx, plan_id, decisions, holds, standing, baseline)
+        return standing, baseline
 
-    def plan(self, ctx: PlanContext) -> PlanSet:
-        t0 = time.perf_counter()
-        imposed, checked = self._frozen_of(ctx, impose=self.planner == "cpsat")
-        gp = self.dispatcher.plan(
+    def _replan(
+        self,
+        ctx: PlanContext,
+        imposed: Sequence[Decision],
+        checked: Sequence[Decision],
+        suffix: str = "",
+        *,
+        horizon_s: float | None = None,
+        terminations: Mapping[str, str] | None = None,
+        promote: Sequence[str] = (),
+    ) -> GreedyPlan:
+        """The greedy plan of the cycle; an option adds its short-terminations or promoted trains."""
+        return self.dispatcher.plan(
             self.day,
             ctx.now_s,
+            horizon_s=horizon_s,
             frozen=imposed,
             committed=checked,
             closures=ctx.closures,
             exit_windows=ctx.exit_windows,
-            plan_id=ctx.plan_id,
+            plan_id=ctx.plan_id + suffix,
             policy_from_s=ctx.policy_from_s,
             incidents=ctx.incidents,
             entry_delays=ctx.entry_delays,
+            terminations={**ctx.commit_terminations, **(terminations or {})},
+            promote=promote,
         )
+
+    def plan(self, ctx: PlanContext) -> PlanSet:
+        t0 = time.perf_counter()
+        imposed, checked = self._frozen_of(ctx, impose=self.planner == "cpsat")
+        gp = self._replan(ctx, imposed, checked)
         out = PlanSet(decisions=gp.decisions)
         if not ctx.verify:
             out.runtime_s = round(time.perf_counter() - t0, 2)
             return out
         end_s = ctx.now_s + self.dispatcher.horizon_s
-        standing = standing_directives(
-            self.world,
-            self.day,
-            closures=ctx.closures,
-            exit_windows=ctx.exit_windows,
-            holds=ctx.commit_holds,
-            lines=ctx.commit_lines,
-            incidents=ctx.incidents,
-            entry_delays=ctx.entry_delays,
-        )
-        plans, _, inst = run.plans_for(self.world, self.day)
-        baseline = run.run_day(
-            self.world,
-            self.day,
-            plans=plans,
-            until_s=end_s,
-            keep_events=True,
-            directives=standing,
-            scenario_id=f"{inst}-loop-baseline",
-        )
+        standing, baseline = self._world(ctx)
         out.baseline = sandbox.kpis(baseline[1], self.day, ctx.now_s, end_s)
-        out.candidates.append(self._greedy(ctx, gp, standing, baseline))
+        seen: set[tuple[Any, ...]] = set()
+
+        def add(cand: Candidate, force: bool = False) -> None:
+            sig = self._signature(cand)
+            if sig in seen and not force:
+                return
+            seen.add(sig)
+            out.candidates.append(cand)
+            if cand.verified and out.first_plan_s is None:  # DSC-06: the first verified option
+                out.first_plan_s = round(time.perf_counter() - t0, 2)
+
+        add(self._greedy(ctx, gp, standing, baseline))
+        if self.options and self._disrupted(ctx, end_s):
+            for option in self._options(ctx, gp, standing, baseline, imposed, checked):
+                add(option)
+            if "disruption" in ctx.triggers:
+                out.contingent = self._contingent(ctx, imposed, checked)
         if self.cpsat_enabled:
-            seen = {self._signature(out.candidates[0])}
             # the greedy plan to the end of the day: a complete schedule to warm-start the solver with
-            full = self.dispatcher.plan(
-                self.day,
-                ctx.now_s,
-                horizon_s=HINT_END_S - ctx.now_s,
-                frozen=imposed,
-                committed=checked,
-                closures=ctx.closures,
-                exit_windows=ctx.exit_windows,
-                plan_id=f"{ctx.plan_id}-hint",
-                policy_from_s=ctx.policy_from_s,
-                incidents=ctx.incidents,
-                entry_delays=ctx.entry_delays,
-            )
+            full = self._replan(ctx, imposed, checked, "-hint", horizon_s=HINT_END_S - ctx.now_s)
             for k in range(self.alternatives + 1):
                 cand = self._cpsat(ctx, gp, full, standing, baseline, seed=k)
                 if cand is None:
                     out.notes.append(f"cpsat seed {k}: no solution")
                     continue
-                sig = self._signature(cand)
-                if sig not in seen:
-                    seen.add(sig)
-                    out.candidates.append(cand)
-                elif k == 0 and self.planner == "cpsat":
-                    out.candidates.append(cand)  # the primary plan, even when it equals greedy's
+                # the primary plan is kept even when it equals greedy's
+                add(cand, force=k == 0 and self.planner == "cpsat")
         if self.planner == "cpsat":
             primary = next((c for c in out.candidates if c.name == "cpsat" and c.verified), None)
             if primary is not None:
@@ -443,12 +479,19 @@ class TwinPlanner:
 
     @staticmethod
     def _signature(c: Candidate) -> tuple[Any, ...]:
-        return tuple(sorted((h.run_id, h.station, round(h.until_s)) for h in c.holds)), tuple(
-            sorted((d.run_id, d.station, d.line_no) for d in c.decisions)
+        return (
+            tuple(sorted((h.run_id, h.station, round(h.until_s)) for h in c.holds)),
+            tuple(sorted((d.run_id, d.station, d.line_no) for d in c.decisions)),
+            tuple(sorted(c.terminations.items())),
         )
 
     def _sandbox(
-        self, ctx: PlanContext, plan_id: str, decisions: list[Decision], holds: list[Hold]
+        self,
+        ctx: PlanContext,
+        plan_id: str,
+        decisions: list[Decision],
+        holds: list[Hold],
+        terminations: Mapping[str, str] | None = None,
     ) -> sandbox.SandboxPlan:
         frozen = ctx.frozen + ctx.history
         keys = {(f.run_id, f.station) for f in frozen}
@@ -478,6 +521,7 @@ class TwinPlanner:
             frozen=[
                 FrozenCall(run_id=f.run_id, op=f.station, line_no=f.line_no, dep_s=f.dep_s) for f in frozen
             ],
+            terminations=dict(terminations or {}),
         )
 
     def _judge(
@@ -488,30 +532,134 @@ class TwinPlanner:
         holds: list[Hold],
         standing: Directives,
         baseline: Any,
+        terminations: Mapping[str, str] | None = None,
     ) -> sandbox.G3Result:
         return sandbox.replay(
             self.world,
             self.day,
             ctx.now_s,
-            self._sandbox(ctx, plan_id, decisions, holds),
+            self._sandbox(ctx, plan_id, decisions, holds, terminations),
             register=self.reg,
             net=self.dispatcher.net,
             standing=standing,
             baseline=baseline,
         )
 
-    def _greedy(self, ctx: PlanContext, gp: GreedyPlan, standing: Directives, baseline: Any) -> Candidate:
-        g3 = self._judge(ctx, f"{ctx.plan_id}-greedy", gp.decisions, gp.holds, standing, baseline)
+    def _greedy(
+        self,
+        ctx: PlanContext,
+        gp: GreedyPlan,
+        standing: Directives,
+        baseline: Any,
+        name: str = "greedy",
+        terminations: Mapping[str, str] | None = None,
+    ) -> Candidate:
+        ends = dict(terminations or {})
+        g3 = self._judge(ctx, f"{ctx.plan_id}-{name}", gp.decisions, gp.holds, standing, baseline, ends)
         return Candidate(
-            name="greedy",
+            name=name,
             plan_id=ctx.plan_id,
-            decisions=gp.decisions,
-            holds=gp.holds,
+            decisions=[d for d in gp.decisions if d.run_id not in ends],
+            holds=[h for h in gp.holds if h.run_id not in ends],
             g1=None,
             g2=gp.g2,
             g3=g3,
             solver={"g2": gp.g2.overall.value, "stuck": len(gp.stuck)},
+            terminations=ends,
         )
+
+    # ------------------------------------------------------------------ disruption options (issue #156)
+    @staticmethod
+    def _disrupted(ctx: PlanContext, end_s: float) -> bool:
+        """An incident or a closure is in force in the plan's horizon."""
+        return any(c.start_s < end_s and c.end_s > ctx.now_s for c in ctx.closures) or any(
+            d.start_s < end_s and d.end_s > ctx.now_s for d in ctx.incidents
+        )
+
+    def _options(
+        self,
+        ctx: PlanContext,
+        gp: GreedyPlan,
+        standing: Directives,
+        baseline: Any,
+        imposed: Sequence[Decision],
+        checked: Sequence[Decision],
+    ) -> list[Candidate]:
+        """FR-OPT-11: re-order / re-cross, and (policy-gated) short-terminate or cancel."""
+        out: list[Candidate] = []
+        held = sorted(gp.holds, key=lambda h: (-h.held_s, h.run_id, h.station))
+        # re-order / re-cross: a train the plan holds goes first, the others wait for it and cross it
+        # elsewhere; a train held by the incident itself changes nothing, so the next one is tried
+        greedy_sig = self._signature(self._greedy_shape(gp))
+        tried: list[str] = []
+        for h in held:
+            if h.run_id in tried or len(tried) >= self.recross_tries:
+                continue
+            tried.append(h.run_id)
+            alt = self._replan(ctx, imposed, checked, "-recross", promote=[h.run_id])
+            if self._signature(self._greedy_shape(alt)) == greedy_sig:
+                continue
+            cand = self._greedy(ctx, alt, standing, baseline, name="recross")
+            cand.solver |= {"promoted": h.run_id, "held_min": round(h.held_s / SECONDS_PER_MIN, 1)}
+            out.append(cand)
+            break
+        pick = self._terminable(ctx, held) if self.short_terminate else None
+        if pick is not None:
+            rid, station, cancel = pick
+            alt = self._replan(ctx, imposed, checked, "-term", terminations={rid: station})
+            name = "cancel" if cancel else "short-term"
+            cand = self._greedy(ctx, alt, standing, baseline, name=name, terminations={rid: station})
+            cand.cancelled = frozenset({rid}) if cancel else frozenset()
+            cand.penalty_min = self.terminate_penalty
+            out.append(cand)
+        return out
+
+    @staticmethod
+    def _greedy_shape(gp: GreedyPlan) -> Candidate:
+        """A greedy plan as an unjudged candidate, for its signature only."""
+        return Candidate("", "", gp.decisions, gp.holds, None, None, None)  # type: ignore[arg-type]
+
+    def _terminable(self, ctx: PlanContext, held: Sequence[Hold]) -> tuple[str, str, bool] | None:
+        """The passenger train held longest (at least ``terminate_min_hold_min``) at a station it stops at:
+        (run id, station, cancelled); a cancellation when that is its first station and it has not entered."""
+        for h in held:
+            p = self.plans.get(h.run_id)
+            if h.held_s < self.terminate_hold_s or p is None or p.kind != "passenger" or not p.timetabled:
+                continue
+            if h.run_id in ctx.commit_terminations:
+                continue
+            if p.nodes[0].op == h.station:
+                if p.entry_s >= ctx.now_s:
+                    return h.run_id, h.station, True
+            elif any(n.op == h.station and n.stop for n in p.nodes[1:-1]):
+                return h.run_id, h.station, False
+        return None
+
+    def _contingent(
+        self, ctx: PlanContext, imposed: Sequence[Decision], checked: Sequence[Decision]
+    ) -> list[Contingent]:
+        """Plans for the incidents' ETR + each ``contingent_etr_min``, each verified in its own scenario (the
+        incidents last that much longer); the cycle's own plan is the one for the announced ETR."""
+        uncertain = {d.incident_id for d in ctx.incidents if d.etr_s is not None and d.etr_s > ctx.now_s}
+        if not uncertain:
+            return []
+        etr = max(d.etr_s for d in ctx.incidents if d.incident_id in uncertain)
+        out: list[Contingent] = []
+        switch = etr
+        for extra in self.contingent_s:
+            longer = [
+                d.model_copy(update={"duration_s": d.duration_s + extra, "etr_s": d.etr_s + extra})
+                if d.incident_id in uncertain
+                else d
+                for d in ctx.incidents
+            ]
+            name = f"contingent-etr+{round(extra / SECONDS_PER_MIN)}"
+            sub = replace(ctx, incidents=longer, plan_id=f"{ctx.plan_id}-{name}")
+            standing, baseline = self._world(sub)
+            cand = self._greedy(sub, self._replan(sub, imposed, checked), standing, baseline, name=name)
+            out.append(Contingent(etr_s=etr + extra, switch_at_s=switch, candidate=cand))
+            switch = etr + extra
+        return out
 
     def _cpsat(
         self,
@@ -640,6 +788,7 @@ def day_kpis(
     entry_delays: Mapping[str, float] | None = None,
     arm: str = "DSS",
     events_out: list[Any] | None = None,
+    terminations: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """FR-KPI-05: the day under the loop's orders (the ``arm``) against BL-0 with the same disruptions.
 
@@ -654,7 +803,14 @@ def day_kpis(
         "entry_delays": entry_delays,
     }
     base = standing_directives(world, day, holds={}, lines={}, **same)  # type: ignore[arg-type]
-    dss = standing_directives(world, day, holds=holds, lines=lines, **same)  # type: ignore[arg-type]
+    dss = standing_directives(
+        world,
+        day,
+        holds=holds,
+        lines=lines,
+        terminations=terminations,
+        **same,  # type: ignore[arg-type]
+    )
     return compare_runs(
         run_arm(world, day, arm, scope, directives=dss, events_out=events_out),
         [run_arm(world, day, "BL-0", scope, directives=base)],

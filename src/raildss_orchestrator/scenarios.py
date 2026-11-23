@@ -3,16 +3,19 @@
 * **BL-0** (every executable scenario of library v1): the twin plays the scenario with its injected
   disruptions and its seed, nothing else changes; the KPIs come from the ground-truth events (FR-KPI-01).
 * **Decision loop** (scenarios whose disruptions are line blocks, speed restrictions, loops out of use, signal
-  failures and late entries): the loop plans in a window around the first disruption, verifies and accepts
-  its options, and the day is compared with BL-0 under the same disruptions (FR-KPI-05). Line blocks are
-  closures (twin directives); the other incidents are applied by the injector to the world and to every plan
-  once announced (at their start), and late entries are known from the start of the window (issue #155).
+  failures, loco failures, OHE blocks and trips, crew out of hours and late entries): the loop plans in a
+  window around the first disruption, verifies and accepts its options, and the day is compared with BL-0
+  under the same disruptions (FR-KPI-05). Line blocks are closures (twin directives); the other incidents are
+  applied by the injector to the world and to every plan once announced (at their start; plans assume the
+  announced ETR until it passes, issue #156), and late entries are known from the start of the window (issue
+  #155). Disruption options (re-cross, short-terminate / cancel, contingent ETR plans) are issue #156.
   Two arms: **BL-1**, the loop with the greedy planner (controller practice), and **DSS**, the loop with the
   CP-SAT rolling horizon (#152).
 """
 
 from __future__ import annotations
 
+import statistics
 from typing import Any
 
 from raildss_dss.conflict_kpi import gt_occurrence
@@ -59,7 +62,20 @@ def bl0(world: run.World, sc: Scenario) -> KpiReport:
     )
 
 
-LOOP_KINDS = {"line_block", "tsr", "point_failure", "signal_failure", "entry_delay"}
+LOOP_KINDS = {
+    "line_block",
+    "tsr",
+    "point_failure",
+    "signal_failure",
+    "entry_delay",
+    "loco_failure",  # issue #156: SCN-04
+    "ohe_block",  # SCN-08
+    "ohe_trip",  # SCN-09
+    "crew_hours",  # SCN-10
+}
+PERCENTILES = 20  # statistics.quantiles cut points: 5 % steps
+P95 = PERCENTILES - 2  # index of the 95th percentile among the cut points
+PRESENTED = "PRESENTED"  # a recommendation nobody decided on
 ARMS = {"BL-1": "greedy", "DSS": "cpsat"}  # the arm and its planner (#152)
 
 
@@ -67,14 +83,16 @@ def loopable(sc: Scenario) -> bool:
     return bool(sc.disruptions) and all(d.type in LOOP_KINDS for d in sc.disruptions)
 
 
-def with_loop(world: run.World, sc: Scenario, arm: str = "BL-1") -> tuple[RunSummary, dict[str, Any]]:
+def with_loop(
+    world: run.World, sc: Scenario, arm: str = "BL-1", span_s: float = SPAN_S
+) -> tuple[RunSummary, dict[str, Any]]:
     """The decision loop around the scenario's first disruption with the arm's planner, and the day's KPIs
     against BL-0 under the same disruptions."""
     closures = GreedyDispatcher(world).closures_of(sc)
     incidents = [d for d in scenario.injected(sc) if d.kind != "line_block"]  # line blocks are closures
     delays = scenario.entry_delays(sc)
     first = min(d.start_s for d in sc.disruptions)
-    from_s, to_s = first - LEAD_S, first - LEAD_S + SPAN_S
+    from_s, to_s = first - LEAD_S, first - LEAD_S + span_s
     day = sc.wtt_date
     dss = TwinDss(world, day, until_s=to_s, closures=closures, incidents=incidents, entry_delays=delays)
     planner = TwinPlanner(world, day, planner=ARMS[arm], cpsat_enabled=ARMS[arm] == "cpsat", alternatives=0)
@@ -100,6 +118,7 @@ def with_loop(world: run.World, sc: Scenario, arm: str = "BL-1") -> tuple[RunSum
         entry_delays=delays,
         arm=arm,
         events_out=gt,
+        terminations=loop.terminations(),
     )
     if loop.conflict_log is not None:  # D1 and D2: the DS-5 log against the ground truth
         comparison["conflicts"] = loop.conflict_log.kpis(
@@ -149,6 +168,7 @@ def render(rows: list[tuple[Scenario, KpiReport]], loops: list[Loop], command: s
                 f" {len(summary.cycles)} plans, **{verified} of {built} candidate plans passed G0-G3**, "
                 f"{summary.accepted} recommendations accepted, {summary.orders} orders."
             )
+            out += [f"  - {line}" for line in option_lines(summary)]
         names = list(arms)
         base = next(iter(arms.values()))[1]["arms"]["BL-0"]
         both = {"DSS", "BL-1"} <= set(names)
@@ -172,8 +192,46 @@ def render(rows: list[tuple[Scenario, KpiReport]], loops: list[Loop], command: s
     return "\n".join(out) + "\n"
 
 
+def option_lines(summary: RunSummary) -> list[str]:
+    """Disruption options of a loop run (issue #156): options built and verified by kind, those accepted,
+    contingent plans and their switch rules, and the disruption first-plan latency (DSC-06)."""
+    kinds = ("recross", "short-term", "cancel")
+    out = []
+    for k in kinds:
+        built = [c for cy in summary.cycles for c in cy.candidates if c.name == k]
+        taken = [o for cy in summary.cycles for o in cy.released if o.candidate == k]
+        taken = [o for o in taken if o.status != PRESENTED]
+        if built:
+            out.append(
+                f"option {k}: {sum(c.verified for c in built)} of {len(built)} verified, "
+                f"{len(taken)} recommendations decided"
+            )
+    rules = [c for cy in summary.cycles for c in cy.contingent]
+    if rules:
+        out.append(
+            f"contingent ETR plans: {sum(c.verified for c in rules)} of {len(rules)} verified; "
+            + "; ".join(sorted({c.rule for c in rules}))
+        )
+    first = sorted(
+        s for cy in summary.cycles if "disruption" in cy.triggers and (s := cy.first_plan_s) is not None
+    )
+    if first:
+        cuts = statistics.quantiles(first, n=PERCENTILES, method="inclusive") if len(first) > 1 else []
+        p95 = cuts[P95] if cuts else first[0]
+        out.append(
+            f"disruption first plan: P95 {p95:.1f} s over {len(first)} disruption cycles "
+            f"(max {first[-1]:.1f} s; DSC-06 budget 60 s)"
+        )
+    return out
+
+
 def run_all(
-    world: run.World, ids: list[str], *, with_loops: bool, arms: tuple[str, ...] = tuple(ARMS)
+    world: run.World,
+    ids: list[str],
+    *,
+    with_loops: bool,
+    arms: tuple[str, ...] = tuple(ARMS),
+    span_s: float | None = None,
 ) -> tuple[list[tuple[Scenario, KpiReport]], list[Loop]]:
     library = [s for s in scenario.load_library_v1() if s.executable and (not ids or s.id in ids)]
     rows = [(s, bl0(world, s)) for s in library]
@@ -181,5 +239,5 @@ def run_all(
     if with_loops:
         for s in library:
             if loopable(s):
-                loops.append((s, {arm: with_loop(world, s, arm) for arm in arms}))
+                loops.append((s, {arm: with_loop(world, s, arm, span_s or SPAN_S) for arm in arms}))
     return rows, loops

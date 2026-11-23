@@ -97,7 +97,7 @@ class FakeDss:
             now_s, self.version, snap, frozenset(fixes), conflicts, state_hash=f"hash-v{self.version}"
         )  # type: ignore[arg-type]
 
-    def commit(self, holds: Any, lines: Any) -> None:
+    def commit(self, holds: Any, lines: Any, terminations: Any = None) -> None:
         self.commits += 1
 
 
