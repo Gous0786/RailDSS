@@ -207,3 +207,4 @@ src/raildss_orchestrator/whatif.py: 24  # hours of the day (the card of a what-i
 src/raildss_orchestrator/whatif.py: 2  # digits of the rounded window hours, not a rule value
 src/raildss_orchestrator/whatif.py: 8  # orders listed per what-if variant, a display limit, not a rule value
 src/raildss_orchestrator/whatif.py: 60  # seconds per minute, not a rule value
+src/raildss_orchestrator/evaluate.py: 2  # directory depth from the package to the repository root, not a rule value

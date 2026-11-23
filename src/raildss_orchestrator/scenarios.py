@@ -77,6 +77,10 @@ PERCENTILES = 20  # statistics.quantiles cut points: 5 % steps
 P95 = PERCENTILES - 2  # index of the 95th percentile among the cut points
 PRESENTED = "PRESENTED"  # a recommendation nobody decided on
 ARMS = {"BL-1": "greedy", "DSS": "cpsat"}  # the arm and its planner (#152)
+# the evaluation arms (spec §12.2, issue #168): BL-2 is the DSS (CP-SAT, auto-accept), BL-3 the same with the
+# degraded predictor (pred.degraded)
+LOOP_ARMS = {**ARMS, "BL-2": "cpsat", "BL-3": "cpsat"}
+DEGRADED = frozenset({"BL-3"})
 
 
 def loopable(sc: Scenario) -> bool:
@@ -115,8 +119,17 @@ def with_loop(
     from_s = first - LEAD_S if first is not None else busiest_hour_s(world, sc)
     to_s = from_s + span_s
     day = sc.wtt_date
-    dss = TwinDss(world, day, until_s=to_s, closures=closures, incidents=incidents, entry_delays=delays)
-    planner = TwinPlanner(world, day, planner=ARMS[arm], cpsat_enabled=ARMS[arm] == "cpsat", alternatives=0)
+    dss = TwinDss(
+        world,
+        day,
+        until_s=to_s,
+        closures=closures,
+        incidents=incidents,
+        entry_delays=delays,
+        degraded_predictor=arm in DEGRADED,
+    )
+    kind = LOOP_ARMS[arm]
+    planner = TwinPlanner(world, day, planner=kind, cpsat_enabled=kind == "cpsat", alternatives=0)
     loop = Orchestrator(
         world.register,
         dss,

@@ -28,6 +28,24 @@ and a flat list of rows.
 }
 ```
 
+## Producing an export (issue #168)
+
+```
+python -m raildss_orchestrator evaluate SCN-05 [SCN-xx ...] [--arm BL-0 --arm BL-2 ...] [--span-min 30] [--out-dir docs/kpi/evaluation]
+```
+
+The runner (`raildss_orchestrator.evaluate`) runs each scenario under every arm on the same day, demand,
+seed and disruptions:
+- **BL-0** is the loop's own BL-0 run of the day.
+- **BL-1, BL-2 and BL-3** run the decision loop in the scenario's window: greedy, CP-SAT, and CP-SAT with the
+  degraded predictor.
+- **BL-5** is the freight log of the scenario's freight day, where the log has one.
+
+The loop arms report the day's KPIs plus D1, D2, H1 and H2 of the window. Per scenario the runner writes
+`<id>.json` (an export with that scenario's rows) and `<id>.md` (KPIs by arm, differences from BL-0 and
+BL-2 − BL-1). With several scenarios it also writes `evaluation.json` with all their rows; copy that to
+`web/public/data/evaluation.json` for the management view.
+
 ## Run (`run`)
 
 | Field | Required | Meaning |
