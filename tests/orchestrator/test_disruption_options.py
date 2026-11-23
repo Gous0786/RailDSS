@@ -140,3 +140,13 @@ def test_the_four_disruption_scenarios_run_the_loop() -> None:
 
     library = {s.id: s for s in scenario.load_library_v1()}
     assert all(loopable(library[i]) for i in ("SCN-04", "SCN-08", "SCN-09", "SCN-10"))
+
+
+def test_a_peak_day_without_disruptions_is_looped_from_its_busiest_hour() -> None:
+    from raildss_orchestrator.scenarios import busiest_hour_s, loopable
+    from raildss_twin import run, scenario
+
+    sc = next(s for s in scenario.load_library_v1() if s.id == "SCN-19")
+    assert not loopable(sc)  # no disruption: looped only when named (issue #153)
+    start = busiest_hour_s(run.load_world(), sc)
+    assert start % 3600 == 0 and 0 <= start < 24 * 3600

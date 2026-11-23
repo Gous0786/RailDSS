@@ -21,6 +21,9 @@ Spec: FR-OPT-01 (solver-facing IR), FR-TWIN-19 (P2), REC-02, OD-17, A-07.
 | `start_lb` | entry time; for a booked train, the booked departure on the block operation after a stop and the booked arrival at a non-stop point |
 | `release_time` | clearing time of the line: (train length + adequate distance) over the clearing speed (`twin.sim`) |
 | Objective | passenger: weight x arrival delay against the booked time at every stop and at the exit; freight: weight x delay against unimpeded completion; weights from `policy.weights` |
+| Gate (issue #153) | a block or sub-block operation on a reversible line (MID, KTV-VZM) carries `gate` (the physical line) and its `direction`: trains of opposite directions do not overlap on the line, trains of one direction follow sub-block by sub-block |
+| Unavailable (issue #153) | a closure or a line block (`line_block` incident): its line's block line or sub-blocks are out of use over the block, from the window start at the earliest; a line a train still occupies at the window start is left out (the block takes it once that train has cleared, as in the twin) |
+| Single-line working (issue #153) | where a line block leaves a direction no line of its own on an absolute-block segment, its trains may take the other line against its direction with the blocked line's Connections, entering it while the working lasts (`start_lb`, `start_ub`); the block line is exclusive, so the two directions alternate |
 
 ## Semantics
 
@@ -28,8 +31,9 @@ Along an edge `s_next >= s + min_duration + delay`. An operation occupies its re
 the next operation's start plus `release_time`; the last operation until `s + min_duration + release_time`.
 Different trains must not overlap on a resource beyond its capacity. Times are integer seconds since the
 start of the day; durations and releases are rounded down, so the IR relaxes the twin by less than one
-second per operation. Not in the IR: halt departure times inside a block, the reversible-line direction
-gate and clear-standing-room (CSR) checks; the twin enforces the first two, and CSR is M1.
+second per operation. Not in the IR: halt departure times inside a block (the twin enforces them). The
+reversible-line direction gate and line blocks are extensions of the DISPLIB document (`gate` on an
+operation, `unavailable` at the top level, issue #153); the CP-SAT model enforces them and G1 checks them.
 
 ## Checking
 

@@ -24,7 +24,7 @@ from raildss_optimiser.greedy import GreedyDispatcher
 from raildss_orchestrator.loop import Disruption, Orchestrator, RunSummary
 from raildss_orchestrator.report import alert_rows, conflict_rows
 from raildss_orchestrator.twin import TwinDss, TwinPlanner, day_kpis
-from raildss_twin import run, scenario
+from raildss_twin import run, sandbox, scenario
 from raildss_twin.kpi_eval import run_arm
 from raildss_twin.scenario import Scenario
 
@@ -83,6 +83,17 @@ def loopable(sc: Scenario) -> bool:
     return bool(sc.disruptions) and all(d.type in LOOP_KINDS for d in sc.disruptions)
 
 
+def busiest_hour_s(world: run.World, sc: Scenario) -> float:
+    """Start of the hour of the scenario's day in which most trains enter the section."""
+    plans, _, _ = run.plans_for(world, sc.wtt_date, scenario.run_kwargs(sc)["day_instance"])
+    counts: dict[int, int] = {}
+    for p in plans:
+        if p.entry_s >= 0:
+            h = int(p.entry_s // SECONDS_PER_HOUR)
+            counts[h] = counts.get(h, 0) + 1
+    return float(min(counts, key=lambda h: (-counts[h], h)) * SECONDS_PER_HOUR)
+
+
 def with_loop(
     world: run.World,
     sc: Scenario,
@@ -92,11 +103,17 @@ def with_loop(
 ) -> tuple[RunSummary, dict[str, Any]]:
     """The decision loop around the scenario's first disruption with the arm's planner, and the day's KPIs
     against BL-0 under the same disruptions. ``sims_out`` receives the runs of the arm and of BL-0."""
-    closures = GreedyDispatcher(world).closures_of(sc)
-    incidents = [d for d in scenario.injected(sc) if d.kind != "line_block"]  # line blocks are closures
+    # a line block is a closure, except under single-line working: the injector then works the other line
+    # both ways, in the world and in every plan (issue #153)
+    slw = {d.incident_id for d in sc.disruptions if d.type == "line_block" and d.single_line_working}
+    plain = sc.model_copy(update={"disruptions": [d for d in sc.disruptions if d.incident_id not in slw]})
+    closures = GreedyDispatcher(world).closures_of(plain)
+    incidents = [d for d in scenario.injected(sc) if d.kind != "line_block" or d.incident_id in slw]
     delays = scenario.entry_delays(sc)
-    first = min(d.start_s for d in sc.disruptions)
-    from_s, to_s = first - LEAD_S, first - LEAD_S + span_s
+    # around the first disruption; a scenario without one (a peak day, SCN-19) from its busiest hour
+    first = min((d.start_s for d in sc.disruptions), default=None)
+    from_s = first - LEAD_S if first is not None else busiest_hour_s(world, sc)
+    to_s = from_s + span_s
     day = sc.wtt_date
     dss = TwinDss(world, day, until_s=to_s, closures=closures, incidents=incidents, entry_delays=delays)
     planner = TwinPlanner(world, day, planner=ARMS[arm], cpsat_enabled=ARMS[arm] == "cpsat", alternatives=0)
@@ -111,6 +128,7 @@ def with_loop(
     summary = loop.run(from_s, to_s, TICK_S)
     holds, lines = loop.commitments()
     gt: list[Any] = []
+    ran: dict[str, Any] = sims_out if sims_out is not None else {}
     comparison = day_kpis(
         world,
         day,
@@ -122,8 +140,11 @@ def with_loop(
         entry_delays=delays,
         arm=arm,
         events_out=gt,
-        sims_out=sims_out,
         terminations=loop.terminations(),
+        sims_out=ran,
+    )
+    comparison["safety"] = sandbox.executed_safety(  # head-on and deadlocks executed (issue #153)
+        ran[arm], day, from_s, register=world.register, net=planner.dispatcher.net
     )
     if loop.conflict_log is not None:  # D1 and D2: the DS-5 log against the ground truth
         comparison["conflicts"] = loop.conflict_log.kpis(
@@ -174,6 +195,14 @@ def render(rows: list[tuple[Scenario, KpiReport]], loops: list[Loop], command: s
                 f"{summary.accepted} recommendations accepted, {summary.orders} orders."
             )
             out += [f"  - {line}" for line in option_lines(summary)]
+            safety = arms[arm][1].get("safety")
+            if safety is not None:
+                cp = [c for cy in summary.cycles for c in cy.candidates if c.name == "cpsat"]
+                out.append(
+                    f"  - CP-SAT plans verified: {sum(c.verified for c in cp)} of {len(cp)}; executed from "
+                    f"the window start: {safety['head_on']} head-on movements (VER-BLK-04), "
+                    f"{safety['deadlocks']} deadlocks, {safety['stuck']} stuck trains"
+                )
         names = list(arms)
         base = next(iter(arms.values()))[1]["arms"]["BL-0"]
         both = {"DSS", "BL-1"} <= set(names)
@@ -243,6 +272,6 @@ def run_all(
     loops: list[Loop] = []
     if with_loops:
         for s in library:
-            if loopable(s):
+            if loopable(s) or (s.id in ids and not s.disruptions):  # a peak day only when named
                 loops.append((s, {arm: with_loop(world, s, arm, span_s or SPAN_S) for arm in arms}))
     return rows, loops

@@ -84,6 +84,10 @@ class Operation(Model):
     successors: list[Successor]
     block: str | None = None
     line: str | None = None
+    # direction gate (issue #153): a reversible line (MID) is worked one direction at a time; operations of
+    # trains of opposite directions on the same gate must not overlap, those of one direction may follow
+    gate: str | None = None
+    direction: str | None = None
 
 
 class Train(Model):
@@ -97,6 +101,14 @@ class Resource(Model):
     id: str
     kind: Literal["station_line", "block_line", "sub_block"]
     capacity: int = 1
+
+
+class Unavailable(Model):
+    """A resource out of use from ``start_s`` to ``end_s`` (a line block, issue #153)."""
+
+    resource: str
+    start_s: int
+    end_s: int
 
 
 class Component(Model):
@@ -172,6 +184,7 @@ class Instance(Model):
     resources: list[Resource]
     trains: list[Train]
     objective: list[Component]
+    unavailable: list[Unavailable] = []  # line blocks (issue #153)
 
     @property
     def counts(self) -> dict[str, int]:
@@ -198,6 +211,10 @@ class Instance(Model):
         resources are released as in this IR (a DISPLIB exit operation never releases them), and a
         synthetic entry operation when it has alternative first operations. Successors are plain
         indices in topological order; objective components are ``op_delay`` with integer constants.
+
+        Two extensions of DISPLIB 2025 (issue #153), checked by G1 and enforced by the CP-SAT model:
+        ``gate`` on an operation (``[line, direction]``: trains of opposite directions do not overlap on a
+        reversible line) and ``unavailable`` (resources out of use over a time window, line blocks).
         """
         if any(r.capacity != 1 for r in self.resources):
             raise ValueError("DISPLIB resources are exclusive; a resource has capacity > 1")
@@ -222,17 +239,18 @@ class Instance(Model):
             for o in t.operations:
                 if any(e.delay or e.operation <= o.id for e in o.successors):
                     raise ValueError(f"{t.id} op {o.id}: DISPLIB successors carry no delay and point forward")
-                ops.append(
-                    {
-                        "start_lb": o.start_lb,
-                        "start_ub": o.start_ub,
-                        "min_duration": o.min_duration,
-                        "resources": [
-                            {"resource": r.resource, "release_time": r.release_time} for r in o.resources
-                        ],
-                        "successors": [shift + e.operation for e in o.successors] or [exit_index],
-                    }
-                )
+                op: dict[str, Any] = {
+                    "start_lb": o.start_lb,
+                    "start_ub": o.start_ub,
+                    "min_duration": o.min_duration,
+                    "resources": [
+                        {"resource": r.resource, "release_time": r.release_time} for r in o.resources
+                    ],
+                    "successors": [shift + e.operation for e in o.successors] or [exit_index],
+                }
+                if o.gate is not None:
+                    op["gate"] = [o.gate, o.direction]
+                ops.append(op)
             ops.append({"min_duration": 0, "resources": [], "successors": []})
             trains.append(ops)
             shifts.append(shift)
@@ -250,7 +268,12 @@ class Instance(Model):
                     "increment": int(c.increment),
                 }
             )
-        return {"trains": trains, "objective": objective}
+        doc: dict[str, Any] = {"trains": trains, "objective": objective}
+        if self.unavailable:
+            doc["unavailable"] = [
+                {"resource": u.resource, "start": u.start_s, "end": u.end_s} for u in self.unavailable
+            ]
+        return doc
 
 
 def fl(x: float) -> int:
@@ -313,6 +336,10 @@ class Effects:
     out_of_use: frozenset[tuple[str, int]] = frozenset()  # (station, line no)
     entry_delays: tuple[tuple[str, float], ...] = ()  # (run id, seconds late)
     recovery: int = 1  # coefficient multiplier of the exit component
+    # line blocks (issue #153): (segment, line id or None for all, start s, end s); with single-line working
+    # the other absolute-block line is worked both ways meanwhile: (segment, blocked line id, start, end)
+    blocked: tuple[tuple[str, str | None, float, float], ...] = ()
+    single_line: tuple[tuple[str, str, float, float], ...] = ()
 
 
 NO_EFFECTS = Effects()
@@ -324,8 +351,9 @@ def effects_of(
     entry_delays: Mapping[str, float] | None,
     start_s: float,
     end_s: float,
+    closures: Sequence[Any] = (),
 ) -> Effects:
-    """The incidents active at some time of the window ``[start_s, end_s)``."""
+    """The incidents and closures (twin ``Closure``) active at some time of ``[start_s, end_s)``."""
     cfg = world.register.value("twin.injector")
     caution, plc = (
         float(cfg["signal_failure_speed_kmh"]),
@@ -333,9 +361,20 @@ def effects_of(
     )
     layout = world.layout
     restrictions, out = [], set()
+    blocked: list[tuple[str, str | None, float, float]] = [
+        (c.segment, c.line_id, c.start_s, c.end_s)
+        for c in closures
+        if c.start_s < end_s and c.end_s > start_s
+    ]
+    single: list[tuple[str, str, float, float]] = []
     for d in incidents:
         if d.start_s >= end_s or d.end_s <= start_s:
             continue
+        if d.kind == "line_block" and d.block_id in layout.blocks:  # issue #153
+            segment = layout.lines[d.block_id][0].segment
+            blocked.append((segment, d.line_id, d.start_s, d.end_s))
+            if d.single_line_working and d.line_id is not None:
+                single.append((segment, d.line_id, d.start_s, d.end_s))
         if d.kind in ("tsr", "signal_failure") and d.block_id in layout.blocks:
             kmh = float(d.speed_kmh or 0) if d.kind == "tsr" else caution
             extra = plc if getattr(d, "block_instrument", False) else 0.0
@@ -345,7 +384,47 @@ def effects_of(
         elif d.kind == "point_failure" and d.station is not None and d.line_no is not None:
             out.add((d.station, d.line_no))
     recovery = int(world.register.value("opt.recovery")["exit_weight"])
-    return Effects(tuple(restrictions), frozenset(out), tuple(sorted((entry_delays or {}).items())), recovery)
+    return Effects(
+        tuple(restrictions),
+        frozenset(out),
+        tuple(sorted((entry_delays or {}).items())),
+        recovery,
+        tuple(blocked),
+        tuple(single),
+    )
+
+
+def _blocked_labels(layout: Layout, segment: str, line_id: str | None) -> list[str]:
+    """The resources of a blocked segment line (all lines when ``line_id`` is None)."""
+    out: list[str] = []
+    for lines in layout.lines.values():
+        for ln in lines:
+            if ln.segment != segment or line_id not in (None, ln.line_id):
+                continue
+            subs = layout.canonical_sub_blocks(ln.block_id, ln.line_id) if ln.system == "AUTO" else []
+            for label in [f"SB:{k}" for k, _ in subs] or [f"BL:{ln.key}"]:
+                if label not in out:
+                    out.append(label)
+    return out
+
+
+def _borrowed(
+    layout: Layout, block_id: str, direction: str, effects: Effects
+) -> list[tuple[BlockLine, BlockLine, float, float]]:
+    """Single-line working (issue #153, as the twin's ``slw_begin``): where a direction has no line of its own
+    left on an absolute-block segment, its trains may take the other line against its direction, with the
+    blocked line's Connections, while the working lasts: ``(working line, blocked line, start, end)``."""
+    lines = layout.lines[block_id]
+    out = []
+    for segment, blocked_id, a, z in effects.single_line:
+        if lines[0].segment != segment:
+            continue
+        blocked = next((ln for ln in lines if ln.line_id == blocked_id), None)
+        own = [ln for ln in layout.lines_for(block_id, direction) if ln.line_id != blocked_id]
+        if blocked is None or own or blocked.direction not in (direction, "BOTH"):
+            continue
+        out += [(ln, blocked, a, z) for ln in lines if ln.line_id != blocked_id and ln.system != "AUTO"]
+    return out
 
 
 def _station_lines(
@@ -433,7 +512,11 @@ def _train(
         free_run += total
         after_stop = node.dep if plan.timetabled and node.stop else 0.0
         metres = abs(layout.km(hop[1]) - layout.km(hop[0])) * M_PER_KM
-        for line in layout.lines_for(nxt.id, direction):
+        options: list[tuple[BlockLine, BlockLine, tuple[float, float] | None]] = [
+            (line, line, None) for line in layout.lines_for(nxt.id, direction)
+        ]
+        options += [(ln, conn, (a, z)) for ln, conn, a, z in _borrowed(layout, nxt.id, direction, effects)]
+        for line, conn, window in options:
             span_total = total
             for seg, lid, kmh, extra in effects.restrictions:  # a known speed limit on this line
                 if seg == line.segment and lid in (None, line.line_id) and kmh > 0:
@@ -449,25 +532,30 @@ def _train(
                 resources.setdefault(
                     res, Resource(id=res, kind="sub_block" if kind == "sub_block" else "block_line")
                 )
+                first = n == 0
+                lb0 = max(after_stop, window[0]) if window else after_stop
                 chain.append(
                     b.add(
                         visit=k,
                         node=node.op,
                         kind=kind,
                         min_duration=fl(span),
-                        start_lb=fl(after_stop) if n == 0 else 0,
-                        start_ub=horizon,
+                        start_lb=fl(lb0) if first else 0,
+                        start_ub=fl(window[1]) if first and window else horizon,
                         resources=[(res, clear)],
                         block=line.block_id,
                         line=line.line_id,
+                        # a reversible line is worked one direction at a time (issue #153)
+                        gate=line.key if line.direction == "BOTH" else None,
+                        direction=direction if line.direction == "BOTH" else None,
                     )
                 )
                 if n:
                     b.link(chain[n - 1], chain[n])
             for sl_no, i in station_ops.items():
-                if (line.block_id, line.line_id) in layout.send.get((node.op, sl_no), set()):
+                if (conn.block_id, conn.line_id) in layout.send.get((node.op, sl_no), set()):
                     b.link(i, chain[0])
-            prev_ends.append((chain[-1], line))
+            prev_ends.append((chain[-1], conn))
     alive = sorted(b.prune(0, len(idx) - 1))
     new_id = {old: n for n, old in enumerate(alive)}
     succ: dict[int, list[int]] = defaultdict(list)
@@ -487,6 +575,8 @@ def _train(
             successors=[Successor(operation=s) for s in succ[new_id[i]]],
             block=b.ops[i]["block"],
             line=b.ops[i]["line"],
+            gate=b.ops[i].get("gate"),
+            direction=b.ops[i].get("direction"),
         )
         for i in alive
     ]
@@ -563,6 +653,7 @@ def build_instance(
     snapshot: Snapshot | None = None,
     incidents: Sequence[Any] = (),
     entry_delays: Mapping[str, float] | None = None,
+    closures: Sequence[Any] = (),
 ) -> tuple[Instance, list[Plan]]:
     """Convert the trains entering in ``[start_s, end_s)`` of ``day``; returns the instance and the plans.
 
@@ -589,7 +680,7 @@ def build_instance(
     resources: dict[str, Resource] = {}
     trains: list[Train] = []
     objective: list[Component] = []
-    effects = effects_of(world, incidents, entry_delays, start_s, end)
+    effects = effects_of(world, incidents, entry_delays, start_s, end, closures)
     for plan in window_plans:
         train, anchors = _train(world, plan, horizon, resources, effects)
         if plan.run_id in running:
@@ -613,5 +704,23 @@ def build_instance(
         resources=sorted(resources.values(), key=lambda r: r.id),
         trains=trains,
         objective=objective,
+        unavailable=_unavailable(world.layout, effects, start_s, running),
     )
     return instance, window_plans
+
+
+def _unavailable(
+    layout: Layout, effects: Effects, start_s: float, running: Mapping[str, TrainState]
+) -> list[Unavailable]:
+    """The resources of the blocked lines over their block. A line a train still occupies at the window
+    start is left out: the block takes it once that train has cleared, as in the twin."""
+    held = {occ.resource for st in running.values() for occ in st.occupations}
+    out: dict[tuple[str, int, int], Unavailable] = {}
+    for segment, line_id, a, z in effects.blocked:
+        lo, hi = fl(max(a, start_s)), math.ceil(z)
+        if hi <= lo:
+            continue
+        for label in _blocked_labels(layout, segment, line_id):
+            if label not in held:
+                out.setdefault((label, lo, hi), Unavailable(resource=label, start_s=lo, end_s=hi))
+    return sorted(out.values(), key=lambda u: (u.resource, u.start_s))

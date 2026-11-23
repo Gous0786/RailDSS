@@ -125,6 +125,24 @@ def kpis(sim: Sim, day: dt.date, start_s: float, end_s: float) -> dict[str, floa
     }
 
 
+def executed_safety(
+    sim: Sim, day: dt.date, from_s: float, *, register: Register, net: network.Network
+) -> dict[str, int]:
+    """Executed safety of a run from ``from_s`` (issue #153): head-on movements on a single line
+    (VER-BLK-04, audited against the network as worked) and deadlocked or stuck trains."""
+    worked = network.as_worked(net, sim.slw_log)
+    report = audit(sim.events, train_meta(sim), worked, day_start(day), register=register).report
+    head_on = sum(
+        1 for r in report.results if r.rule_id == "VER-BLK-04" for v in r.violations if v.time_s >= from_s
+    )
+    deadlocks = sum(1 for d in sim.deadlocks if isinstance(d, Deadlock) and d.time_s >= from_s)
+    return {
+        "head_on": head_on,
+        "deadlocks": deadlocks,
+        "stuck": sum(1 for t in sim.trains if t.status == "stuck"),
+    }
+
+
 def _mismatch(snapshot: displib.Snapshot, sim: Sim) -> list[str]:
     forked = displib.snapshot_from_occupancy(sim.occupancy_log, snapshot.time_s, snapshot.network_version)
     mine = {t.run_id: [o.resource for o in t.occupations] for t in forked.trains}

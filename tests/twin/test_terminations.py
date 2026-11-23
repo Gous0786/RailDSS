@@ -52,6 +52,9 @@ def test_a_short_terminated_train_ends_its_run_at_the_station(world: run.World) 
     base = run_arm(world, DAY, "BL-0", "t")
     ended = run_arm(world, DAY, "X", "t", directives=Directives(from_s=T0, terminations={rid: station}))
     assert ended.kpis["B1_trains_exited"] == base.kpis["B1_trains_exited"] - 1  # it did not leave the section
+    row = next(r for r in ended.trains if r.run_id == rid)  # A5 charges it the planner's penalty (#153)
+    penalty = float(world.register.value("opt.disruption")["terminate_penalty_min"])
+    assert row.weighted_delay_min >= row.weight * penalty
 
 
 def test_a_cancelled_train_does_not_enter(world: run.World) -> None:

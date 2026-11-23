@@ -10,7 +10,8 @@
 
 Planning forks the twin (the greedy dispatcher's own state): on a day nobody has acted on it equals the
 DSS estimate ``S_t``; injecting a diverging estimate is future work, as for G3 (#79). The CP-SAT instance
-does not model closures: a plan that uses a closed line fails G3 and is never released.
+models closures and line blocks as unavailable resources, single-line working as the other line worked both
+ways, and the direction of traffic on reversible lines (issue #153).
 
 Disruption options (issue #156, FR-OPT-11): while an incident or closure is in force in the horizon, the
 planner adds a **re-order / re-cross** option (the train the plan holds longest is served first, so the
@@ -681,6 +682,7 @@ class TwinPlanner:
             snapshot=snap,
             incidents=ctx.incidents,
             entry_delays=ctx.entry_delays,
+            closures=ctx.closures,  # line blocks and single-line working are in the IR (issue #153)
         )
         doc = instance.to_displib()
         hint: dict[str, Any] | None = None

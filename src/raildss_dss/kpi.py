@@ -11,7 +11,8 @@ unimpeded running time). From those it returns a :class:`KpiReport` with:
 * **A4** mean and maximum arrival delay;
 * **A5** weighted delay ``sum(w_class * (exit delay - entry delay)+)``, with the weights from the policy
   table the optimiser objective uses (:mod:`raildss_params.policy`, FR-KPI-03). Freight exit delay is
-  the transit time beyond its unimpeded running time;
+  the transit time beyond its unimpeded running time. A short-terminated or cancelled train adds its class
+  weight times ``opt.disruption.terminate_penalty_min`` (issue #153);
 * **A6** mean, median and P90 exit delay;
 * **A9** time lost in section;
 * **B1** trains that left the section, by direction and kind;
@@ -148,6 +149,11 @@ def compute(
             r.exit_delay_min = max(0.0, (r.exit_s - r.entry_s - info.free_run_s) / SECONDS_PER_MIN)
         if r.entry_delay_min is not None and r.exit_delay_min is not None:
             r.weighted_delay_min = r.weight * max(0.0, r.exit_delay_min - r.entry_delay_min)
+    # a short-terminated or cancelled train counts at the penalty the planner ranks it with (issue #153):
+    # its delay up to where it ended plus opt.disruption.terminate_penalty_min, weighted by its class
+    penalty = float(reg.value("opt.disruption")["terminate_penalty_min"])
+    for rid in ended:
+        rows[rid].weighted_delay_min += rows[rid].weight * penalty
     done = [r for r in rows.values() if r.exit_s is not None and r.entry_s is not None]
     pax = [r for r in done if r.kind == "passenger" and r.exit_delay_min is not None]
     frt = [r for r in done if r.kind == "freight"]
