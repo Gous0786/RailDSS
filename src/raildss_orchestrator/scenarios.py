@@ -92,8 +92,12 @@ def with_loop(
 ) -> tuple[RunSummary, dict[str, Any]]:
     """The decision loop around the scenario's first disruption with the arm's planner, and the day's KPIs
     against BL-0 under the same disruptions. ``sims_out`` receives the runs of the arm and of BL-0."""
-    closures = GreedyDispatcher(world).closures_of(sc)
-    incidents = [d for d in scenario.injected(sc) if d.kind != "line_block"]  # line blocks are closures
+    # a line block is a closure, except under single-line working: the injector then works the other line
+    # both ways, in the world and in every plan (issue #153)
+    slw = {d.incident_id for d in sc.disruptions if d.type == "line_block" and d.single_line_working}
+    plain = sc.model_copy(update={"disruptions": [d for d in sc.disruptions if d.incident_id not in slw]})
+    closures = GreedyDispatcher(world).closures_of(plain)
+    incidents = [d for d in scenario.injected(sc) if d.kind != "line_block" or d.incident_id in slw]
     delays = scenario.entry_delays(sc)
     first = min(d.start_s for d in sc.disruptions)
     from_s, to_s = first - LEAD_S, first - LEAD_S + span_s

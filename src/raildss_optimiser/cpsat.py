@@ -11,6 +11,12 @@ returns a DISPLIB solution, so the independent G1 evaluator (#77) can check it. 
 * **Resources.** Each use is an optional interval from the start to the end plus the release time;
   the intervals of a resource do not overlap (DISPLIB resources are exclusive).
 * **Objective.** ``op_delay``: ``coeff * max(0, t - threshold) + increment * [t > threshold]``.
+* **Direction gates** (issue #153). Operations on a reversible line (``gate: [line, direction]``) of trains
+  of opposite directions do not overlap: one train's whole run over the line (from its first operation's
+  start to its last one's end plus release) is before or after the other's. Trains of one direction
+  follow each other block by block (the resource terms).
+* **Unavailable resources** (issue #153). A line block makes its resources unavailable over a window: a
+  fixed interval in the resource's no-overlap.
 * **Hint.** A known feasible schedule (the BL-0 twin's, FR-OPT-03) can warm-start the search.
 * **Rolling horizon** (issue #152, FR-OPT-07). ``fixed`` operations (frozen decisions and accepted orders)
   must be used and end within their bounds. ``preferred`` operations (the previous plan's decisions)
@@ -61,8 +67,31 @@ class _Progress(cp_model.CpSolverSolutionCallback):
 
 def _horizon(problem: Problem) -> int:
     ubs = [int(op["start_ub"]) for ops in problem["trains"] for op in ops if "start_ub" in op]
+    ubs += [int(u["end"]) for u in problem.get("unavailable", [])]  # a block can outlast every bound
     durs = sum(int(op.get("min_duration", 0)) for ops in problem["trains"] for op in ops)
     return max(ubs, default=0) + min(durs, 7 * 24 * 3600) + 1
+
+
+def _gate_runs(ops: Sequence[Mapping[str, Any]]) -> list[tuple[str, str, int, int]]:
+    """A train's runs over reversible lines: ``(gate, direction, first op, last op)`` per chain of
+    operations on one gate (alternative chains on other lines are other runs)."""
+    runs: list[tuple[str, str, int, int]] = []
+    for oi, op in enumerate(ops):
+        g = op.get("gate")
+        if not g:
+            continue
+        gate, direction = str(g[0]), str(g[1])
+        preds = [pi for pi, p in enumerate(ops) if oi in p.get("successors", []) and p.get("gate")]
+        if any(ops[pi]["gate"][0] == gate for pi in preds):
+            continue  # inside a chain: the run starts at its first operation
+        last = oi
+        while True:
+            nxt = [n for n in ops[last].get("successors", []) if (ops[n].get("gate") or [None])[0] == gate]
+            if not nxt:
+                break
+            last = nxt[0]
+        runs.append((gate, direction, oi, last))
+    return runs
 
 
 def paths_from_solution(problem: Problem, solution: Mapping[str, Any]) -> dict[int, Path]:
@@ -156,6 +185,8 @@ def solve(
     end: list[list[Any]] = []
     edges: list[dict[tuple[int, int], Any]] = []
     by_resource: dict[str, list[Any]] = defaultdict(list)
+    # gate -> [(train, direction, start, end + release, presence)]: one run over a reversible line each
+    gated: dict[str, list[tuple[int, str, Any, Any, Any]]] = defaultdict(list)
     for ti, ops in enumerate(trains):
         xs, ss, es = [], [], []
         for oi, op in enumerate(ops):
@@ -190,13 +221,26 @@ def solve(
                 size = m.new_int_var(0, 3 * horizon, f"z{ti}_{oi}_{use['resource']}")
                 iv = m.new_optional_interval_var(ss[oi], size, es[oi] + rel, xs[oi], f"i{ti}_{oi}")
                 by_resource[str(use["resource"])].append(iv)
+        for gate, direction, first, last in _gate_runs(ops):
+            rel = max((int(u.get("release_time", 0)) for u in ops[last].get("resources", [])), default=0)
+            gated[gate].append((ti, direction, ss[first], es[last] + rel, xs[first]))
         x.append(xs)
         s.append(ss)
         end.append(es)
         edges.append(ed)
+    for k, u in enumerate(problem.get("unavailable", [])):
+        a, z = int(u["start"]), int(u["end"])
+        by_resource[str(u["resource"])].append(m.new_fixed_size_interval_var(a, max(0, z - a), f"u{k}"))
     for ivs in by_resource.values():
         if len(ivs) > 1:
             m.add_no_overlap(ivs)
+    for gate, runs in gated.items():
+        for (ta, da, sa, ea, pa), (tb, db, sb, eb, pb) in itertools.combinations(runs, 2):
+            if ta == tb or da == db:
+                continue
+            before = m.new_bool_var(f"g{gate}_{ta}_{tb}")  # a's run over the line before b's
+            m.add(ea <= sb).only_enforce_if([pa, pb, before])
+            m.add(eb <= sa).only_enforce_if([pa, pb, ~before])
     terms = []
     for k, c in enumerate(problem.get("objective", [])):
         ti, oi = int(c["train"]), int(c["operation"])

@@ -146,6 +146,56 @@ def _ops(problem: Mapping[str, Any]) -> list[list[Mapping[str, Any]]]:
     return list(problem["trains"])
 
 
+def _extensions(
+    trains: Sequence[Sequence[Mapping[str, Any]]],
+    per_train: Mapping[int, list[tuple[int, int, float]]],
+    ends: Mapping[tuple[int, int], tuple[int, float] | None],
+    users: Mapping[str, list[tuple[int, int, int, float, float]]],
+    label: Sequence[str],
+    bad: Any,
+    unavailable: Sequence[Mapping[str, Any]] = (),
+) -> None:
+    """Issue #153: trains of opposite directions on a reversible line (``gate``) do not overlap, and no
+    train uses a resource while it is ``unavailable`` (a line block)."""
+    runs: dict[str, list[tuple[int, str, float, float]]] = {}
+    for ti, seq in per_train.items():
+        if not 0 <= ti < len(trains):
+            continue
+        open_: tuple[str, str, float] | None = None
+        last_end = 0.0
+        for _, oi, t in [*seq, (-1, -1, float("nan"))]:
+            g = trains[ti][oi].get("gate") if oi >= 0 else None
+            gate = str(g[0]) if g else None
+            if open_ is not None and gate != open_[0]:
+                runs.setdefault(open_[0], []).append((ti, open_[1], open_[2], last_end))
+                open_ = None
+            if gate is not None and g is not None:
+                if open_ is None:
+                    open_ = (gate, str(g[1]), t)
+                end = ends.get((ti, oi))
+                rel = max(
+                    (float(u.get("release_time", 0)) for u in trains[ti][oi].get("resources", [])), default=0
+                )
+                last_end = (end[1] if end is not None else t) + rel
+    for gate, rs in runs.items():
+        for a, (ta, da, sa, ea) in enumerate(rs):
+            for tb, db, sb, eb in rs[a + 1 :]:
+                if ta != tb and da != db and sa < eb and sb < ea:
+                    bad(
+                        "direction",
+                        f"{gate}: {label[ta]} ({da}) and {label[tb]} ({db}) overlap on it",
+                        ta,
+                        tb,
+                    )
+    for u in unavailable:
+        res, lo, hi = str(u["resource"]), float(u["start"]), float(u["end"])
+        for _, ti, oi, t, rel in users.get(res, []):
+            end = ends.get((ti, oi))
+            stop = (end[1] if end is not None else float("inf")) + rel
+            if t < hi and stop > lo:
+                bad("unavailable", f"{res} is out of use {lo:g}-{hi:g}; {label[ti]} op {oi} uses it", ti)
+
+
 def objective_value(problem: Mapping[str, Any], starts: Mapping[tuple[int, int], float]) -> float:
     """DISPLIB ``op_delay``: ``coeff * max(0, t - threshold) + increment * [t > threshold]``."""
     total = 0.0
@@ -268,6 +318,7 @@ def g1(
                         tb,
                     )
 
+    _extensions(trains, per_train, ends, users, label, bad, problem.get("unavailable", []))
     value = objective_value(problem, starts)
     if "objective_value" in solution and abs(float(solution["objective_value"]) - value) > tol:
         bad("objective", f"reported objective {solution['objective_value']} but recomputed {value:g}")
