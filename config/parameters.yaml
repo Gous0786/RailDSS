@@ -1049,6 +1049,14 @@ parameters:
     status: V
     owner: dss
     valid_from: 2026-11-03
+  - key: alert.controllers_on_duty
+    value: 1
+    unit: controllers
+    source: "assumption: one section controller on KTV-PSA (R02 H1 counts alerts per controller per hour)"
+    status: SA
+    owner: dss
+    valid_from: 2026-11-23
+    notes: "Divisor of the alert load (raildss_dss.alert_kpi); raise it to model a shift with more controllers."
   - key: alert.flood
     value: {alerts: 10, window_min: 10}
     unit: null

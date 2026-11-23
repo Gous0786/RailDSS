@@ -192,3 +192,8 @@ src/raildss_dss/conflict_kpi.py: 60  # seconds per minute, not a rule value
 src/raildss_dss/conflict_kpi.py: 100  # percent, not a rule value
 src/raildss_dss/conflict_kpi.py: 2  # digits of the rounded share, not a rule value
 src/raildss_twin/displib.py: 60  # seconds per minute (unit conversion), not a rule value
+src/raildss_dss/alert_kpi.py: 3600  # seconds per hour, not a rule value
+src/raildss_dss/alert_kpi.py: 2  # digits of the rounded alert rate, not a rule value
+src/raildss_orchestrator/alert_load.py: 3600  # seconds per hour, not a rule value
+src/raildss_orchestrator/alert_load.py: 24  # hours of the nominal day, not a rule value
+src/raildss_dss/alert_kpi.py: 60  # seconds per minute, not a rule value

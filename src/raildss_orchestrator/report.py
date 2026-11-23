@@ -28,6 +28,21 @@ def conflict_rows(k: dict[str, Any]) -> list[str]:
     ]
 
 
+def alert_rows(k: dict[str, Any]) -> list[str]:
+    """The H1 / H2 table of a run (DSC-09)."""
+    per_hour = k["H1_alerts_per_controller_hour"]
+    return [
+        "| KPI | Value | Target |",
+        "|---|---:|---|",
+        f"| Alerts | {k['alerts']} ({k['from_conflicts']} conflicts, "
+        f"{k['from_data_quality']} data quality) | |",
+        f"| H1 alerts per controller-hour | {'-' if per_hour is None else f'{per_hour:g}'} "
+        f"({k['hours']:g} h, {k['controllers']} controller) | <= {k['budget_per_hour']:g} (DSC-09) |",
+        f"| H2 flood events | {k['H2_flood_events']} (most alerts in one window: {k['max_in_flood_window']}) "
+        "| 0 (DSC-09) |",
+    ]
+
+
 def render(
     summary: RunSummary,
     comparison: dict[str, Any],
@@ -35,6 +50,7 @@ def render(
     *,
     solver: str,
     conflicts: dict[str, Any] | None = None,
+    alerts: dict[str, Any] | None = None,
 ) -> str:
     """Markdown of one replay: window, loop statistics, KPI comparison and the biggest changes per train."""
     gates = [c for cy in summary.cycles for c in cy.candidates]
@@ -76,6 +92,8 @@ def render(
             "",
             *conflict_rows(conflicts),
         ]
+    if alerts is not None:
+        lines += ["", "## Alert load (H1, H2)", "", *alert_rows(alerts)]
     delta = comparison["deltas"].get("BL-0")
     if delta:
         lines += ["### DSS minus BL-0", "", "| KPI | Delta |", "|---|---|"]

@@ -19,7 +19,7 @@ from raildss_dss.conflict_kpi import gt_occurrence
 from raildss_dss.kpi import KpiReport
 from raildss_optimiser.greedy import GreedyDispatcher
 from raildss_orchestrator.loop import Disruption, Orchestrator, RunSummary
-from raildss_orchestrator.report import conflict_rows
+from raildss_orchestrator.report import alert_rows, conflict_rows
 from raildss_orchestrator.twin import TwinDss, TwinPlanner, day_kpis
 from raildss_twin import run, scenario
 from raildss_twin.kpi_eval import run_arm
@@ -104,6 +104,7 @@ def with_loop(world: run.World, sc: Scenario, arm: str = "BL-1") -> tuple[RunSum
         comparison["conflicts"] = loop.conflict_log.kpis(
             gt_occurrence(gt, dss.origin, world.register), to_s=to_s
         ).as_dict()
+    comparison["alerts"] = loop.alert_log.kpis(from_s, to_s).as_dict()  # H1, H2 (DSC-09)
     return summary, comparison
 
 
@@ -165,6 +166,8 @@ def render(rows: list[tuple[Scenario, KpiReport]], loops: list[Loop], command: s
         for arm, (_, comp) in arms.items():
             if "conflicts" in comp:
                 out += ["", f"Conflicts (D1, D2), {arm}:", "", *conflict_rows(comp["conflicts"])]
+            if "alerts" in comp:
+                out += ["", f"Alert load (H1, H2), {arm}:", "", *alert_rows(comp["alerts"])]
     return "\n".join(out) + "\n"
 
 
