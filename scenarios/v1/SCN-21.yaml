@@ -21,5 +21,5 @@ disruptions:
     etr: {offset_min: 30, sigma_min: 20}
     note: "The DN line of KPL-ALM is blocked; trains of both directions use the remaining lines (3-line block)."
 requires: []
-expected_gt_hash: "6a22fb8986b80049129e00a75dcf1d4dbb6ceb7b4023a96e8db7dca1194707e1"
+expected_gt_hash: "3ba948ddf782959bf53e848a627430e912133927488b3568aab1a356aee5c612"
 notes: "Single-line working on a 3-line KTV-VZM block section (FR-TWIN-18)."

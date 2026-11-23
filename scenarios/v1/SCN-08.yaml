@@ -27,5 +27,5 @@ disruptions:
     duration_min: {low_min: 120, high_min: 120}
     etr: {offset_min: -60, sigma_min: 15}
     note: "The same zone, UP direction."
-requires: [injector-ohe-crew]
-notes: "Needs the OHE injector (#147). Electric trains stop in the zone until the block ends."
+expected_gt_hash: "66acaf3823e87ee4a55139283c74a43d91ccf08e65eaf0d61ac91cf9afc34bff"
+notes: "Executable with the OHE injector (#147): electric trains do not enter the zone during the block, which overruns its announced end by 60 min."

@@ -53,7 +53,16 @@ DISRUPTION_TYPES = (
     "special_train",
     "exit_blocked",
 )
-INJECTOR_KINDS = ("line_block", "point_failure", "signal_failure", "tsr", "loco_failure")  # built today
+INJECTOR_KINDS = (  # built today
+    "line_block",
+    "point_failure",
+    "signal_failure",
+    "tsr",
+    "loco_failure",
+    "ohe_block",
+    "ohe_trip",
+    "crew_hours",
+)
 # Components a scenario waits for: ``injector`` (the v0 tag, no scenario carries it any more) and, in M2,
 # the injectors of #146 (loco and signal failure), #147 (OHE and crew hours) and #148 (special train and
 # closed exit), and the parameter sensitivity run of SCN-24.

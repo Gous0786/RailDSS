@@ -19,5 +19,5 @@ disruptions:
     duration_min: {low_min: 90, high_min: 150}
     etr: {offset_min: 0, sigma_min: 30}
     note: "The crew of a freight train (entered at KTV 06:03) runs out of hours; it stands until relief."
-requires: [injector-ohe-crew]
-notes: "Needs the crew-hours injector (#147)."
+expected_gt_hash: "43e25306af57321706cc05bc268828bf78495561e68f10037f47614352be239b"
+notes: "Executable with the crew-hours injector (#147): the freight train stands at VZM until relief."

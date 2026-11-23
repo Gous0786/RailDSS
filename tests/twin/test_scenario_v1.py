@@ -47,12 +47,19 @@ def test_the_v1_index_lists_every_scenario_by_family_and_is_current() -> None:
 
 
 def test_which_scenarios_are_executable_now_and_what_the_rest_wait_for() -> None:
-    assert {s.id for s in EXECUTABLE_NEW} == {"SCN-04", "SCN-07", "SCN-14", "SCN-15", "SCN-19", "SCN-21"}
+    assert {s.id for s in EXECUTABLE_NEW} == {
+        "SCN-04",
+        "SCN-07",
+        "SCN-08",
+        "SCN-09",
+        "SCN-10",
+        "SCN-14",
+        "SCN-15",
+        "SCN-19",
+        "SCN-21",
+    }
     waits = {s.id: s.requires for s in WAITING}
     assert waits == {
-        "SCN-08": ["injector-ohe-crew"],
-        "SCN-09": ["injector-ohe-crew"],
-        "SCN-10": ["injector-ohe-crew"],
         "SCN-11": ["injector-special-exit"],
         "SCN-23": ["injector-special-exit"],
         "SCN-24": ["sensitivity-run"],
@@ -120,8 +127,8 @@ def test_an_unknown_boundary_is_reported() -> None:
 
 
 def test_a_scenario_waiting_for_a_component_is_validated_not_executed() -> None:
-    sc = scenario.load(scenario.V1_DIR / "SCN-08.yaml")
-    with pytest.raises(ValueError, match="requires injector-ohe-crew"):
+    sc = scenario.load(scenario.V1_DIR / "SCN-11.yaml")
+    with pytest.raises(ValueError, match="requires injector-special-exit"):
         scenario.run_scenario(None, sc)
 
 

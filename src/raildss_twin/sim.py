@@ -278,6 +278,10 @@ class Sim:
         self.refusals: list[Refusal] = []
         self.restrictions: list[Restriction] = []  # speed limits from incidents (TSR, signal failure)
         self.stalls: dict[str, tuple[float, float]] = {}  # run id -> (from, to): loco failure
+        # power off over block segments (OHE block or trip, issue #147): a train running there stops
+        self.zone_stalls: list[tuple[frozenset[str], float, float]] = []
+        # crew out of hours (issue #147): (run id, station) -> (from, to) the train cannot leave
+        self.crew_holds: dict[tuple[str, str], tuple[float, float]] = {}
         # Temporary single-line working (FR-TWIN-18): the working line of a segment is a reversible line,
         # and against its own direction a train uses the Connections of the blocked line (the crossover).
         self.reversible: dict[str, int] = {}  # physical line key -> windows making it reversible
@@ -740,6 +744,11 @@ class Sim:
                     t.status = "running"
                 else:
                     hold = None
+                crew = self.crew_holds.get((plan.run_id, node.op))
+                if crew is not None and crew[0] <= self.env.now < crew[1]:  # the crew ran out of hours here
+                    t.status, t.stood = "dwelling", True
+                    yield self.env.timeout(crew[1] - self.env.now)
+                    t.status = "running"
                 if plan.timetabled and node.stop:
                     self._delay(t, node, "departure", self.env.now - node.dep)
                 # ---- despatch: take a block line, then free the station line
@@ -889,6 +898,10 @@ class Sim:
                     span = max(span, metres / (r.kmh / KMH_PER_MPS))
                     if r.extra_s and not self.layout.ops[x.op].is_halt:  # entering the block
                         span += r.extra_s
+        if line is not None:
+            for segments, a, b in self.zone_stalls:  # the power fails while it runs in the zone
+                if line.segment in segments and now < a < now + span:
+                    span += b - a
         stall = self.stalls.get(t.plan.run_id)
         if stall is not None and stall[0] < now + span and now < stall[1]:
             span += stall[1] - max(now, stall[0])
