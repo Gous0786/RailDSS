@@ -167,7 +167,8 @@ def _extensions(
             g = trains[ti][oi].get("gate") if oi >= 0 else None
             gate = str(g[0]) if g else None
             if open_ is not None and gate != open_[0]:
-                runs.setdefault(open_[0], []).append((ti, open_[1], open_[2], last_end))
+                g0, d0, t0 = open_
+                runs.setdefault(g0, []).append((ti, d0, t0, last_end))
                 open_ = None
             if gate is not None and g is not None:
                 if open_ is None:

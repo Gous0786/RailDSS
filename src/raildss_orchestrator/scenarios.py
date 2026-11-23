@@ -24,7 +24,7 @@ from raildss_optimiser.greedy import GreedyDispatcher
 from raildss_orchestrator.loop import Disruption, Orchestrator, RunSummary
 from raildss_orchestrator.report import alert_rows, conflict_rows
 from raildss_orchestrator.twin import TwinDss, TwinPlanner, day_kpis
-from raildss_twin import run, scenario
+from raildss_twin import run, sandbox, scenario
 from raildss_twin.kpi_eval import run_arm
 from raildss_twin.scenario import Scenario
 
@@ -115,6 +115,7 @@ def with_loop(
     summary = loop.run(from_s, to_s, TICK_S)
     holds, lines = loop.commitments()
     gt: list[Any] = []
+    ran: dict[str, Any] = sims_out if sims_out is not None else {}
     comparison = day_kpis(
         world,
         day,
@@ -126,8 +127,11 @@ def with_loop(
         entry_delays=delays,
         arm=arm,
         events_out=gt,
-        sims_out=sims_out,
         terminations=loop.terminations(),
+        sims_out=ran,
+    )
+    comparison["safety"] = sandbox.executed_safety(  # head-on and deadlocks executed (issue #153)
+        ran[arm], day, from_s, register=world.register, net=planner.dispatcher.net
     )
     if loop.conflict_log is not None:  # D1 and D2: the DS-5 log against the ground truth
         comparison["conflicts"] = loop.conflict_log.kpis(
@@ -178,6 +182,14 @@ def render(rows: list[tuple[Scenario, KpiReport]], loops: list[Loop], command: s
                 f"{summary.accepted} recommendations accepted, {summary.orders} orders."
             )
             out += [f"  - {line}" for line in option_lines(summary)]
+            safety = arms[arm][1].get("safety")
+            if safety is not None:
+                cp = [c for cy in summary.cycles for c in cy.candidates if c.name == "cpsat"]
+                out.append(
+                    f"  - CP-SAT plans verified: {sum(c.verified for c in cp)} of {len(cp)}; executed from "
+                    f"the window start: {safety['head_on']} head-on movements (VER-BLK-04), "
+                    f"{safety['deadlocks']} deadlocks, {safety['stuck']} stuck trains"
+                )
         names = list(arms)
         base = next(iter(arms.values()))[1]["arms"]["BL-0"]
         both = {"DSS", "BL-1"} <= set(names)
