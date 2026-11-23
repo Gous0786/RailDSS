@@ -45,7 +45,7 @@ SHOWN = (
 
 def bl0(world: run.World, sc: Scenario) -> KpiReport:
     """The scenario under BL-0: its seed, freight day and injected disruptions, no decision support."""
-    kw = scenario.run_kwargs(sc)
+    kw = scenario.run_kwargs(sc, world)
     return run_arm(
         world,
         sc.wtt_date,
@@ -55,6 +55,7 @@ def bl0(world: run.World, sc: Scenario) -> KpiReport:
         seed=kw["seed"],
         day_instance=kw["day_instance"],
         setup=kw["setup"],
+        extra_plans=scenario.special_plans(world, sc),
     )
 
 

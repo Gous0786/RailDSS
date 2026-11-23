@@ -66,6 +66,9 @@ INJECTOR_KINDS = (  # built today
 # Components a scenario waits for: ``injector`` (the v0 tag, no scenario carries it any more) and, in M2,
 # the injectors of #146 (loco and signal failure), #147 (OHE and crew hours) and #148 (special train and
 # closed exit), and the parameter sensitivity run of SCN-24.
+# Kinds the scenario plays itself, not the injector: a late entry (directive), an inserted special train
+# (an extra plan) and a closed exit (a boundary acceptance window, a directive).
+SCENARIO_KINDS = ("entry_delay", "special_train", "exit_blocked")
 REQUIRES = ("injector", "injector-loco", "injector-ohe-crew", "injector-special-exit", "sensitivity-run")
 Requirement = Literal[
     "injector", "injector-loco", "injector-ohe-crew", "injector-special-exit", "sensitivity-run"
@@ -168,7 +171,7 @@ class ScenarioDisruption(_Strict):
 
     def realize(self, seed: int, day: dt.date) -> Disruption | None:
         """The injector disruption for this seed; ``None`` for an ``entry_delay`` (not an injector kind)."""
-        if self.type == "entry_delay":
+        if self.type in SCENARIO_KINDS:  # played by the scenario (late entry, special train, closed exit)
             return None
         if self.type not in INJECTOR_KINDS or self.duration_min is None:
             raise ValueError(f"{self.incident_id}: the {self.type} injector is not built yet")
@@ -379,18 +382,73 @@ def injected(sc: Scenario) -> list[Disruption]:
     return [r for d in sc.disruptions if (r := d.realize(sc.seed, sc.wtt_date)) is not None]
 
 
-def run_kwargs(sc: Scenario) -> dict[str, Any]:
-    """What ``run.run_day`` needs to play the scenario: its seed, freight day and disruptions."""
+def exit_windows(sc: Scenario) -> dict[str, list[tuple[float, float]]]:
+    """The closed exits of a scenario: station -> [(from, to) in seconds], drawn from the seed.
+
+    A boundary acceptance window (FR-OPT-20) closes the exit of the boundary's station: a train whose
+    last station in the section is that station stands at the station before it until the window ends.
+    The twin works at the granularity of the station, so the other boundary of the station is closed too."""
+    out: dict[str, list[tuple[float, float]]] = {}
+    boundaries = load_boundaries().boundaries
+    for d in sc.disruptions:
+        if d.type != "exit_blocked" or d.boundary is None:
+            continue
+        rng = random.Random(f"raildss-scn/{sc.seed}/{d.incident_id}")
+        assert d.duration_min is not None
+        length_s = rng.uniform(d.duration_min.low_min, d.duration_min.high_min) * SECONDS_PER_MIN
+        out.setdefault(boundaries[d.boundary].station, []).append((d.start_s, d.start_s + length_s))
+    return out
+
+
+def special_plans(world: Any, sc: Scenario) -> list[Any]:
+    """The unplanned special trains of a scenario as plans: no booked times, only the entry time at the
+    entry station (as a freight train), passenger rolling stock and the scenario's precedence class.
+    They run from the entry station to the end of the section in their direction."""
+    from raildss_twin.plans import Node, Plan
+
+    stations = world.layout.block_stations()
+    plans = []
+    for d in sc.disruptions:
+        if d.type != "special_train":
+            continue
+        assert d.station is not None and d.train_no is not None
+        i = stations.index(d.station)
+        path = stations[i:] if d.direction == "DN" else stations[: i + 1][::-1]
+        plans.append(
+            Plan(
+                run_id=f"{d.train_no}@{sc.wtt_date.isoformat()}",
+                kind="passenger",
+                name=f"special train {d.train_no}",
+                template=world.timing.stock.passenger(world.timing.default_coaches),
+                nodes=[Node(op, d.start_s, d.start_s, False) for op in path],
+                entry_s=d.start_s,
+                timetabled=False,
+                category=str(d.category),
+            )
+        )
+    return plans
+
+
+def run_kwargs(sc: Scenario, world: Any = None) -> dict[str, Any]:
+    """What ``run.run_day`` needs to play the scenario: its seed, freight day and disruptions.
+
+    ``world`` is needed only for a scenario with a special train: its plan is added to the day's plans."""
+    from raildss_twin import run
     from raildss_twin.injector import Injector
     from raildss_twin.sim import Directives
 
-    scripted, delays = injected(sc), entry_delays(sc)
-    return {
+    scripted, delays, exits = injected(sc), entry_delays(sc), exit_windows(sc)
+    kw: dict[str, Any] = {
         "seed": sc.seed,
         "day_instance": sc.freight_day,
-        "directives": Directives(entry_delays=delays) if delays else None,
+        "directives": Directives(entry_delays=delays, exit_windows=exits) if delays or exits else None,
         "setup": (lambda s: Injector(s, scripted)) if scripted else None,
     }
+    special = special_plans(world, sc) if world is not None else []
+    if special:
+        plans, _, _ = run.plans_for(world, sc.wtt_date, sc.freight_day)
+        kw["plans"] = sorted([*plans, *special], key=lambda p: (p.entry_s, p.run_id))
+    return kw
 
 
 def run_scenario(world: Any, sc: Scenario) -> Any:
@@ -404,7 +462,7 @@ def run_scenario(world: Any, sc: Scenario) -> Any:
     if not sc.executable:
         raise ValueError(f"{sc.id} requires {', '.join(sc.requires)} and is not executed")
     observers = [Observer(world.register, sc.degradation_profile)]
-    report, _ = run.run_day(world, sc.wtt_date, observers=observers, **run_kwargs(sc))
+    report, _ = run.run_day(world, sc.wtt_date, observers=observers, **run_kwargs(sc, world))
     return report
 
 

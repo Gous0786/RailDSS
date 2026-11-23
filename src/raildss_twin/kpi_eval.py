@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import itertools
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from raildss_dss.kpi import KpiReport, TrainInfo, compare_runs, compute
@@ -57,9 +57,11 @@ def run_arm(
     day_instance: str | None = None,
     setup: Callable[[Sim], object] | None = None,
     events_out: list[Any] | None = None,
+    extra_plans: Sequence[Plan] = (),
 ) -> KpiReport:
     """Replay the day under BL-0 (with a candidate's directives, if any) and compute its KPIs."""
     plans, _, _ = run.plans_for(world, day, day_instance)
+    plans = sorted([*plans, *extra_plans], key=lambda p: (p.entry_s, p.run_id)) if extra_plans else plans
     _, sim = run.run_day(
         world,
         day,

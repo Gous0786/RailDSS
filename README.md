@@ -392,10 +392,12 @@ decision loop against BL-0 under the same closure.
 
 **Library v1** (issue #165): `python -m raildss_twin scenario check|index|run` now covers the v0 ten plus
 the twelve definitions in `scenarios/v1` (SCN-04, 07-11, 14, 15, 19, 21, 23, 24): 22 scenarios, indexed by
-family in [`scenarios/v1/INDEX.md`](scenarios/v1/INDEX.md). SCN-07, 14, 19 and 21 run in the twin today and
-carry their `gt.*` hash; the other eight name the component they wait for under `requires` (loco-failure,
-OHE and crew, special-train and closed-exit injectors, #146-#148, and the SCN-24 sensitivity run) and get
-their hash with `scenario run --record` when it lands. `--library v0` keeps the v0 view.
+family in [`scenarios/v1/INDEX.md`](scenarios/v1/INDEX.md). All but SCN-24 run in the twin and carry their
+`gt.*` hash: the line-block, signal, loco, OHE and crew scenarios through the injector, SCN-11 by inserting an
+unplanned special train (an extra plan with an entry time only, mail/express class) and SCN-23 by closing the
+exit of the boundary's station for a seeded window (a directive: a train whose last station is KTV stands at the
+station before it until the window ends). SCN-24 waits for the sensitivity run (`requires: sensitivity-run`) and
+gets its hash with `scenario run --record` when it lands. `--library v0` keeps the v0 view.
 
 ## Licence
 

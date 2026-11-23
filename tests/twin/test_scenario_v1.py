@@ -53,17 +53,15 @@ def test_which_scenarios_are_executable_now_and_what_the_rest_wait_for() -> None
         "SCN-08",
         "SCN-09",
         "SCN-10",
+        "SCN-11",
         "SCN-14",
         "SCN-15",
         "SCN-19",
         "SCN-21",
+        "SCN-23",
     }
     waits = {s.id: s.requires for s in WAITING}
-    assert waits == {
-        "SCN-11": ["injector-special-exit"],
-        "SCN-23": ["injector-special-exit"],
-        "SCN-24": ["sensitivity-run"],
-    }
+    assert waits == {"SCN-24": ["sensitivity-run"]}
     assert all(s.expected_gt_hash is None for s in WAITING)
     assert all(s.expected_gt_hash for s in LIBRARY if s.executable)
 
@@ -96,10 +94,11 @@ def test_the_new_disruption_kinds_need_their_fields() -> None:
     }
     with pytest.raises(ValidationError, match="category, direction"):
         ScenarioDisruption.model_validate(special)
-    d = ScenarioDisruption.model_validate({**special, "category": "special", "direction": "DN"})
+    d = ScenarioDisruption.model_validate({**special, "category": "mail_express", "direction": "DN"})
     assert d.duration_min is None  # an insertion has no duration
-    with pytest.raises(ValueError, match="not built yet"):
-        d.realize(1, scenario.load(scenario.V1_DIR / "SCN-11.yaml").wtt_date)
+    assert (
+        d.realize(1, scenario.load(scenario.V1_DIR / "SCN-11.yaml").wtt_date) is None
+    )  # played by the scenario
 
 
 def test_check_library_catches_unknown_bases_duplicates_and_unbounded_sensitivity() -> None:
@@ -127,8 +126,8 @@ def test_an_unknown_boundary_is_reported() -> None:
 
 
 def test_a_scenario_waiting_for_a_component_is_validated_not_executed() -> None:
-    sc = scenario.load(scenario.V1_DIR / "SCN-11.yaml")
-    with pytest.raises(ValueError, match="requires injector-special-exit"):
+    sc = scenario.load(scenario.V1_DIR / "SCN-24.yaml")
+    with pytest.raises(ValueError, match="requires sensitivity-run"):
         scenario.run_scenario(None, sc)
 
 
