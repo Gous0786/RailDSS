@@ -47,6 +47,12 @@ class Cadence:
         self.frozen = {k: d for k, d in self.frozen.items() if d.dep_s >= now_s}
         return list(self.frozen.values())
 
+    def release(self, now_s: float) -> None:
+        """Re-open the freeze window (an incident changed the world, issue #156): what has started stays
+        history, the rest is re-planned."""
+        self.freeze((), now_s)
+        self.frozen = {}
+
     def history(self) -> list[Decision]:
         """Decisions that have started: re-planning re-simulates the day, so they stay fixed (VER-FRZ-01)."""
         return list(self.done.values())

@@ -182,6 +182,8 @@ class Orchestrator:
         self._announced: set[int] = set()
         self._announced_incidents: set[int] = set()
         self._revised_incidents: set[int] = set()  # cleared or past their announced ETR (issue #156)
+        self._reopen = False  # an incident became known or changed: re-open the commit window (#156)
+        self._withdrawn: set[str] = set()  # order ids withdrawn by a re-opened commit window
         self._ends: dict[str, tuple[str, str]] = {}  # order id -> (run id, station): short-term., cancel
         self._last_plan: list[Decision] = []
         self._view: DssView | None = None
@@ -244,15 +246,32 @@ class Orchestrator:
             if i not in self._announced_incidents and announced <= self.now_s:
                 self._announced_incidents.add(i)
                 events.add("disruption")
+                self._reopen = True
             if i not in self._revised_incidents and announced <= self.now_s and _revealed(d, self.now_s):
                 self._revised_incidents.add(i)
                 if d.etr_s is not None:  # what the plans assumed changes: the end is known (issue #156)
                     events.add("disruption")
+                    self._reopen = True
         self._events = events
         return events
 
     def _known_closures(self) -> list[Closure]:
         return [d.closure for d in self.disruptions if d.announced_s <= self.now_s]
+
+    def _reopen_window(self) -> int:
+        """An incident became known or its end changed (issue #156): the decisions of the last plan and the
+        orders not yet executed were made without it (a train due to leave into a dead OHE zone cannot), so
+        they are withdrawn and re-planned; the cycle's options give the new orders. Returns how many orders
+        were withdrawn."""
+        self.cadence.release(self.now_s)
+        out = 0
+        for oid, d in list(self._decisions.items()):
+            if d.dep_s >= self.now_s and self._in_force(oid):
+                self._withdrawn.add(oid)
+                out += 1
+        if out:
+            self._commit()
+        return out
 
     def _known_incidents(self) -> list[Any]:
         """The announced incidents as the controller knows them (issue #156): until it clears or its
@@ -273,7 +292,9 @@ class Orchestrator:
         now = self.now_s
         closures = self._known_closures()
         targets, blocked = self._releasable(view)
-        frozen = self.cadence.freeze(self._last_plan, now)
+        reopen, self._reopen = self._reopen, False
+        withdrawn = self._reopen_window() if reopen else 0
+        frozen = self.cadence.freeze([] if reopen else self._last_plan, now)
         holds, lines = self.commitments()
         horizon = now + self.cadence.freeze_s
         ahead = [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
@@ -311,6 +332,8 @@ class Orchestrator:
             commit_terminations=self.terminations(),
         )
         planned = self.planner.plan(ctx)
+        if withdrawn:
+            planned.notes.append(f"incident: commit window re-opened, {withdrawn} orders withdrawn")
         if self.audit is not None:
             self._run_id = self.audit.plan_run(ctx, view, planned.candidates)
         self.cadence.mark(now)
@@ -707,7 +730,7 @@ class Orchestrator:
     # ------------------------------------------------------------------ orders in force
     def _in_force(self, order_id: str) -> bool:
         order = self.executor.orders.get(order_id)
-        return order is not None and order.status != "DECLINED"
+        return order is not None and order.status != "DECLINED" and order_id not in self._withdrawn
 
     def commitments(self) -> tuple[dict[tuple[str, str], float], dict[tuple[str, str], int]]:
         """Holds and lines of the orders in force (issued or acknowledged, not declined)."""

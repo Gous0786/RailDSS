@@ -336,6 +336,7 @@ class TwinPlanner:
         self.short_terminate = bool(opts["short_terminate"])
         self.terminate_hold_s = float(opts["terminate_min_hold_min"]) * SECONDS_PER_MIN
         self.terminate_penalty = float(opts["terminate_penalty_min"])
+        self.recross_tries = int(opts["recross_tries"])
         self.plans = {token(p.run_id): p for p in run.plans_for(world, day)[0]}
 
     def solver_info(self) -> dict[str, Any]:
@@ -587,12 +588,21 @@ class TwinPlanner:
         """FR-OPT-11: re-order / re-cross, and (policy-gated) short-terminate or cancel."""
         out: list[Candidate] = []
         held = sorted(gp.holds, key=lambda h: (-h.held_s, h.run_id, h.station))
-        if held:  # the train held longest goes first: the others wait for it and cross it elsewhere
-            top = held[0]
-            alt = self._replan(ctx, imposed, checked, "-recross", promote=[top.run_id])
+        # re-order / re-cross: a train the plan holds goes first, the others wait for it and cross it
+        # elsewhere; a train held by the incident itself changes nothing, so the next one is tried
+        greedy_sig = self._signature(self._greedy_shape(gp))
+        tried: list[str] = []
+        for h in held:
+            if h.run_id in tried or len(tried) >= self.recross_tries:
+                continue
+            tried.append(h.run_id)
+            alt = self._replan(ctx, imposed, checked, "-recross", promote=[h.run_id])
+            if self._signature(self._greedy_shape(alt)) == greedy_sig:
+                continue
             cand = self._greedy(ctx, alt, standing, baseline, name="recross")
-            cand.solver |= {"promoted": top.run_id, "held_min": round(top.held_s / SECONDS_PER_MIN, 1)}
+            cand.solver |= {"promoted": h.run_id, "held_min": round(h.held_s / SECONDS_PER_MIN, 1)}
             out.append(cand)
+            break
         pick = self._terminable(ctx, held) if self.short_terminate else None
         if pick is not None:
             rid, station, cancel = pick
@@ -603,6 +613,11 @@ class TwinPlanner:
             cand.penalty_min = self.terminate_penalty
             out.append(cand)
         return out
+
+    @staticmethod
+    def _greedy_shape(gp: GreedyPlan) -> Candidate:
+        """A greedy plan as an unjudged candidate, for its signature only."""
+        return Candidate("", "", gp.decisions, gp.holds, None, None, None)  # type: ignore[arg-type]
 
     def _terminable(self, ctx: PlanContext, held: Sequence[Hold]) -> tuple[str, str, bool] | None:
         """The passenger train held longest (at least ``terminate_min_hold_min``) at a station it stops at:
