@@ -8,6 +8,7 @@ import { type Window, defaultWindow, describe, hhmm, panWindow, zoomWindow } fro
 import { AlertsPanel } from "./ops/AlertsPanel";
 import { CardPanel, REASONS } from "./ops/CardPanel";
 import type { AuditDoc } from "./audit/audit";
+import type { EvalDoc } from "./evaluation/evaluation";
 import { KpiStrip } from "./ops/KpiStrip";
 import { QueuePanel } from "./ops/QueuePanel";
 import { acknowledge, alertGroups, openCounts } from "./ops/alerts";
@@ -21,6 +22,7 @@ import type { Alert, ChartData, Priority } from "./types";
 const ControlChart = lazy(() => import("./chart/ControlChart").then((m) => ({ default: m.ControlChart })));
 const About = lazy(() => import("./About"));
 const AuditView = lazy(() => import("./audit/AuditView").then((m) => ({ default: m.AuditView })));
+const EvaluationView = lazy(() => import("./evaluation/EvaluationView").then((m) => ({ default: m.EvaluationView })));
 const WhatIfView = lazy(() => import("./whatif/WhatIfView").then((m) => ({ default: m.WhatIfView })));
 const Mimic = lazy(() => import("./mimic/Mimic").then((m) => ({ default: m.Mimic })));
 const GRAFANA = grafanaUrl(import.meta.env as Record<string, string | undefined>);
@@ -51,6 +53,7 @@ const SHORTCUTS: [string, string][] = [
   ["N", "jump to now"],
   ["Space", "play / pause the replay (SIM ×60)"],
   ["L", "audit and replay: log, timeline scrubbing, recommendation cards as shown"],
+  ["E", "management KPIs by arm and scenario (evaluation export; sample data until the runner writes one)"],
   ["W", "disruption and what-if view (scenario exports): incidents, variants on the chart, plan comparison"],
   ["G", "schematic mimic ↔ control chart (layout and occupancy at the time cursor)"],
   ["I", "about, attributions and licences"],
@@ -84,6 +87,9 @@ export default function App() {
   const [audit, setAudit] = useState(false);
   const [mimic, setMimic] = useState(false);
   const [whatIf, setWhatIf] = useState(false);
+  const [evaluation, setEvaluation] = useState(false);
+  const [evalDoc, setEvalDoc] = useState<EvalDoc | null>(null);
+  const [evalError, setEvalError] = useState("");
   const [variant, setVariant] = useState(-1); // what-if: index of the option drawn, -1 the baseline alone
   const [variantMode, setVariantMode] = useState<PreviewMode>("off");
   const [auditDoc, setAuditDoc] = useState<AuditDoc | null>(null);
@@ -120,6 +126,14 @@ export default function App() {
       .then((d: ChartData) => setData(d))
       .catch(() => setError(`Could not load data/${day}.json`));
   }, [day]);
+
+  useEffect(() => {
+    if (!evaluation || evalDoc) return;
+    fetch("data/evaluation.json")
+      .then((r) => r.json())
+      .then((d: EvalDoc) => setEvalDoc(d))
+      .catch(() => setEvalError("No evaluation export. See docs/kpi/evaluation-export.md (web/public/data/evaluation.json)."));
+  }, [evaluation, evalDoc]);
 
   useEffect(() => {
     if (!audit || auditDoc) return;
@@ -199,7 +213,8 @@ export default function App() {
         return;
       }
       if (k === "Escape") {
-        if (whatIf) setWhatIf(false);
+        if (evaluation) setEvaluation(false);
+        else if (whatIf) setWhatIf(false);
         else if (audit) setAudit(false);
         else if (about) setAbout(false);
         else if (help) setHelp(false);
@@ -210,6 +225,7 @@ export default function App() {
       }
       if (k === "?") return setHelp((h) => !h);
       if (k === "l" || k === "L") return setAudit((a) => !a);
+      if (k === "e" || k === "E") return setEvaluation((v) => !v);
       if ((k === "w" || k === "W") && hasWhatIf(data)) return setWhatIf((v) => !v);
       if (k === "g" || k === "G") return setMimic((v) => !v);
       if (k === "i" || k === "I") return setAbout((a) => !a);
@@ -278,7 +294,7 @@ export default function App() {
         setPlaying((p) => !p);
       }
     },
-    [data, phase, help, about, audit, whatIf, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
+    [data, phase, help, about, audit, whatIf, evaluation, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
   );
 
   useEffect(() => {
@@ -318,6 +334,9 @@ export default function App() {
         )}
         <button onClick={() => setMimic((v) => !v)} aria-label="Schematic mimic" aria-pressed={mimic}>
           {mimic ? "Chart" : "Mimic"}
+        </button>
+        <button onClick={() => setEvaluation((v) => !v)} aria-label="Management KPIs" aria-pressed={evaluation}>
+          Management
         </button>
         {hasWhatIf(data) && (
           <button onClick={() => setWhatIf((v) => !v)} aria-label="Disruption and what-if" aria-pressed={whatIf}>
@@ -413,6 +432,11 @@ export default function App() {
               {log.length === 0 ? <p className="muted">No decisions yet.</p> : log.map((l) => <p key={l}>{l}</p>)}
             </section>
           </aside>
+        )}
+        {evaluation && (
+          <Suspense fallback={null}>
+            <EvaluationView doc={evalDoc} error={evalError} onClose={() => setEvaluation(false)} />
+          </Suspense>
         )}
         {whatIf && data && (
           <Suspense fallback={null}>

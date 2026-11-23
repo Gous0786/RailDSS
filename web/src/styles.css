@@ -846,3 +846,50 @@ kbd {
   background: #3b2f12;
   color: #e3b341;
 }
+
+/* ---- issue #173: management KPI view ---- */
+.evalview {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(980px, calc(100% - 24px));
+  max-height: calc(100% - 60px);
+  overflow-y: auto;
+  background: #1b1f26;
+  border: 1px solid #373e47;
+  border-radius: 8px;
+  padding: 4px 18px 12px;
+  box-shadow: 0 8px 30px #000a;
+  z-index: 5;
+}
+.evalview h4 {
+  margin: 12px 0 4px;
+}
+.eval-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.eval-table th,
+.eval-table td {
+  text-align: right;
+  padding: 2px 8px;
+  border-bottom: 1px solid #2a2f37;
+}
+.eval-table th:first-child,
+.eval-table td:first-child {
+  text-align: left;
+}
+.eval-delta {
+  color: inherit;
+  opacity: 0.8;
+}
+.banner-sample {
+  display: block;
+  background: #5a3b0a;
+  color: #ffd78a;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+}

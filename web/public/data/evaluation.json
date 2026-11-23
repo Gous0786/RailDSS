@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "run": {
+    "network_version": "KTV-PSA-2025-08-r2",
+    "register_version": "2026.11.1+sample",
+    "scenario_set": "sample",
+    "seed": 0,
+    "generated_by": "hand-made fixture (issue #173): not produced by any evaluation run",
+    "generated_on": "2026-11-24",
+    "sample": true,
+    "notes": "SAMPLE DATA. The numbers are invented to exercise the view; they are not results. Replace this file with the export of the evaluation runner (#168)."
+  },
+  "rows": [
+    {
+      "scenario": "SCN-05",
+      "title": "DN line blocked CPP-SGDM: single-line working on the UP line",
+      "arm": "BL-0",
+      "kpis": {
+        "A5_weighted_delay_train_min": 8830,
+        "A2_section_punctuality_pct": 67.5,
+        "A6_mean_exit_delay_min": 19.1,
+        "A6_p90_exit_delay_min": 55.2,
+        "C2_freight_detention_h": 16.0,
+        "F1_unplanned_stops": 486,
+        "D1_median_conflict_lead_min": null,
+        "D2_resolved_before_occurrence_pct": null,
+        "H1_alerts_per_controller_hour": null,
+        "H2_flood_events": null
+      },
+      "plans_verified": null,
+      "notes": "No decision support: no conflict log and no alerts."
+    },
+    {
+      "scenario": "SCN-05",
+      "arm": "BL-1",
+      "kpis": {
+        "A5_weighted_delay_train_min": 8200,
+        "A2_section_punctuality_pct": 68.0,
+        "A6_mean_exit_delay_min": 18.0,
+        "A6_p90_exit_delay_min": 52.0,
+        "C2_freight_detention_h": 15.5,
+        "F1_unplanned_stops": 470,
+        "D1_median_conflict_lead_min": 28.0,
+        "D2_resolved_before_occurrence_pct": 55.0,
+        "H1_alerts_per_controller_hour": 41.0,
+        "H2_flood_events": 20
+      },
+      "plans_verified": { "verified": 25, "built": 42 }
+    },
+    {
+      "scenario": "SCN-05",
+      "arm": "BL-2",
+      "kpis": {
+        "A5_weighted_delay_train_min": 7100,
+        "A2_section_punctuality_pct": 71.0,
+        "A6_mean_exit_delay_min": 16.2,
+        "A6_p90_exit_delay_min": 47.0,
+        "C2_freight_detention_h": 15.9,
+        "F1_unplanned_stops": 455,
+        "D1_median_conflict_lead_min": 41.0,
+        "D2_resolved_before_occurrence_pct": 92.0,
+        "H1_alerts_per_controller_hour": 5.5,
+        "H2_flood_events": 0
+      },
+      "plans_verified": { "verified": 70, "built": 74 }
+    },
+    {
+      "scenario": "SCN-05",
+      "arm": "BL-3",
+      "kpis": {
+        "A5_weighted_delay_train_min": 7800,
+        "A2_section_punctuality_pct": 69.0,
+        "A6_mean_exit_delay_min": 17.5,
+        "A6_p90_exit_delay_min": 50.0,
+        "C2_freight_detention_h": 15.9,
+        "F1_unplanned_stops": 462,
+        "D1_median_conflict_lead_min": 33.0,
+        "D2_resolved_before_occurrence_pct": 80.0,
+        "H1_alerts_per_controller_hour": 7.0,
+        "H2_flood_events": 1
+      },
+      "plans_verified": { "verified": 66, "built": 74 },
+      "notes": "The DSS with a degraded predictor (bias and spread on every ETA)."
+    },
+    {
+      "scenario": "SCN-20",
+      "title": "Planned line block with overrun",
+      "arm": "BL-0",
+      "kpis": {
+        "A5_weighted_delay_train_min": 5570,
+        "A2_section_punctuality_pct": 62.3,
+        "A6_mean_exit_delay_min": 11.6,
+        "A6_p90_exit_delay_min": 49.9,
+        "C2_freight_detention_h": 5.2,
+        "F1_unplanned_stops": 466,
+        "D1_median_conflict_lead_min": null,
+        "D2_resolved_before_occurrence_pct": null,
+        "H1_alerts_per_controller_hour": null,
+        "H2_flood_events": null
+      },
+      "plans_verified": null
+    },
+    {
+      "scenario": "SCN-20",
+      "arm": "BL-1",
+      "kpis": {
+        "A5_weighted_delay_train_min": 5200,
+        "A2_section_punctuality_pct": 63.0,
+        "A6_mean_exit_delay_min": 11.0,
+        "A6_p90_exit_delay_min": 48.0,
+        "C2_freight_detention_h": 5.1,
+        "F1_unplanned_stops": 450,
+        "D1_median_conflict_lead_min": 22.0,
+        "D2_resolved_before_occurrence_pct": 48.0,
+        "H1_alerts_per_controller_hour": 36.0,
+        "H2_flood_events": 14
+      },
+      "plans_verified": { "verified": 20, "built": 31 }
+    },
+    {
+      "scenario": "SCN-20",
+      "arm": "BL-2",
+      "kpis": {
+        "A5_weighted_delay_train_min": 4500,
+        "A2_section_punctuality_pct": 66.5,
+        "A6_mean_exit_delay_min": 9.8,
+        "A6_p90_exit_delay_min": 43.0,
+        "C2_freight_detention_h": 5.3,
+        "F1_unplanned_stops": 430,
+        "D1_median_conflict_lead_min": 26.0,
+        "D2_resolved_before_occurrence_pct": 91.0,
+        "H1_alerts_per_controller_hour": 4.8,
+        "H2_flood_events": 0
+      },
+      "plans_verified": { "verified": 48, "built": 50 }
+    },
+    {
+      "scenario": "SCN-20",
+      "arm": "BL-3",
+      "kpis": {
+        "A5_weighted_delay_train_min": 4900,
+        "A2_section_punctuality_pct": 64.5,
+        "A6_mean_exit_delay_min": 10.4,
+        "A6_p90_exit_delay_min": 46.0,
+        "C2_freight_detention_h": 5.3,
+        "F1_unplanned_stops": 440,
+        "D1_median_conflict_lead_min": 19.0,
+        "D2_resolved_before_occurrence_pct": 76.0,
+        "H1_alerts_per_controller_hour": 6.5,
+        "H2_flood_events": 0
+      },
+      "plans_verified": { "verified": 44, "built": 50 }
+    },
+    {
+      "scenario": "day 2025-08-01",
+      "title": "Nominal day: WTT plus real freight day 1",
+      "arm": "BL-0",
+      "kpis": {
+        "A5_weighted_delay_train_min": 12000,
+        "A2_section_punctuality_pct": 64.0,
+        "A6_mean_exit_delay_min": 18.0,
+        "A6_p90_exit_delay_min": 66.0,
+        "C2_freight_detention_h": 13.0,
+        "F1_unplanned_stops": 750,
+        "D1_median_conflict_lead_min": null,
+        "D2_resolved_before_occurrence_pct": null,
+        "H1_alerts_per_controller_hour": null,
+        "H2_flood_events": null
+      },
+      "plans_verified": null
+    },
+    {
+      "scenario": "day 2025-08-01",
+      "arm": "BL-2",
+      "kpis": {
+        "A5_weighted_delay_train_min": 10300,
+        "A2_section_punctuality_pct": 66.0,
+        "A6_mean_exit_delay_min": 16.0,
+        "A6_p90_exit_delay_min": 60.0,
+        "C2_freight_detention_h": 13.5,
+        "F1_unplanned_stops": 700,
+        "D1_median_conflict_lead_min": 38.0,
+        "D2_resolved_before_occurrence_pct": 88.0,
+        "H1_alerts_per_controller_hour": 5.9,
+        "H2_flood_events": 0
+      },
+      "plans_verified": { "verified": 600, "built": 610 }
+    },
+    {
+      "scenario": "day 2025-08-01",
+      "arm": "BL-5",
+      "kpis": {
+        "A5_weighted_delay_train_min": null,
+        "A2_section_punctuality_pct": null,
+        "A6_mean_exit_delay_min": null,
+        "A6_p90_exit_delay_min": null,
+        "C2_freight_detention_h": 283.1,
+        "F1_unplanned_stops": null,
+        "D1_median_conflict_lead_min": null,
+        "D2_resolved_before_occurrence_pct": null,
+        "H1_alerts_per_controller_hour": null,
+        "H2_flood_events": null
+      },
+      "plans_verified": null,
+      "notes": "The historical reference (K1): the log has freight only, no passenger actuals."
+    }
+  ]
+}

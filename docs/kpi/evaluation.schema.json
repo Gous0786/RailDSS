@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Gous0786/RailDSS/blob/main/docs/kpi/evaluation.schema.json",
+  "title": "RailDSS evaluation export (issue #173; produced by #168)",
+  "description": "One document per evaluation run: run metadata and one row per scenario and arm with its KPIs. The management KPI view of the web app reads it from web/public/data/evaluation.json. See docs/kpi/evaluation-export.md.",
+  "type": "object",
+  "required": ["schema_version", "run", "rows"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "run": {
+      "type": "object",
+      "required": ["network_version", "register_version", "scenario_set", "seed"],
+      "additionalProperties": false,
+      "properties": {
+        "network_version": { "type": "string", "minLength": 1, "description": "The published network, e.g. KTV-PSA-2025-08-r2." },
+        "register_version": { "type": "string", "minLength": 1, "description": "The parameter register version stamp, e.g. 2026.11.1+1618c2a745ca." },
+        "scenario_set": { "type": "string", "minLength": 1, "description": "What was evaluated, e.g. library-v1, nominal-days, real-days." },
+        "date": { "type": "string", "format": "date", "description": "The day, for a single-day evaluation." },
+        "window": {
+          "type": "object",
+          "required": ["from_h", "to_h"],
+          "additionalProperties": false,
+          "description": "The decision-loop window in hours of the day, when the evaluation used one.",
+          "properties": { "from_h": { "type": "number" }, "to_h": { "type": "number" } }
+        },
+        "seed": { "type": "integer", "description": "The seed of the run (the scenario seeds are in the scenario files)." },
+        "generated_by": { "type": "string", "description": "The command or runner that wrote the file." },
+        "generated_on": { "type": "string", "format": "date", "description": "The date of the run." },
+        "sample": { "type": "boolean", "default": false, "description": "True for hand-made sample data: the view shows a sample-data banner." },
+        "notes": { "type": "string" }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One row per scenario and arm; a (scenario, arm) pair appears once (checked by the tests, not by this schema).",
+      "items": { "$ref": "#/$defs/row" }
+    }
+  },
+  "$defs": {
+    "number_or_null": { "type": ["number", "null"] },
+    "row": {
+      "type": "object",
+      "required": ["scenario", "arm", "kpis"],
+      "additionalProperties": false,
+      "properties": {
+        "scenario": { "type": "string", "minLength": 1, "description": "A scenario id (SCN-05) or a day label (day 2025-08-20)." },
+        "title": { "type": "string", "description": "A readable name of the scenario." },
+        "arm": {
+          "enum": ["BL-0", "BL-1", "BL-2", "BL-3", "BL-5", "DSS"],
+          "description": "BL-0 no action, BL-1 greedy controller practice, BL-2 and DSS the DSS with auto-accept (DSS is the name the loop reports use), BL-3 the DSS with a degraded predictor, BL-5 the historical reference."
+        },
+        "kpis": {
+          "type": "object",
+          "description": "KPI name to value; null when an arm cannot measure it (BL-5 has no alerts). Names are those of the KPI engine, the conflict KPIs and the alert KPIs.",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[A-Z][0-9]+_[A-Za-z0-9_]+$" },
+          "additionalProperties": { "$ref": "#/$defs/number_or_null" },
+          "properties": {
+            "A2_section_punctuality_pct": { "$ref": "#/$defs/number_or_null", "description": "Section punctuality, %." },
+            "A2_lop_count": { "$ref": "#/$defs/number_or_null", "description": "Trains late at exit." },
+            "A4_mean_arrival_delay_min": { "$ref": "#/$defs/number_or_null" },
+            "A4_max_arrival_delay_min": { "$ref": "#/$defs/number_or_null" },
+            "A5_weighted_delay_train_min": { "$ref": "#/$defs/number_or_null", "description": "Priority-weighted delay, train-min." },
+            "A6_mean_exit_delay_min": { "$ref": "#/$defs/number_or_null" },
+            "A6_median_exit_delay_min": { "$ref": "#/$defs/number_or_null" },
+            "A6_p90_exit_delay_min": { "$ref": "#/$defs/number_or_null" },
+            "A9_mean_time_lost_min": { "$ref": "#/$defs/number_or_null" },
+            "B1_trains_exited": { "$ref": "#/$defs/number_or_null" },
+            "C1_freight_speed_kmh": { "$ref": "#/$defs/number_or_null" },
+            "C2_freight_detention_h": { "$ref": "#/$defs/number_or_null", "description": "Freight detention, h." },
+            "F1_unplanned_stops": { "$ref": "#/$defs/number_or_null" },
+            "D1_median_conflict_lead_min": { "$ref": "#/$defs/number_or_null", "description": "Median conflict lead time, min (DSC-05, at least 15)." },
+            "D2_resolved_before_occurrence_pct": { "$ref": "#/$defs/number_or_null", "description": "Conflicts resolved before occurrence, % (DSC-04, at least 90)." },
+            "H1_alerts_per_controller_hour": { "$ref": "#/$defs/number_or_null", "description": "Alerts per controller-hour (DSC-09, at most 6)." },
+            "H2_flood_events": { "$ref": "#/$defs/number_or_null", "description": "Flood events (DSC-09, none)." }
+          }
+        },
+        "plans_verified": {
+          "type": ["object", "null"],
+          "required": ["verified", "built"],
+          "additionalProperties": false,
+          "description": "Candidate plans that passed gates G0-G3 and plans built in the loop; null for an arm without a loop (BL-0, BL-5).",
+          "properties": {
+            "verified": { "type": "integer", "minimum": 0 },
+            "built": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}
