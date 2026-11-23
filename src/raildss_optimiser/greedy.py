@@ -212,16 +212,17 @@ class GreedyDispatcher:
                 for f in (*frozen, *committed)
             ],
         )
+        worked = network.as_worked(self.net, sim.slw_log)  # single-line working (issue #156)
         cand = plan_from_trace(
             sim.events,
             train_meta(sim),
-            self.net,
+            worked,
             day_start(day),
             register=self.reg,
             plan_id=plan_id,
             context=context,
         )
-        g2 = engine.check(cand, self.net, register=self.reg)
+        g2 = engine.check(cand, worked, register=self.reg)
         runtime = time.perf_counter() - t0
         decisions, holds = [], []
         exit_of = {token(p.run_id): p.nodes[-1].op for p in plans} | {p.run_id: p.nodes[-1].op for p in plans}

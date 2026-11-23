@@ -86,6 +86,25 @@ def test_plans_assume_the_announced_etr_until_it_passes() -> None:
     assert late[0].incidents[0].end_s == d.end_s  # and plans now know the real end
 
 
+def test_an_incident_reopens_the_commit_window() -> None:
+    d = Disruption(
+        incident_id="TRIP", kind="ohe_trip", start_s=NOW0 + 4 * MIN, duration_s=30 * MIN, block_id="GVI-CPP"
+    )
+    orch, dss, planner = make(
+        [candidate("greedy", -5.0, hold_until=NOW0 + 20 * MIN)], incidents=((d, d.start_s),)
+    )
+    dss.script = {NOW0: [FakeConflict(2, ("A", "B"), "S1~S2")]}
+    orch.tick(NOW0)
+    assert orch.commitments()[0] == {("A", "S1"): NOW0 + 20 * MIN}  # an order made before the incident
+    orch.tick(NOW0 + 2 * MIN)
+    assert planner.contexts[-1].committed  # the order is kept while nothing changes
+    cycle = orch.tick(NOW0 + 4 * MIN)  # the incident is announced
+    assert cycle is not None and "disruption" in cycle.triggers
+    ctx = planner.contexts[-1]
+    assert ctx.frozen == [] and ctx.committed == []  # made without the incident: re-planned
+    assert any("1 orders withdrawn" in n for n in cycle.notes)
+
+
 class _Contingent:
     """A planner that returns one contingent plan (to see it in the cycle record)."""
 
@@ -110,4 +129,14 @@ def test_the_cycle_records_the_contingent_plans_and_the_first_plan_latency() -> 
     cycle = orch.tick(NOW0)
     assert cycle is not None and cycle.first_plan_s == 1.5
     (rec,) = cycle.contingent
-    assert rec.verified and rec.name == "contingent-etr+30" and rec.rule.startswith("if not restored by 08:30")
+    assert (
+        rec.verified and rec.name == "contingent-etr+30" and rec.rule.startswith("if not restored by 08:30")
+    )
+
+
+def test_the_four_disruption_scenarios_run_the_loop() -> None:
+    from raildss_orchestrator.scenarios import loopable
+    from raildss_twin import scenario
+
+    library = {s.id: s for s in scenario.load_library_v1()}
+    assert all(loopable(library[i]) for i in ("SCN-04", "SCN-08", "SCN-09", "SCN-10"))

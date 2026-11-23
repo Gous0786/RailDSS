@@ -297,6 +297,7 @@ class Sim:
         # Connections of a borrowed line, kept after the window for a train still on it: only a train that
         # borrowed the line can be on a working line against its own direction.
         self.borrow_connections: dict[tuple[str, str], tuple[str, str]] = {}
+        self.slw_log: list[tuple[str, str]] = []  # (block id, blocked line id) per single-line working
         self.crossings: list[Crossing] = []
         self.directives = directives or Directives()
         self.directive_refusals: list[Refusal] = []
@@ -586,6 +587,7 @@ class Sim:
         other absolute-block lines become reversible; where a direction has no line of its own left, its
         trains use the working line with the Connections of the blocked line. Returns the keys to end."""
         segment = pair_key(*(self.layout.blocks[block_id].from_op, self.layout.blocks[block_id].to_op))
+        self.slw_log.append((block_id, blocked_line_id))
         keys: list[str] = []
         for b in self.layout.blocks.values():
             if pair_key(b.from_op, b.to_op) != segment:

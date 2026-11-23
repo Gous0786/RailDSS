@@ -215,8 +215,15 @@ def replay(
         maintenance=plan.maintenance,
         frozen=plan.frozen,
     )
+    worked = network.as_worked(net, sim.slw_log)  # single-line working under an incident (issue #156)
     result = audit(
-        sim.events, train_meta(sim), net, day_start(day), register=reg, plan_id=plan.plan_id, context=context
+        sim.events,
+        train_meta(sim),
+        worked,
+        day_start(day),
+        register=reg,
+        plan_id=plan.plan_id,
+        context=context,
     )
     violations: list[G3Violation] = []
     warnings = 0
@@ -260,7 +267,13 @@ def replay(
         "FAIL" if violations else "PASS_WITH_WARN" if warnings else "PASS"
     )
     realised = plan_from_trace(
-        sim.events, train_meta(sim), net, day_start(day), register=reg, plan_id=plan.plan_id, context=context
+        sim.events,
+        train_meta(sim),
+        worked,
+        day_start(day),
+        register=reg,
+        plan_id=plan.plan_id,
+        context=context,
     )
     return G3Result(
         plan_id=plan.plan_id,
