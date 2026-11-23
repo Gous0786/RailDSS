@@ -23,7 +23,7 @@ Triggers (``opt.replan_triggers``): ``new_conflict``, ``disruption`` (a closure 
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Hashable, Mapping
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -41,7 +41,18 @@ from raildss_verifier import gates
 
 from .auditing import EVALUATION_POLICY, AuditRecorder
 from .cadence import Cadence
-from .model import KPI_RANK, MAX_OPTIONS, Candidate, Dss, DssView, PlanContext, Planner, PlanSet
+from .model import (
+    KPI_RANK,
+    MAX_OPTIONS,
+    Candidate,
+    Contrast,
+    Dss,
+    DssView,
+    PlanContext,
+    Planner,
+    PlanSet,
+    order_of,
+)
 
 SECONDS_PER_MIN = 60
 OPEN_CONFLICT_PRIORITIES = ("P1", "P2", "P3")  # P4 is informational
@@ -89,6 +100,28 @@ class ContingentRecord(BaseModel):
     rule: str
 
 
+class DecisionRecord(BaseModel):
+    """The options released for one decision (issue #154): how many, and how many different trains they
+    serve first at its resource (precedences)."""
+
+    trains: list[str]
+    resource: str
+    options: int
+    precedences: int
+
+
+class ContrastRecord(BaseModel):
+    """'Why not X' for a decision of the cycle (issue #154): the other precedence, re-solved and verified."""
+
+    first: str
+    resource: str
+    verified: bool
+    reversed: bool
+    cost_min: float | None
+    fail: list[str]
+    answer: str
+
+
 class CycleRecord(BaseModel):
     cycle: int
     now_s: float
@@ -105,6 +138,8 @@ class CycleRecord(BaseModel):
     planner: str = "greedy"  # the plan that carried the rolling state (issue #152)
     churn: int | None = None  # decisions of the previous plan this one changed
     first_plan_s: float | None = None  # wall time to the first verified option (DSC-06, issue #156)
+    decisions: list[DecisionRecord] = Field(default_factory=list)  # options per decision (issue #154)
+    contrasts: list[ContrastRecord] = Field(default_factory=list)  # the other precedence (issue #154)
     contingent: list[ContingentRecord] = Field(default_factory=list)  # ETR scenarios (issue #156)
 
 
@@ -197,6 +232,8 @@ class Orchestrator:
         self._executor_alerts = 0
         self._rec_trains: dict[str, tuple[str, ...]] = {}
         self._audited: set[tuple[Any, ...]] = set()
+        self._last_ctx: PlanContext | None = None
+        self._decision_records: list[DecisionRecord] = []
 
     # ------------------------------------------------------------------ the loop
     def run(self, from_s: float, to_s: float, tick_s: float = 60.0) -> RunSummary:
@@ -330,7 +367,9 @@ class Orchestrator:
             incidents=self._known_incidents(),
             entry_delays=dict(self.entry_delays),
             commit_terminations=self.terminations(),
+            decisions=[(tuple(c.trains), c.resource) for c in targets],
         )
+        self._last_ctx = ctx
         planned = self.planner.plan(ctx)
         if withdrawn:
             planned.notes.append(f"incident: commit window re-opened, {withdrawn} orders withdrawn")
@@ -366,6 +405,19 @@ class Orchestrator:
             planner=planned.planner,
             churn=planned.churn,
             first_plan_s=planned.first_plan_s,
+            decisions=self._decision_records,
+            contrasts=[
+                ContrastRecord(
+                    first=c.first,
+                    resource=c.resource,
+                    verified=c.verified,
+                    reversed=c.reversed,
+                    cost_min=c.cost_min,
+                    fail=c.candidate.fail_rules,
+                    answer=c.answer(),
+                )
+                for c in planned.contrasts
+            ],
             contingent=[
                 ContingentRecord(
                     name=c.candidate.name,
@@ -450,6 +502,7 @@ class Orchestrator:
         names = [self._closure_name(c) for c in closures]
         holds, lines = self.commitments()
         out: list[OptionRecord] = []
+        self._decision_records = []
         for conflict in targets:
             options: list[tuple[Candidate, list[PlanAction]]] = []
             seen: set[str] = set()
@@ -464,6 +517,15 @@ class Orchestrator:
                     seen.add(sig)
                     options.append((cand, actions))
             options = options[:MAX_OPTIONS]
+            firsts = {order_of(c.decisions, conflict.trains, conflict.resource)[0] for c, _ in options}
+            self._decision_records.append(
+                DecisionRecord(
+                    trains=list(conflict.trains),
+                    resource=conflict.resource,
+                    options=len(options),
+                    precedences=len(firsts),
+                )
+            )
             self.max_options = max(self.max_options, len(options))
             built: list[tuple[int, Candidate, Option]] = []
             for rank, (cand, actions) in enumerate(options, start=1):
@@ -726,6 +788,16 @@ class Orchestrator:
 
     def published_order(self, order_id: str) -> dict[str, Any]:
         return next(p for t, p in self.published if t == "ctrl.orders" and p["order_id"] == order_id)
+
+    def why_not(self, trains: Sequence[str], first: str, resource: str) -> Contrast | None:
+        """FR-OPT-06 (issue #154): 'why not ``first`` first at ``resource``?' in the last plan's context: the
+        re-solve with that precedence imposed, verified, and its cost difference, or the rules that forbid
+        it. None when the planner cannot re-solve."""
+        solve = getattr(self.planner, "why_not", None)
+        if solve is None or self._last_ctx is None:
+            return None
+        result: Contrast = solve(self._last_ctx, trains, first, resource)
+        return result
 
     # ------------------------------------------------------------------ orders in force
     def _in_force(self, order_id: str) -> bool:

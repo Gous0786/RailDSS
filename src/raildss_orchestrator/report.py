@@ -76,6 +76,7 @@ def render(
         f"| Most options for one decision | {summary.max_options_per_decision} |",
         f"| Final statuses | {', '.join(f'{k} {v}' for k, v in sorted(summary.statuses.items())) or '-'} |",
         *_planner_rows(summary),
+        *contrast_rows(summary),
         "",
         "## KPIs: DSS against BL-0",
         "",
@@ -105,6 +106,27 @@ def render(
                 + ", ".join(f"{m['run_id']} {m['delta_exit_delay_min']:+g}" for m in delta["most_affected"]),
             ]
     return "\n".join(lines) + "\n"
+
+
+def contrast_rows(summary: RunSummary) -> list[str]:
+    """Contrasting options (issue #154): the decisions released, those with two or more options that differ
+    in who goes first, and the 'why not' re-solves of the other precedence."""
+    decisions = [d for cy in summary.cycles for d in cy.decisions]
+    if not decisions:
+        return []
+    contrasts = [c for cy in summary.cycles for c in cy.contrasts]
+    feasible = []  # decisions with more than one feasible precedence: their contrast verified and reversed
+    for cy in summary.cycles:
+        ok = {c.resource for c in cy.contrasts if c.verified and c.reversed}
+        feasible += [d for d in cy.decisions if d.resource in ok]
+    both = sum(d.options > 1 and d.precedences > 1 for d in feasible)
+    return [
+        f"| Decisions released / with 2+ options / with 2+ precedences | {len(decisions)} / "
+        f"{sum(d.options > 1 for d in decisions)} / {sum(d.precedences > 1 for d in decisions)} |",
+        f"| Other precedence re-solved / verified / reversed | {len(contrasts)} / "
+        f"{sum(c.verified for c in contrasts)} / {sum(c.verified and c.reversed for c in contrasts)} |",
+        f"| Decisions with 2+ feasible precedences given options of both | {both} / {len(feasible)} |",
+    ]
 
 
 def _planner_rows(summary: RunSummary) -> list[str]:
