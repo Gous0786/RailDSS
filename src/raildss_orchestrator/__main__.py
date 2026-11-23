@@ -114,6 +114,38 @@ def _whatif(args: argparse.Namespace) -> int:
     return 0
 
 
+def _evaluate(args: argparse.Namespace) -> int:
+    """Issue #168: every arm of each scenario; a JSON export and a Markdown report per scenario."""
+    from raildss_orchestrator import evaluate
+
+    world = run.load_world()
+    arms = tuple(args.arm) if args.arm else evaluate.ARMS
+    span_s = args.span_min * SECONDS_PER_MIN
+    command = " ".join(
+        ["python -m raildss_orchestrator evaluate", *args.ids]
+        + [f"--arm {a}" for a in args.arm or []]
+        + [f"--span-min {args.span_min:g}", f"--out-dir {args.out_dir.as_posix()}"]
+    )
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    every: list[dict[str, Any]] = []
+    for sc, rows in evaluate.run_scenarios(world, args.ids, arms=arms, span_s=span_s):
+        doc = evaluate.export(rows, world, scenario_set=sc.id, generated_by=command, span_s=span_s)
+        (args.out_dir / f"{sc.id}.json").write_text(
+            json.dumps(doc, indent=1) + NEWLINE, encoding="utf-8", newline=NEWLINE
+        )
+        (args.out_dir / f"{sc.id}.md").write_text(
+            evaluate.markdown(sc, rows, command), encoding="utf-8", newline=NEWLINE
+        )
+        print(f"wrote {args.out_dir / sc.id}.json and .md")
+        every += rows
+    if len(args.ids) > 1:  # all scenarios of the run in one export, as the management view reads it
+        doc = evaluate.export(every, world, scenario_set="library-v1", generated_by=command, span_s=span_s)
+        (args.out_dir / "evaluation.json").write_text(
+            json.dumps(doc, indent=1) + NEWLINE, encoding="utf-8", newline=NEWLINE
+        )
+    return 0
+
+
 def _scenarios(args: argparse.Namespace) -> int:
     from raildss_orchestrator.scenarios import render, run_all
 
@@ -205,7 +237,14 @@ def main(argv: list[str] | None = None) -> int:
         "--span-min", type=float, default=None, help="loop window length, min (default 90; issue #156)"
     )
     sc.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
+    ev = sub.add_parser("evaluate", help="a scenario under BL-0, BL-1, BL-2, BL-3 and BL-5 (issue #168)")
+    ev.add_argument("ids", nargs="+", help="scenario ids of library v1")
+    ev.add_argument("--arm", action="append", choices=["BL-0", "BL-1", "BL-2", "BL-3", "BL-5"])
+    ev.add_argument("--span-min", type=float, default=30.0, help="loop window length, min")
+    ev.add_argument("--out-dir", type=Path, default=Path("docs/kpi/evaluation"), help="where to write")
     args = ap.parse_args(argv)
+    if args.cmd == "evaluate":
+        return _evaluate(args)
     if args.cmd == "whatif":
         return _whatif(args)
     if args.cmd == "alert-load":
