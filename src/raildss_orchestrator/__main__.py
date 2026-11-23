@@ -97,6 +97,23 @@ def _alert_load(args: argparse.Namespace) -> int:
     return 0
 
 
+def _whatif(args: argparse.Namespace) -> int:
+    from raildss_orchestrator import whatif
+    from raildss_orchestrator.scenarios import ARMS, SPAN_S
+    from raildss_twin import scenario
+
+    world = run.load_world()
+    sc = next(s for s in scenario.load_library_v1() if s.id == args.id)
+    span_s = args.span_min * SECONDS_PER_MIN if args.span_min is not None else SPAN_S
+    doc = whatif.build(world, sc, tuple(args.arm) if args.arm else tuple(ARMS), span_s)
+    path = whatif.write(doc, args.out)
+    print(
+        f"what-if {sc.id}: {len(doc['trains'])} trains, {len(doc['disruptions'])} disruptions, "
+        f"{len(doc['preview']['options'])} variants -> {path}"
+    )
+    return 0
+
+
 def _scenarios(args: argparse.Namespace) -> int:
     from raildss_orchestrator.scenarios import render, run_all
 
@@ -169,6 +186,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     ar.add_argument("--seed", type=int, default=0, help="seed of the sample")
     ar.add_argument("--section", default="KTV-PSA")
+    wf = sub.add_parser(
+        "whatif", help="chart export of a disruption scenario with its what-if variants (#172)"
+    )
+    wf.add_argument("id", help="scenario id, e.g. SCN-05")
+    wf.add_argument("--arm", action="append", choices=["BL-1", "DSS"], help="arm to export (default both)")
+    wf.add_argument("--span-min", type=float, default=None, help="length of the loop window in minutes")
+    wf.add_argument("--out", type=Path, default=Path("web/public/data"), help="directory of the web data")
     al = sub.add_parser("alert-load", help="alert load (H1, H2) of the DSS chain on the nominal days (#163)")
     al.add_argument("ids", nargs="*", help="scenario ids (default SCN-01 SCN-22)")
     al.add_argument("--tick-s", type=float, default=60.0, help="clock step over the day")
@@ -182,6 +206,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     sc.add_argument("--report", type=Path, default=None, help="write the Markdown report here")
     args = ap.parse_args(argv)
+    if args.cmd == "whatif":
+        return _whatif(args)
     if args.cmd == "alert-load":
         return _alert_load(args)
     if args.cmd == "scenarios":

@@ -13,6 +13,7 @@ import { QueuePanel } from "./ops/QueuePanel";
 import { acknowledge, alertGroups, openCounts } from "./ops/alerts";
 import { acceptState, expiresIn } from "./ops/card";
 import { kpis } from "./ops/kpi";
+import { defaultDay, hasWhatIf } from "./whatif/whatif";
 import { HORIZON_S, NO_FILTER, type QueueFilter, type SortKey, filterRows, queueRows, sortRows } from "./ops/queue";
 import type { Alert, ChartData, Priority } from "./types";
 
@@ -20,6 +21,7 @@ import type { Alert, ChartData, Priority } from "./types";
 const ControlChart = lazy(() => import("./chart/ControlChart").then((m) => ({ default: m.ControlChart })));
 const About = lazy(() => import("./About"));
 const AuditView = lazy(() => import("./audit/AuditView").then((m) => ({ default: m.AuditView })));
+const WhatIfView = lazy(() => import("./whatif/WhatIfView").then((m) => ({ default: m.WhatIfView })));
 const Mimic = lazy(() => import("./mimic/Mimic").then((m) => ({ default: m.Mimic })));
 const GRAFANA = grafanaUrl(import.meta.env as Record<string, string | undefined>);
 
@@ -49,6 +51,7 @@ const SHORTCUTS: [string, string][] = [
   ["N", "jump to now"],
   ["Space", "play / pause the replay (SIM ×60)"],
   ["L", "audit and replay: log, timeline scrubbing, recommendation cards as shown"],
+  ["W", "disruption and what-if view (scenario exports): incidents, variants on the chart, plan comparison"],
   ["G", "schematic mimic ↔ control chart (layout and occupancy at the time cursor)"],
   ["I", "about, attributions and licences"],
   ["?", "show / hide this help"],
@@ -80,6 +83,9 @@ export default function App() {
   const [about, setAbout] = useState(false);
   const [audit, setAudit] = useState(false);
   const [mimic, setMimic] = useState(false);
+  const [whatIf, setWhatIf] = useState(false);
+  const [variant, setVariant] = useState(-1); // what-if: index of the option drawn, -1 the baseline alone
+  const [variantMode, setVariantMode] = useState<PreviewMode>("off");
   const [auditDoc, setAuditDoc] = useState<AuditDoc | null>(null);
   const [auditError, setAuditError] = useState("");
   const [drawer, setDrawer] = useState(false);
@@ -97,7 +103,7 @@ export default function App() {
       .then((r) => r.json())
       .then((idx: { days: string[] }) => {
         setDays(idx.days);
-        setDay(idx.days[idx.days.length - 1] ?? "");
+        setDay(defaultDay(idx.days));
       })
       .catch(() => setError("No chart data. Run: uv run python -m raildss_twin chart --date 2025-08-20"));
   }, []);
@@ -106,6 +112,9 @@ export default function App() {
     if (!day) return;
     setData(null);
     setAcked(new Set());
+    setWhatIf(false);
+    setVariant(-1);
+    setVariantMode("off");
     fetch(`data/${day}.json`)
       .then((r) => r.json())
       .then((d: ChartData) => setData(d))
@@ -127,7 +136,10 @@ export default function App() {
   }, [playing]);
 
   const option = data && phase !== "none" ? (data.preview.options[optionIdx] ?? null) : null;
-  const mode: Mode = sandbox ? "SANDBOX" : playing ? "SIM" : "REPLAY";
+  // the what-if view draws its variant on the chart; otherwise the recommendation card does
+  const chartOption = whatIf ? (data?.preview.options[variant] ?? null) : option;
+  const chartMode: PreviewMode = whatIf ? (variant >= 0 ? variantMode : "off") : preview;
+  const mode: Mode = sandbox || whatIf ? "SANDBOX" : playing ? "SIM" : "REPLAY";
   const note = useCallback((text: string) => setLog((l) => [`${hhmm(now)}  ${text}`, ...l].slice(0, 6)), [now]);
 
   const groups = useMemo(
@@ -187,7 +199,8 @@ export default function App() {
         return;
       }
       if (k === "Escape") {
-        if (audit) setAudit(false);
+        if (whatIf) setWhatIf(false);
+        else if (audit) setAudit(false);
         else if (about) setAbout(false);
         else if (help) setHelp(false);
         else if (drawer) setDrawer(false);
@@ -197,6 +210,7 @@ export default function App() {
       }
       if (k === "?") return setHelp((h) => !h);
       if (k === "l" || k === "L") return setAudit((a) => !a);
+      if ((k === "w" || k === "W") && hasWhatIf(data)) return setWhatIf((v) => !v);
       if (k === "g" || k === "G") return setMimic((v) => !v);
       if (k === "i" || k === "I") return setAbout((a) => !a);
       if (k === "p" || k === "P") {
@@ -264,7 +278,7 @@ export default function App() {
         setPlaying((p) => !p);
       }
     },
-    [data, phase, help, about, audit, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
+    [data, phase, help, about, audit, whatIf, drawer, sandbox, optionIdx, now, expired, groups, cursor, note, closeCard, focusAlert],
   );
 
   useEffect(() => {
@@ -305,6 +319,11 @@ export default function App() {
         <button onClick={() => setMimic((v) => !v)} aria-label="Schematic mimic" aria-pressed={mimic}>
           {mimic ? "Chart" : "Mimic"}
         </button>
+        {hasWhatIf(data) && (
+          <button onClick={() => setWhatIf((v) => !v)} aria-label="Disruption and what-if" aria-pressed={whatIf}>
+            What-if
+          </button>
+        )}
         <button onClick={() => setAudit((a) => !a)} aria-label="Audit and replay">
           Audit
         </button>
@@ -334,8 +353,8 @@ export default function App() {
                   data={data}
                   window={view}
                   now={now}
-                  option={option}
-                  mode={preview}
+                  option={chartOption}
+                  mode={chartMode}
                   selected={selected}
                   onWindow={setView}
                   onSelect={setSelected}
@@ -394,6 +413,22 @@ export default function App() {
               {log.length === 0 ? <p className="muted">No decisions yet.</p> : log.map((l) => <p key={l}>{l}</p>)}
             </section>
           </aside>
+        )}
+        {whatIf && data && (
+          <Suspense fallback={null}>
+            <WhatIfView
+              data={data}
+              variant={variant}
+              onVariant={(i) => {
+                setVariant(i);
+                setVariantMode(i >= 0 ? "after" : "off");
+              }}
+              mode={variant >= 0 ? variantMode : "off"}
+              onMode={setVariantMode}
+              now={now}
+              onClose={() => setWhatIf(false)}
+            />
+          </Suspense>
         )}
         {audit && (
           <Suspense fallback={null}>

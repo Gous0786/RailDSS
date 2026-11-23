@@ -42,10 +42,15 @@ KM_DIGITS = 3  # rounding of chainage in the export (metres)
 
 def _lines(sim: Sim, day: dt.date) -> dict[str, list[list[float]]]:
     """``run id -> [[t, km], ...]`` from the ground-truth train states (one per state period)."""
+    return lines_from_events(sim.events, [t.plan for t in sim.trains], day)
+
+
+def lines_from_events(events: Any, plans: list[Plan], day: dt.date) -> dict[str, list[list[float]]]:
+    """The same from the events of a run and the plans it ran."""
     origin = day_start(day)
-    names = {t.plan.run_id.replace(" ", "_"): t.plan.run_id for t in sim.trains}
+    names = {p.run_id.replace(" ", "_"): p.run_id for p in plans}
     out: dict[str, list[list[float]]] = {}
-    for ev in sim.events:
+    for ev in events:
         if ev.event_type is not EventType.TRAIN_STATE or ev.location is None or ev.train_run_id is None:
             continue
         km = ev.location.km
@@ -238,19 +243,11 @@ def _demo_train(plans: list[Plan]) -> Plan:
     return next((p for p in freight if p.entry_s >= midday), freight[-1])
 
 
-def chart_data(world: run.World, day: dt.date) -> dict[str, Any]:
-    plans, _, inst = run.plans_for(world, day)
-    report, sim = run.run_day(world, day, plans=plans, keep_events=True)
+def document(world: run.World, day: dt.date, plans: list[Plan], sim: Sim, report: Any) -> dict[str, Any]:
+    """The chart document of a run without a preview: stations, trains (actual and booked lines), alerts,
+    the mimic. ``chart_data`` adds the demo preview; the what-if export (issue #172) adds its options."""
     actual = _lines(sim, day)
-    hold_s = float(world.register.value("ui.preview_demo_hold_min")) * SECONDS_PER_MIN
-    held = _demo_train(plans)
-    variant = [dataclasses.replace(p, entry_s=p.entry_s + hold_s) if p is held else p for p in plans]
-    _, alt_sim = run.run_day(world, day, plans=variant, keep_events=True, scenario_id=f"{inst}-preview")
-    proposed = {rid: pts for rid, pts in _lines(alt_sim, day).items() if pts != actual.get(rid)}
-    hold_min = round(hold_s / SECONDS_PER_MIN)
-    entry = held.nodes[0].op
     weights = {k: float(v) for k, v in world.register.value("policy.weights").items()}
-    impacts = _impacts(plans, actual, proposed, weights)
     hard_rules = list(world.register.value("policy.hard_rules"))
     booked_by = {p.run_id: _booked(world, p) for p in plans}
     return {
@@ -289,6 +286,25 @@ def chart_data(world: run.World, day: dt.date) -> dict[str, Any]:
         ],
         "alerts": _alerts(sim, day, plans, world),
         "mimic": mimic_data(world, sim, [p.run_id for p in plans]),
+    }
+
+
+def chart_data(world: run.World, day: dt.date) -> dict[str, Any]:
+    plans, _, inst = run.plans_for(world, day)
+    report, sim = run.run_day(world, day, plans=plans, keep_events=True)
+    actual = _lines(sim, day)
+    hold_s = float(world.register.value("ui.preview_demo_hold_min")) * SECONDS_PER_MIN
+    held = _demo_train(plans)
+    variant = [dataclasses.replace(p, entry_s=p.entry_s + hold_s) if p is held else p for p in plans]
+    _, alt_sim = run.run_day(world, day, plans=variant, keep_events=True, scenario_id=f"{inst}-preview")
+    proposed = {rid: pts for rid, pts in _lines(alt_sim, day).items() if pts != actual.get(rid)}
+    hold_min = round(hold_s / SECONDS_PER_MIN)
+    entry = held.nodes[0].op
+    weights = {k: float(v) for k, v in world.register.value("policy.weights").items()}
+    impacts = _impacts(plans, actual, proposed, weights)
+    hard_rules = list(world.register.value("policy.hard_rules"))
+    return {
+        **document(world, day, plans, sim, report),
         "preview": {
             "id": "R-DEMO-1",
             "demo": True,
