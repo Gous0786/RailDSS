@@ -371,6 +371,17 @@ blocked between CPP and SGDM, 60-minute loop window around it): in that window t
 line and the CP-SAT loop changes five, with a slightly higher weighted delay (+72 train-min of 8830) and 0.25 h
 less freight detention.
 
+## Management KPI view (issue #173)
+
+**Management** (or `E`) in the web app shows the KPIs per arm (BL-0 no action, BL-1 greedy, BL-2 / DSS, BL-3
+noisy predictor, BL-5 history) and per scenario from an **evaluation export**, with the difference from BL-0, the
+absolute targets of DSC-04, 05 and 09 and the acceptance criteria of the DSS arm. The export format is defined in
+[`docs/kpi/evaluation-export.md`](docs/kpi/evaluation-export.md) and `docs/kpi/evaluation.schema.json` (one document
+per run with run metadata and one row per scenario and arm); the evaluation runner (#168) is to produce it as
+`web/public/data/evaluation.json`. Until it does, the committed file is a hand-made **sample** (`run.sample: true`):
+the view shows a SAMPLE DATA banner, and `tests/docs/test_evaluation_schema.py` validates the fixture and keeps
+the KPI names in step with the code.
+
 ## Audit and replay (issue #85)
 
 `python -m raildss_orchestrator run --from-h 8 --to-h 9 --audit-dir audit` records the loop in an
