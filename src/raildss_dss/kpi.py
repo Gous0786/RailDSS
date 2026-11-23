@@ -106,6 +106,7 @@ def compute(
     arrivals: dict[str, list[float]] = {}
     last_state: dict[str, tuple[float, str, float | None]] = {}
     km_seen: dict[str, list[float]] = {}
+    ended: set[str] = set()  # short-terminated or cancelled (issue #156): they did not leave the section
     for ev in sorted(events, key=lambda e: (e.event_time, e.source, e.seq)):
         rid = ev.train_run_id
         if rid is None or rid not in rows:
@@ -122,6 +123,8 @@ def compute(
             arrivals.setdefault(rid, []).append(float(p["delay_s"]) / SECONDS_PER_MIN)
         elif ev.event_type is EventType.TRAIN_STATE:
             status = str(p.get("status", ""))
+            if status == "terminated":
+                ended.add(rid)
             km = ev.location.km if ev.location is not None else None
             if km is not None:
                 km_seen.setdefault(rid, []).append(km)
@@ -131,6 +134,8 @@ def compute(
             if status == "waiting" and (prev is None or prev[1] != "waiting"):
                 r.unplanned_stops += 1
             last_state[rid] = (t, status, km)
+    for rid in ended:
+        rows[rid].exit_s = None
     for rid, r in rows.items():
         info = trains[rid]
         if km_seen.get(rid):

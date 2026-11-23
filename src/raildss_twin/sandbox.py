@@ -59,6 +59,7 @@ class SandboxPlan(BaseModel):
     actions: list[Action] = Field(default_factory=list)
     maintenance: list[MaintenanceBlock] = Field(default_factory=list)
     frozen: list[FrozenCall] = Field(default_factory=list)
+    terminations: dict[str, str] = Field(default_factory=dict)  # run id -> station it ends at (#156)
 
 
 class G3Violation(BaseModel):
@@ -191,6 +192,11 @@ def replay(
         priority=held.priority,
         closures=list(held.closures),
         exit_windows=dict(held.exit_windows),
+        # the incidents and late entries the world knows of apply under the plan as in the baseline (#155)
+        entry_delays=dict(held.entry_delays),
+        incidents=list(held.incidents),
+        terminations=held.terminations
+        | {rid.get(r, r): s for r, s in plan.terminations.items()},  # issue #156
     )
     report, sim = run.run_day(
         world,

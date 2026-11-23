@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from raildss_hitl.executor import PlanAction
+from raildss_hitl.executor import SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MIN, PlanAction
 from raildss_optimiser.greedy import Decision, Hold
 from raildss_twin.sandbox import G3Result
 from raildss_twin.sim import Closure
@@ -62,6 +62,8 @@ class PlanContext:
     previous: list[Decision] = field(default_factory=list)  # the last plan: kept by the stability term
     incidents: list[Any] = field(default_factory=list)  # announced incidents the plan models (issue #155)
     entry_delays: dict[str, float] = field(default_factory=dict)  # known late entries: run id -> s late
+    # accepted short-terminations and cancellations in force: run id -> station (issue #156)
+    commit_terminations: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -76,6 +78,11 @@ class Candidate:
     g2: Report | None  # the rule catalogue on the plan's own trace (greedy); CP-SAT: inside G3
     g3: G3Result
     solver: dict[str, Any] = field(default_factory=dict)
+    # disruption options (issue #156): trains it short-terminates (or cancels at their first station),
+    # run id -> station, each ranked with ``penalty_min`` passenger delay-minutes (opt.disruption)
+    terminations: dict[str, str] = field(default_factory=dict)
+    cancelled: frozenset[str] = frozenset()
+    penalty_min: float = 0.0
 
     @property
     def fail_rules(self) -> list[str]:
@@ -98,12 +105,25 @@ class Candidate:
 
     @property
     def delta(self) -> dict[str, float]:
-        return {k: float(v) for k, v in self.g3.kpis["delta"].items()}
+        out = {k: float(v) for k, v in self.g3.kpis["delta"].items()}
+        if self.terminations:  # a short-termination or cancellation costs its penalty (FR-OPT-11)
+            out[KPI_RANK] = out.get(KPI_RANK, 0.0) + self.penalty_min * len(self.terminations)
+        return out
 
     def actions_for(self, trains: Sequence[str], resource: str) -> list[PlanAction]:
         """The orders this plan gives for one conflict: holds of its trains at the resource's stations,
-        and for a station conflict the line each train is received on."""
-        return actions_for(self.decisions, self.holds, trains, resource)
+        and for a station conflict the line each train is received on; a short-termination or cancellation of
+        one of its trains comes first."""
+        ends = [
+            PlanAction(kind="cancel" if r in self.cancelled else "short_terminate", run_id=r, station=s)
+            for r, s in sorted(self.terminations.items())
+            if r in trains
+        ]
+        return ends + [
+            a
+            for a in actions_for(self.decisions, self.holds, trains, resource)
+            if a.run_id not in self.terminations
+        ]
 
 
 def actions_for(
@@ -126,6 +146,27 @@ def actions_for(
 
 
 @dataclass
+class Contingent:
+    """FR-OPT-11: the plan for one ETR scenario of the incidents whose restoration time is uncertain, and
+    its switch rule: if they are not restored by ``switch_at_s`` (the decision time), switch to this plan."""
+
+    etr_s: float  # the restoration time this plan assumes
+    switch_at_s: float
+    candidate: Candidate
+
+    def rule(self) -> str:
+        return (
+            f"if not restored by {_hhmm(self.switch_at_s)}, switch to the plan for ETR {_hhmm(self.etr_s)}"
+            f" ({self.candidate.name}, {'verified' if self.candidate.verified else 'not verified'})"
+        )
+
+
+def _hhmm(s: float) -> str:
+    t = int(s) % SECONDS_PER_DAY
+    return f"{t // SECONDS_PER_HOUR:02d}:{t % SECONDS_PER_HOUR // SECONDS_PER_MIN:02d}"
+
+
+@dataclass
 class PlanSet:
     decisions: list[Decision]  # the rolling plan (greedy): what the next plan freezes
     candidates: list[Candidate] = field(default_factory=list)
@@ -134,12 +175,19 @@ class PlanSet:
     notes: list[str] = field(default_factory=list)
     planner: str = "greedy"  # which plan carries the rolling state: greedy | cpsat (issue #152)
     churn: int | None = None  # decisions of the previous plan changed by this one (opt.stability.churn_s)
+    contingent: list[Contingent] = field(default_factory=list)  # ETR scenarios (issue #156)
+    first_plan_s: float | None = None  # wall time to the first verified option (DSC-06)
 
 
 class Dss(Protocol):
     def advance(self, now_s: float) -> DssView: ...
 
-    def commit(self, holds: Mapping[tuple[str, str], float], lines: Mapping[tuple[str, str], int]) -> None:
+    def commit(
+        self,
+        holds: Mapping[tuple[str, str], float],
+        lines: Mapping[tuple[str, str], int],
+        terminations: Mapping[str, str] | None = None,
+    ) -> None:
         """Accepted orders change the world the feed observes from now on."""
 
 

@@ -43,6 +43,14 @@ plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-k
 - **Recovery.** The CP-SAT objective weighs each train's delay at the section exit `opt.recovery.exit_weight` times its class weight, pulling trains back to the booked plan.
 - **Scenarios.** `python -m raildss_orchestrator scenarios SCN-02 SCN-03 SCN-06 SCN-07 --report ...` runs the loop with two arms: BL-1 (greedy planner) and DSS (CP-SAT rolling horizon). Each is compared with BL-0 under the same disruptions; see `docs/kpi/scenarios-disruption-loop.md`.
 
+**Disruption options** (issue #156, FR-OPT-11; register `opt.disruption`):
+- **What the plans assume.** An incident announced with an ETR is planned to end at that ETR until it clears or the ETR passes. At that point the injector announces the real end, plans use it, and the loop re-plans on a `disruption` trigger.
+- **Re-order / re-cross.** While an incident or closure is in force in the horizon, a `recross` option serves first the train the greedy plan holds longest. The trains it waited for wait instead, so the crossing or overtaking happens at another station.
+- **Short-terminate / cancel.** This option is policy-gated (`short_terminate`). For the passenger train the plan holds longest, if the hold is at least `terminate_min_hold_min` at a station where it stops, a `short-term` option ends its run there. A `cancel` option is offered instead when that station is its first and the train has not entered. The option ranks with `terminate_penalty_min` passenger delay-minutes added. Accepted, it becomes the order `SM/<station>: short-terminate <train>` (or `Control: cancel <train>`) and the twin directive `Directives.terminations`. The world, every later plan, G3 and the day's KPIs apply it, and a terminated train does not count as having left the section (B1).
+- **Contingent ETR plans.** On a disruption cycle with an incident whose ETR is still ahead, the planner builds plans for ETR + each of `contingent_etr_min` (30, 60 min). The cycle's own plan is the plan for the ETR. Each is verified (G2, G3) in its own scenario, where the incident lasts that much longer. The cycle record lists them with the switch rule ("if not restored by hh:mm, switch to the plan for ETR hh:mm").
+- **First-plan latency (DSC-06).** `CycleRecord.first_plan_s` is the wall time to the first verified option. The scenario report gives its P95 over the disruption cycles.
+- **G3 under the incidents.** The G3 replay of a plan now applies the standing incidents, late entries and terminations, as its baseline does.
+
 Limits: the planner forks the twin, so its state equals the DSS estimate only while nothing diverges; the
 CP-SAT instance does not model closures (a plan that uses a closed line fails G3); CP-SAT needs about
 6 s to build its model, so `opt.time_limit_s.routine` (15 s) leaves it about 9 s to improve the hint.
