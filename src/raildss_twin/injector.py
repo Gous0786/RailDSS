@@ -14,6 +14,13 @@ period of simulated time), to the ground truth at their stated time and location
   have failed too: every train entering the block waits ``twin.injector.paper_line_clear_min`` for a
   written authority (paper line clear) before it goes (issue #146, SCN-07);
 * ``tsr``: a speed restriction on the line (``speed_kmh``);
+* ``ohe_block`` (planned power block, may overrun) and ``ohe_trip`` (unplanned trip of a feeding zone),
+  from ``block_id`` to ``through_block`` (issue #147, SCN-08, SCN-09): electric trains do not enter the
+  zone (its lines are taken once the train on them has cleared) and a train running in the zone when the
+  power fails stops there until it is restored (a scripted outage is known to the ground truth from the
+  start, so the leg running at its start time stops);
+* ``crew_hours``: the crew of ``run_id`` runs out of hours at ``station``; the train cannot leave the
+  station until relief (issue #147, SCN-10);
 * ``loco_failure``: the train's loco fails in the block section it is running in (a scripted failure is
   known to the ground truth from the start, so the leg running at its start time stalls) and the train
   stands there, blocking its line, until relief. It is announced once the train is in a block, with that
@@ -44,7 +51,17 @@ OPS_SOURCE = "SIM.CONTROL_LOG"
 TOPIC = "ops.disruptions"
 SECONDS_PER_MIN = 60
 
-Kind = Literal["line_block", "point_failure", "signal_failure", "tsr", "loco_failure"]
+Kind = Literal[
+    "line_block",
+    "point_failure",
+    "signal_failure",
+    "tsr",
+    "loco_failure",
+    "ohe_block",
+    "ohe_trip",
+    "crew_hours",
+]
+OHE = ("ohe_block", "ohe_trip")
 
 
 class Disruption(BaseModel):
@@ -56,9 +73,9 @@ class Disruption(BaseModel):
     etr_sigma_min: float | None = None
     block_id: str | None = None  # line_block, signal_failure, tsr
     line_id: str | None = None  # None: every line of the block
-    station: str | None = None  # point_failure
+    station: str | None = None  # point_failure, crew_hours
     line_no: int | None = None  # point_failure
-    run_id: str | None = None  # loco_failure
+    run_id: str | None = None  # loco_failure, crew_hours
     speed_kmh: float | None = None  # tsr
     through_block: str | None = None  # line_block: the range runs from block_id to this block, inclusive
     single_line_working: bool = False  # line_block, loco_failure: work the other line both ways meanwhile
@@ -83,6 +100,7 @@ class Injector:
             self._check(d)
             if d.kind == "loco_failure":  # ground truth: the leg running at the start stalls
                 sim.stalls[self._train(d).plan.run_id] = (d.start_s, d.end_s)
+            self._known(d)
             sim.env.process(self._run(d))
         sim.env.process(self._poll())
 
@@ -93,9 +111,18 @@ class Injector:
         self.pending.put(d)
 
     # ------------------------------------------------------------------ internals
+    def _known(self, d: Disruption) -> None:
+        """Register what the ground truth knows of an outage or a crew relief (idempotent)."""
+        if d.kind in OHE:
+            zone = (frozenset(ln.segment for ln in self._lines(d)), d.start_s, d.end_s)
+            if zone not in self.sim.zone_stalls:
+                self.sim.zone_stalls.append(zone)
+        elif d.kind == "crew_hours" and d.station is not None:
+            self.sim.crew_holds[(self._train(d).plan.run_id, d.station)] = (d.start_s, d.end_s)
+
     def _check(self, d: Disruption) -> None:
         layout = self.sim.layout
-        if d.kind in ("line_block", "signal_failure", "tsr") and d.block_id not in layout.blocks:
+        if d.kind in ("line_block", "signal_failure", "tsr", *OHE) and d.block_id not in layout.blocks:
             raise ValueError(f"{d.incident_id}: unknown block section {d.block_id!r}")
         if d.through_block is not None:
             self._range(d)  # raises if the range is not valid
@@ -111,8 +138,10 @@ class Injector:
             sl.line_no == d.line_no for sl in layout.station_lines.get(d.station or "", [])
         ):
             raise ValueError(f"{d.incident_id}: unknown station line {d.station}/{d.line_no}")
-        if d.kind == "loco_failure":
+        if d.kind in ("loco_failure", "crew_hours"):
             self._train(d)  # raises if unknown
+        if d.kind == "crew_hours" and d.station not in layout.ops:
+            raise ValueError(f"{d.incident_id}: unknown station {d.station!r}")
 
     def _train(self, d: Disruption) -> Any:
         """The train of a loco failure: by run id, or by load id (a freight run has no date)."""
@@ -147,11 +176,19 @@ class Injector:
         return [layout.block_by_pair[(stations[k], stations[k + step])].id for k in range(i, j, step)]
 
     def _lines(self, d: Disruption) -> list[BlockLine]:
+        """The block lines of the incident. An OHE outage with no line named covers the lines of its
+        block's direction (and lines worked both ways): the other direction is another incident."""
+        layout = self.sim.layout
         return [
             ln
             for bid in self._range(d)
-            for ln in self.sim.layout.lines[bid]
+            for ln in layout.lines[bid]
             if d.line_id in (None, ln.line_id)
+            and (
+                d.kind not in OHE
+                or d.line_id is not None
+                or ln.direction in (layout.blocks[bid].direction, "BOTH")
+            )
         ]
 
     def _location(self, d: Disruption) -> tuple[float, str]:
@@ -171,7 +208,7 @@ class Injector:
         km, ne_id = self._location(d)
         affected = [ln.key for ln in self._lines(d)] if d.block_id else []
         if d.station is not None:
-            affected = [f"{d.station}/{d.line_no}"]
+            affected = [f"{d.station}/{d.line_no}"] if d.line_no is not None else []
         if d.incident_id in self.where:
             affected = [self.where[d.incident_id][2]]
         self.sim.emit(
@@ -210,21 +247,27 @@ class Injector:
                 self.where[d.incident_id] = (train.km, train.block, train.line.key)
                 if d.single_line_working:
                     working.append((train.block, self.sim.slw_begin(train.block, train.line.line_id)))
+        self._known(d)  # an interactive outage or crew relief starts now
         self._publish(d, EventType.DISRUPTION_RAISED, "RAISED", announced)
+        if announced < end:  # the announced ETR passes and the incident goes on: revise it then
+            env.process(self._revise(d, announced, end))
         held: list[tuple[str, Any]] = []
         if d.single_line_working and d.kind != "loco_failure":
             assert d.line_id is not None
             for bid in self._range(d):
                 working.append((bid, self.sim.slw_begin(bid, d.line_id)))
-        if d.kind in ("line_block", "point_failure"):
+        if d.kind in ("line_block", "point_failure", *OHE):
             labels = (
                 [lab for ln in self._lines(d) for lab in self._labels(ln)]
-                if d.kind == "line_block"
+                if d.kind != "point_failure"
                 else [f"SL:{d.station}/{d.line_no}"]
             )
             for label in labels:  # taken in turn, each once the train on it has cleared
                 req = self.sim.resource(label).request(priority=-1)  # ahead of waiting trains
-                yield req
+                yield req | env.timeout(max(0.0, end - env.now))
+                if not req.triggered:  # the incident ended before that line cleared: stop taking lines
+                    req.cancel()
+                    break
                 held.append((label, req))
                 self._mark(label, True)
         elif d.kind in ("signal_failure", "tsr"):
@@ -232,9 +275,6 @@ class Injector:
             extra = self.plc_s if d.block_instrument else 0.0
             for ln in self._lines(d):
                 self.sim.restrictions.append(Restriction(ln.segment, ln.line_id, start, end, kmh, extra))
-        if announced < end:  # the announced ETR passes and the incident goes on: revise it
-            yield env.timeout(max(0.0, announced - env.now))
-            self._publish(d, EventType.DISRUPTION_UPDATED, "UPDATED", end)
         yield env.timeout(max(0.0, end - env.now))
         for label, req in held:
             self.sim.resources[label].release(req)
@@ -246,6 +286,11 @@ class Injector:
             assert line_id is not None
             self.sim.slw_end(bid, line_id, keys)
         self._publish(d, EventType.DISRUPTION_CLEARED, "CLEARED", env.now)
+
+    def _revise(self, d: Disruption, announced: float, end: float) -> Proc:
+        """Announce the real end when the announced ETR passes, whatever the incident is doing then."""
+        yield self.sim.env.timeout(max(0.0, announced - self.sim.env.now))
+        self._publish(d, EventType.DISRUPTION_UPDATED, "UPDATED", end)
 
     def _labels(self, ln: BlockLine) -> list[str]:
         if ln.system == "AUTO":
