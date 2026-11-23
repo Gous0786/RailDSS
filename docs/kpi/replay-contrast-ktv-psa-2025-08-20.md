@@ -7,17 +7,17 @@ Window 8-8.5 h, options by greedy, evaluation auto-accept, identical seed and de
 | What | Value |
 |---|---|
 | Clock ticks | 31 |
-| Plans (cycles) | 12 |
+| Plans (cycles) | 13 |
 | Longest gap between plans | 5 min |
-| Candidate plans verified (G0-G3) / built | 8 / 18 |
-| Recommendations released | 22 |
-| Accepted (evaluation policy) | 19 |
-| Control orders issued | 13 (0 declined) |
+| Candidate plans verified (G0-G3) / built | 16 / 19 |
+| Recommendations released | 28 |
+| Accepted (evaluation policy) | 25 |
+| Control orders issued | 20 (0 declined) |
 | Most options for one decision | 2 |
-| Final statuses | DIVERGED 9, EXPIRED 3, SUPERSEDED 10 |
-| Decisions released / with 2+ options / with 2+ precedences | 19 / 3 / 1 |
-| Other precedence re-solved / verified / reversed | 9 / 4 / 3 |
-| Decisions with 2+ feasible precedences given options of both | 1 / 5 |
+| Final statuses | DIVERGED 14, EXPIRED 3, SUPERSEDED 11 |
+| Decisions released / with 2+ options / with 2+ precedences | 25 / 3 / 2 |
+| Other precedence re-solved / verified / reversed | 8 / 4 / 3 |
+| Decisions with 2+ feasible precedences given options of both (incl. orders in force) | 2 / 4 |
 
 ## KPIs: DSS against BL-0
 
@@ -37,7 +37,7 @@ Window 8-8.5 h, options by greedy, evaluation auto-accept, identical seed and de
 | B1_trains_exited | 193 | 193 |
 | C1_freight_speed_kmh | 43.39 | 43.65 |
 | C2_freight_detention_h | 19.5 | 18.27 |
-| F1_unplanned_stops | 653 | 662 |
+| F1_unplanned_stops | 647 | 662 |
 
 
 ## Conflicts: lead time and resolution (D1, D2)
@@ -48,7 +48,7 @@ The DS-5 conflict log over the window against the ground truth of the DSS arm: a
 |---|---:|---|
 | Conflicts detected | 36 (0 near-conflicts) | |
 | D1 median conflict lead time | 20.5 min | >= 15 min (DSC-05) |
-| D2 resolved before occurrence | 16 % (4 resolved, 21 occurred, 11 still open) | >= 90 % (DSC-04) |
+| D2 resolved before occurrence | 40 % (10 resolved, 15 occurred, 11 still open) | >= 90 % (DSC-04) |
 
 ## Alert load (H1, H2)
 
@@ -73,6 +73,6 @@ The DS-5 conflict log over the window against the ground truth of the DSS arm: a
 | B1_trains_exited | +0 |
 | C1_freight_speed_kmh | -0.26 |
 | C2_freight_detention_h | +1.23 |
-| F1_unplanned_stops | -9 |
+| F1_unplanned_stops | -15 |
 
 Most affected trains (exit delay, min): KSLKJEA_19082025115439 +109.72, 17480@2025-08-19 -18.06, 22604@2025-08-19 -18.06
