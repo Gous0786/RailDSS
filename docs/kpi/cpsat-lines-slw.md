@@ -7,11 +7,9 @@ Each scenario was run on its own, both loop arms, a 30-minute window: `python -m
 | SCN-05 | 12 of 12 | 0 / 0 / 0 | 5573.39 | 5573.39 | +0.00 |
 | SCN-19 | 13 of 13 | 0 / 0 / 0 | 7866.56 | 7866.56 | +0.00 |
 | SCN-20 | 9 of 10 | 0 / 0 / 0 | 5143.69 | 6085.55 | -941.86 |
-| SCN-21 | 12 of 13 | 0 / 0 / 0 | pending | pending | pending |
+| SCN-21 | 10 of 13 | 0 / 0 / 0 | 11012.8 | 11012.8 | +0.00 |
 
-**SCN-21 is pending.** Its run before the A5 fix verified 12 of 13 CP-SAT plans with 0 head-on movements, deadlocks or stuck trains, and gave DSS = BL-1 on A5 (9812.76); both arms short-terminated two trains. The re-run with the corrected A5 did not finish in time and is left to #170.
-
-DSS weighted delay (A5) is at most greedy's on SCN-05 (equal) and SCN-20 (942 lower). On SCN-05 and SCN-19 the accepted orders change waits inside the section but no train's arrival or exit: the trains still pass the bottleneck in the same order, so the arms tie.
+DSS weighted delay (A5) is at most greedy's on every single-line scenario: SCN-05 (equal), SCN-20 (942 lower) and SCN-21 (equal); one seed each (DSC-24 first part). On SCN-05, SCN-19 and SCN-21 the accepted orders change waits inside the section but no train's arrival or exit: the trains still pass the bottleneck in the same order, so the arms tie. On SCN-21 both arms short-terminated two trains, which the window ranking preferred but which costs the day more than BL-0 once A5 charges the penalty (a follow-up for the option ranking).
 
 ### SCN-05: DN line blocked CPP-SGDM: single-line working on the UP line
 
@@ -173,3 +171,58 @@ Alert load (H1, H2), DSS:
 | Alerts | 79 (79 conflicts, 0 data quality) | |
 | H1 alerts per controller-hour | 158 (0.5 h, 1 controller) | <= 6 (DSC-09) |
 | H2 flood events | 4 (most alerts in one window: 48) | 0 (DSC-09) |
+### SCN-21: Single-line working on one KTV-VZM line: the other two lines remain
+
+- BL-1: window 10.75-11.25 h, 13 plans, **17 of 20 candidate plans passed G0-G3**, 30 recommendations accepted, 41 orders.
+  - option short-term: 4 of 7 verified, 12 recommendations decided
+  - contingent ETR plans: 2 of 2 verified; if not restored by 13:37, switch to the plan for ETR 14:07 (contingent-etr+30, verified); if not restored by 14:07, switch to the plan for ETR 14:37 (contingent-etr+60, verified)
+  - disruption first plan: P95 43.1 s over 1 disruption cycles (max 43.1 s; DSC-06 budget 60 s)
+  - CP-SAT plans verified: 0 of 0; executed from the window start: 0 head-on movements (VER-BLK-04), 0 deadlocks, 0 stuck trains
+- DSS: window 10.75-11.25 h, 13 plans, **28 of 33 candidate plans passed G0-G3**, 55 recommendations accepted, 59 orders.
+  - option short-term: 5 of 7 verified, 19 recommendations decided
+  - contingent ETR plans: 2 of 2 verified; if not restored by 13:37, switch to the plan for ETR 14:07 (contingent-etr+30, verified); if not restored by 14:07, switch to the plan for ETR 14:37 (contingent-etr+60, verified)
+  - disruption first plan: P95 25.1 s over 1 disruption cycles (max 25.1 s; DSC-06 budget 60 s)
+  - CP-SAT plans verified: 10 of 13; executed from the window start: 0 head-on movements (VER-BLK-04), 0 deadlocks, 0 stuck trains
+
+| KPI | BL-1 | DSS | BL-0 | BL-1 - BL-0 | DSS - BL-0 | DSS - BL-1 |
+|---|---:|---:|---:|---:|---:|---:|
+| A2_section_punctuality_pct | 68.67 | 68.67 | 67.06 | +1.61 | +1.61 | +0.00 |
+| A4_mean_arrival_delay_min | 16.63 | 16.63 | 16.97 | -0.34 | -0.34 | +0.00 |
+| A5_weighted_delay_train_min | 11012.8 | 11012.8 | 9681.42 | +1331.34 | +1331.34 | +0.00 |
+| A6_mean_exit_delay_min | 18.31 | 18.31 | 19.34 | -1.03 | -1.03 | +0.00 |
+| A6_p90_exit_delay_min | 56.48 | 56.48 | 66.09 | -9.61 | -9.61 | +0.00 |
+| B1_trains_exited | 186 | 186 | 188 | -2.00 | -2.00 | +0.00 |
+| C2_freight_detention_h | 3.51 | 3.51 | 3.51 | +0.00 | +0.00 | +0.00 |
+| F1_unplanned_stops | 542 | 544 | 568 | -26.00 | -24.00 | +2.00 |
+
+Conflicts (D1, D2), BL-1:
+
+| KPI | Value | Target |
+|---|---:|---|
+| Conflicts detected | 92 (0 near-conflicts) | |
+| D1 median conflict lead time | 28.1 min | >= 15 min (DSC-05) |
+| D2 resolved before occurrence | 57.14 % (36 resolved, 27 occurred, 29 still open) | >= 90 % (DSC-04) |
+
+Alert load (H1, H2), BL-1:
+
+| KPI | Value | Target |
+|---|---:|---|
+| Alerts | 92 (92 conflicts, 0 data quality) | |
+| H1 alerts per controller-hour | 184 (0.5 h, 1 controller) | <= 6 (DSC-09) |
+| H2 flood events | 3 (most alerts in one window: 54) | 0 (DSC-09) |
+
+Conflicts (D1, D2), DSS:
+
+| KPI | Value | Target |
+|---|---:|---|
+| Conflicts detected | 92 (0 near-conflicts) | |
+| D1 median conflict lead time | 28.1 min | >= 15 min (DSC-05) |
+| D2 resolved before occurrence | 55.56 % (35 resolved, 28 occurred, 29 still open) | >= 90 % (DSC-04) |
+
+Alert load (H1, H2), DSS:
+
+| KPI | Value | Target |
+|---|---:|---|
+| Alerts | 92 (92 conflicts, 0 data quality) | |
+| H1 alerts per controller-hour | 184 (0.5 h, 1 controller) | <= 6 (DSC-09) |
+| H2 flood events | 3 (most alerts in one window: 54) | 0 (DSC-09) |
