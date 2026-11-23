@@ -22,6 +22,7 @@ Triggers (``opt.replan_triggers``): ``new_conflict``, ``disruption`` (a closure 
 
 from __future__ import annotations
 
+import math
 import time
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -234,7 +235,10 @@ class Orchestrator:
         self._rec_trains: dict[str, tuple[str, ...]] = {}
         self._audited: set[tuple[Any, ...]] = set()
         self._last_ctx: PlanContext | None = None
-        self._foreign_plan = False  # the plan in force is an option the planner does not reproduce (#196)
+        # until then the plan in force holds orders of an option the planner does not reproduce (a contrasting
+        # option, issue #196): its frozen decisions are imposed
+        self._foreign_until_s = -math.inf
+        self._foreign: set[str] = set()  # order ids of such options
         self._decision_records: list[DecisionRecord] = []
 
     # ------------------------------------------------------------------ the loop
@@ -337,11 +341,13 @@ class Orchestrator:
         holds, lines = self.commitments()
         horizon = now + self.cadence.freeze_s
         ahead = [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
-        frozen += [d for d in ahead if d.dep_s < horizon]
+        # an order of a contrasting option is imposed whenever it is (the planner does not reproduce it)
+        foreign = {(d.run_id, d.station) for oid, d in self._decisions.items() if oid in self._foreign}
+        frozen += [d for d in ahead if d.dep_s < horizon or (d.run_id, d.station) in foreign]
         # one decision per train and station: an accepted order overrides the last plan's (issue #152; with
         # a planner that does not reproduce its own earlier decisions the two can differ)
         frozen = list({(d.run_id, d.station): d for d in frozen}.values())
-        committed = [d for d in ahead if d.dep_s >= horizon]
+        committed = [d for d in ahead if d.dep_s >= horizon and (d.run_id, d.station) not in foreign]
         past = {(d.run_id, d.station): d for d in self.cadence.history()}
         past |= {
             (d.run_id, d.station): d
@@ -358,7 +364,7 @@ class Orchestrator:
             committed=committed,
             # the frozen decisions are imposed when the world changed, and when the plan in force is not
             # the planner's own (an accepted contrasting option, issue #196), which it does not reproduce
-            impose=bool(closures or self.exit_windows or self._foreign_plan),
+            impose=bool(closures or self.exit_windows or now < self._foreign_until_s),
             history=list(past.values()),
             closures=closures,
             exit_windows=self.exit_windows,
@@ -630,7 +636,6 @@ class Orchestrator:
             # the world now follows the accepted option: it is the plan the next cycle freezes (issue #152;
             # the planner's own plan may be another option)
             self._last_plan = [Decision(d.run_id, d.station, d.line_no, d.dep_s) for d in made]
-            self._foreign_plan = cand.name not in ("greedy", "cpsat")
             for oid, action in zip(
                 self.executor.current[rec_id], self.executor.options[rec_id].actions, strict=True
             ):
@@ -640,6 +645,9 @@ class Orchestrator:
                 d = realised.get((action.run_id, action.station))
                 if d is not None:
                     self._decisions[oid] = Decision(d.run_id, d.station, d.line_no, d.dep_s)
+                    if cand.name not in ("greedy", "cpsat"):  # an order the planner does not reproduce
+                        self._foreign_until_s = max(self._foreign_until_s, d.dep_s)
+                        self._foreign.add(oid)
             self._commit()
         return status
 

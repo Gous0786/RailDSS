@@ -607,14 +607,16 @@ class TwinPlanner:
         """The plan with ``first`` served before the others, verified, and its cost against ``base``.
 
         The precedence is imposed (issue #196): the trains ``base`` serves before ``first`` at the resource
-        are held at their station there until ``first`` has departed plus ``opt.contrast.margin_s``, and
-        ``first`` goes first in every queue. Without the holds the timetable order stands where nothing
-        contends."""
+        are held at their station there until ``first`` has departed plus ``opt.contrast.margin_s``.
+        Promoting ``first`` instead left the timetable order wherever nothing contended, and gave a plan
+        the next greedy plans could not reproduce once accepted."""
         before = order_of(base.decisions, trains, resource)
         holds = self._contrast_holds(base, trains, first, resource)
         # the other trains keep their frozen decisions: imposed, as the re-ordered queues would move them
         fixed, committed = self._frozen_of(ctx, impose=True)
-        alt = self._replan(ctx, fixed, committed, "-contrast", promote=[first], holds=holds)
+        # holds only, no priority change: the contrast is the greedy plan with these holds, so later plans
+        # that impose its decisions reproduce it once it is accepted
+        alt = self._replan(ctx, fixed, committed, "-contrast", holds=holds)
         cand = self._greedy(ctx, alt, standing, baseline, name=f"contrast:{first}")
         after = order_of(cand.decisions, trains, resource)
         reversed_ = before[0] != first and after[0] == first
