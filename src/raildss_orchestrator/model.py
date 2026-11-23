@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -64,6 +65,8 @@ class PlanContext:
     entry_delays: dict[str, float] = field(default_factory=dict)  # known late entries: run id -> s late
     # accepted short-terminations and cancellations in force: run id -> station (issue #156)
     commit_terminations: dict[str, str] = field(default_factory=dict)
+    # the decisions to contrast (issue #154): (trains, resource) of the most urgent conflicts released
+    decisions: list[tuple[tuple[str, ...], str]] = field(default_factory=list)
 
 
 @dataclass
@@ -126,6 +129,17 @@ class Candidate:
         ]
 
 
+def order_of(decisions: Sequence[Decision], trains: Sequence[str], resource: str) -> list[str]:
+    """The trains of a decision in the order a plan serves them at ``resource`` (issue #154): by their
+    departure from the resource's stations; a train with none there comes last."""
+    stations = set(resource.split("~"))
+    dep: dict[str, float] = {}
+    for d in decisions:
+        if d.run_id in trains and d.station in stations:
+            dep[d.run_id] = min(dep.get(d.run_id, math.inf), d.dep_s)
+    return sorted(trains, key=lambda t: (dep.get(t, math.inf), t))
+
+
 def actions_for(
     decisions: Sequence[Decision], holds: Sequence[Hold], trains: Sequence[str], resource: str
 ) -> list[PlanAction]:
@@ -143,6 +157,30 @@ def actions_for(
             if d.run_id in trains and d.station == resource
         ]
     return out
+
+
+@dataclass
+class Contrast:
+    """'Why not X' (issue #154, FR-OPT-06): the plan with ``first`` served before the other trains of a
+    decision at ``resource``, verified, and its cost against the best verified plan of the cycle."""
+
+    first: str
+    resource: str
+    candidate: Candidate
+    reversed: bool  # the precedence at the resource is the other way round from the best plan's
+    cost_min: float | None  # its KPI_RANK delta minus the best plan's (positive: it costs more)
+
+    @property
+    def verified(self) -> bool:
+        return self.candidate.verified
+
+    def answer(self) -> str:
+        if not self.verified:
+            rules = ", ".join(self.candidate.fail_rules)
+            return f"{self.first} first at {self.resource}: not possible ({rules})"
+        if not self.reversed:
+            return f"{self.first} first at {self.resource}: the plan keeps the same order"
+        return f"{self.first} first at {self.resource}: verified, {self.cost_min:+.1f} passenger delay-min"
 
 
 @dataclass
@@ -176,6 +214,7 @@ class PlanSet:
     planner: str = "greedy"  # which plan carries the rolling state: greedy | cpsat (issue #152)
     churn: int | None = None  # decisions of the previous plan changed by this one (opt.stability.churn_s)
     contingent: list[Contingent] = field(default_factory=list)  # ETR scenarios (issue #156)
+    contrasts: list[Contrast] = field(default_factory=list)  # the other precedence of decisions (#154)
     first_plan_s: float | None = None  # wall time to the first verified option (DSC-06)
 
 

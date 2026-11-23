@@ -47,7 +47,7 @@ from raildss_twin.sim import Closure, Directives, token
 from raildss_verifier import gates
 from raildss_verifier.model import FrozenCall, MaintenanceBlock
 
-from .model import Candidate, Contingent, DssView, PlanContext, PlanSet
+from .model import KPI_RANK, Candidate, Contingent, Contrast, DssView, PlanContext, PlanSet, order_of
 
 SECONDS_PER_MIN = 60
 HINT_END_S = 36 * 3600  # the hint run goes to the end of the day: DISPLIB paths run to the exit
@@ -339,6 +339,7 @@ class TwinPlanner:
         self.terminate_penalty = float(opts["terminate_penalty_min"])
         self.recross_tries = int(opts["recross_tries"])
         self.plans = {token(p.run_id): p for p in run.plans_for(world, day)[0]}
+        self.contrasts = int(self.reg.value("opt.contrast")["per_cycle"])  # issue #154
 
     def solver_info(self) -> dict[str, Any]:
         return {
@@ -442,6 +443,18 @@ class TwinPlanner:
                 add(option)
             if "disruption" in ctx.triggers:
                 out.contingent = self._contingent(ctx, imposed, checked)
+        # contrasting options (issue #154): for the most urgent decisions, the other precedence
+        base = out.candidates[0]
+        for trains, resource in ctx.decisions[: self.contrasts]:
+            order = order_of(base.decisions, trains, resource)
+            stations = set(resource.split("~"))
+            served = {d.run_id for d in base.decisions if d.station in stations}
+            if len(order) < 2 or not set(order) <= served:  # no precedence of the plan to reverse here
+                continue
+            c = self._contrast(ctx, trains, order[-1], resource, base, standing, baseline, imposed, checked)
+            out.contrasts.append(c)
+            if c.reversed:
+                add(c.candidate)
         if self.cpsat_enabled:
             # the greedy plan to the end of the day: a complete schedule to warm-start the solver with
             full = self._replan(ctx, imposed, checked, "-hint", horizon_s=HINT_END_S - ctx.now_s)
@@ -568,6 +581,42 @@ class TwinPlanner:
             solver={"g2": gp.g2.overall.value, "stuck": len(gp.stuck)},
             terminations=ends,
         )
+
+    # ------------------------------------------------------------------ contrasting options (issue #154)
+    def _contrast(
+        self,
+        ctx: PlanContext,
+        trains: Sequence[str],
+        first: str,
+        resource: str,
+        base: Candidate,
+        standing: Directives,
+        baseline: Any,
+        imposed: Sequence[Decision],
+        checked: Sequence[Decision],
+    ) -> Contrast:
+        """The plan with ``first`` served before the others (a re-solve with that precedence imposed: the
+        train goes first in every queue), verified, and its cost against ``base``."""
+        alt = self._replan(ctx, imposed, checked, "-contrast", promote=[first])
+        cand = self._greedy(ctx, alt, standing, baseline, name=f"contrast:{first}")
+        before = order_of(base.decisions, trains, resource)
+        after = order_of(cand.decisions, trains, resource)
+        reversed_ = before[0] != first and after[0] == first
+        cand.solver |= {"contrast": {"first": first, "resource": resource, "reversed": reversed_}}
+        cost = (
+            cand.delta.get(KPI_RANK, 0.0) - base.delta.get(KPI_RANK, 0.0)
+            if cand.verified and base.verified
+            else None
+        )
+        return Contrast(first=first, resource=resource, candidate=cand, reversed=reversed_, cost_min=cost)
+
+    def why_not(self, ctx: PlanContext, trains: Sequence[str], first: str, resource: str) -> Contrast:
+        """FR-OPT-06: 'why not ``first`` first at ``resource``?': the re-solve with that precedence imposed,
+        verified, with its cost difference against the best verified plan, or the rules that forbid it."""
+        imposed, checked = self._frozen_of(ctx, impose=self.planner == "cpsat")
+        standing, baseline = self._world(ctx)
+        base = self._greedy(ctx, self._replan(ctx, imposed, checked), standing, baseline)
+        return self._contrast(ctx, trains, first, resource, base, standing, baseline, imposed, checked)
 
     # ------------------------------------------------------------------ disruption options (issue #156)
     @staticmethod

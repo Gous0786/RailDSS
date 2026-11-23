@@ -43,6 +43,11 @@ plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-k
 - **Recovery.** The CP-SAT objective weighs each train's delay at the section exit `opt.recovery.exit_weight` times its class weight, pulling trains back to the booked plan.
 - **Scenarios.** `python -m raildss_orchestrator scenarios SCN-02 SCN-03 SCN-06 SCN-07 --report ...` runs the loop with two arms: BL-1 (greedy planner) and DSS (CP-SAT rolling horizon). Each is compared with BL-0 under the same disruptions; see `docs/kpi/scenarios-disruption-loop.md`.
 
+**Contrasting options and 'why not'** (issue #154, FR-OPT-05/06; register `opt.contrast`):
+- **The other precedence.** For the `per_cycle` most urgent decisions released in a cycle, the planner re-solves with the other precedence: the train the best plan serves last at the decision's resource goes first (promoted in every queue). The re-solved plan is verified (G2, G3). When it really reverses the order and passes, it is released as a further option of that decision, ranked by its KPI delta with the others.
+- **Cycle record.** It lists per decision the options released and how many different trains they serve first (`decisions`), and each re-solve with its answer (`contrasts`). The replay report counts the decisions with two or more feasible precedences that got options of both.
+- **'Why not X'.** `Orchestrator.why_not(trains, first, resource)` re-solves the last plan's context with `first` served first. It returns the verified plan and its cost in passenger delay-minutes against the best plan, or the rules that forbid it.
+
 **Line choice, sub-blocks and single-line working in CP-SAT** (issue #153):
 - **Direction of traffic.** On the reversible MID line of KTV-VZM, the IR marks every block and sub-block operation with a gate and a direction. Trains of opposite directions never overlap on the line, while trains of one direction follow sub-block by sub-block.
 - **Line blocks.** Closures and `line_block` incidents make their line's resources unavailable over the block. With single-line working on an absolute block, the direction that lost its line may use the other line against its direction, with the blocked line's Connections, while the working lasts.
