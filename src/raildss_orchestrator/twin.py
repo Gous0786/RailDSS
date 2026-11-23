@@ -789,10 +789,12 @@ def day_kpis(
     arm: str = "DSS",
     events_out: list[Any] | None = None,
     terminations: Mapping[str, str] | None = None,
+    sims_out: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """FR-KPI-05: the day under the loop's orders (the ``arm``) against BL-0 with the same disruptions.
 
-    ``events_out`` receives the ground-truth events of that arm (for D2, issue #162)."""
+    ``events_out`` receives the ground-truth events of that arm (for D2, issue #162); ``sims_out`` the two
+    runs by arm name, ``arm`` and ``"BL-0"`` (for the what-if export, issue #172)."""
     from raildss_dss.kpi import compare_runs
 
     scope = f"day {day.isoformat()}"
@@ -811,7 +813,11 @@ def day_kpis(
         terminations=terminations,
         **same,  # type: ignore[arg-type]
     )
-    return compare_runs(
-        run_arm(world, day, arm, scope, directives=dss, events_out=events_out),
-        [run_arm(world, day, "BL-0", scope, directives=base)],
+    ran: dict[str, list[Any]] = {arm: [], "BL-0": []}
+    comparison = compare_runs(
+        run_arm(world, day, arm, scope, directives=dss, events_out=events_out, sim_out=ran[arm]),
+        [run_arm(world, day, "BL-0", scope, directives=base, sim_out=ran["BL-0"])],
     )
+    if sims_out is not None:
+        sims_out.update({name: runs[0] for name, runs in ran.items()})
+    return comparison

@@ -202,3 +202,8 @@ src/raildss_orchestrator/scenarios.py: 2  # the 95th percentile is the cut point
 src/raildss_twin/bl0_check.py: 0.5  # a median under this share of the mean reads as a tail in the note's wording, not a rule value
 src/raildss_twin/bl0_check.py: 0.8  # history over BL-0 below this reads as slower in BL-0, wording only
 src/raildss_twin/bl0_check.py: 1.25  # history over BL-0 above this reads as faster in BL-0, wording only
+src/raildss_orchestrator/whatif.py: 3600  # seconds per hour, not a rule value
+src/raildss_orchestrator/whatif.py: 24  # hours of the day (the card of a what-if variant does not expire), not a rule value
+src/raildss_orchestrator/whatif.py: 2  # digits of the rounded window hours, not a rule value
+src/raildss_orchestrator/whatif.py: 8  # orders listed per what-if variant, a display limit, not a rule value
+src/raildss_orchestrator/whatif.py: 60  # seconds per minute, not a rule value

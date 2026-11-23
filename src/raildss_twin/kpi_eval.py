@@ -58,6 +58,7 @@ def run_arm(
     setup: Callable[[Sim], object] | None = None,
     events_out: list[Any] | None = None,
     extra_plans: Sequence[Plan] = (),
+    sim_out: list[Sim] | None = None,
 ) -> KpiReport:
     """Replay the day under BL-0 (with a candidate's directives, if any) and compute its KPIs."""
     plans, _, _ = run.plans_for(world, day, day_instance)
@@ -72,6 +73,8 @@ def run_arm(
         directives=directives,
         setup=setup,
     )
+    if sim_out is not None:  # the run itself, for exports that draw it (what-if view, issue #172)
+        sim_out.append(sim)
     if events_out is not None:  # the ground truth of the arm, for KPIs that need it (D2)
         events_out.extend(sim.events)
     return compute(

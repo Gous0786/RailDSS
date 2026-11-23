@@ -355,6 +355,22 @@ decisions of earlier plans. Frozen decisions (commit window, started, accepted o
 checked (VER-FRZ-01). They are imposed as holds only when the world changes (a closure or a closed exit),
 because a hold sends a train that was queueing to the back of its queue (issue #127). It is still one 2-hour demo window, not a benefit claim.
 
+## Disruption and what-if view (issue #172)
+
+`python -m raildss_orchestrator whatif SCN-05 [--arm BL-1 --arm DSS] [--span-min 60]` exports a disruption
+scenario for the web UI as `web/public/data/SCN-05.json` (listed in `index.json`, so it appears in the Day
+selector): the chart document of the day under BL-0 with the scenario's disruptions, plus one **what-if
+variant** per arm of the decision loop (BL-1: greedy, DSS: CP-SAT) replayed over the whole day, with the lines
+of the trains it changes, the impact per train, the rule auditor over the replay and the arm's KPIs against the
+baseline. An arm takes one loop run (about 25 min); arms can be exported one at a time into the same file. In
+the web app, **What-if** (or `W`) opens the view: the incident list and detail (type, cause, location, start,
+real end, ETR with its uncertainty and source, lines affected, linked trains, owner), the variant to draw on
+the chart against the baseline, and the plan comparison table. It is always a sandbox: it reads an export and
+never changes anything live. The mimic shows the baseline run only. The committed export is SCN-05 (a DN line
+blocked between CPP and SGDM, 60-minute loop window around it): in that window the greedy loop changes no train
+line and the CP-SAT loop changes five, with a slightly higher weighted delay (+72 train-min of 8830) and 0.25 h
+less freight detention.
+
 ## Audit and replay (issue #85)
 
 `python -m raildss_orchestrator run --from-h 8 --to-h 9 --audit-dir audit` records the loop in an

@@ -84,10 +84,14 @@ def loopable(sc: Scenario) -> bool:
 
 
 def with_loop(
-    world: run.World, sc: Scenario, arm: str = "BL-1", span_s: float = SPAN_S
+    world: run.World,
+    sc: Scenario,
+    arm: str = "BL-1",
+    span_s: float = SPAN_S,
+    sims_out: dict[str, Any] | None = None,
 ) -> tuple[RunSummary, dict[str, Any]]:
     """The decision loop around the scenario's first disruption with the arm's planner, and the day's KPIs
-    against BL-0 under the same disruptions."""
+    against BL-0 under the same disruptions. ``sims_out`` receives the runs of the arm and of BL-0."""
     closures = GreedyDispatcher(world).closures_of(sc)
     incidents = [d for d in scenario.injected(sc) if d.kind != "line_block"]  # line blocks are closures
     delays = scenario.entry_delays(sc)
@@ -118,6 +122,7 @@ def with_loop(
         entry_delays=delays,
         arm=arm,
         events_out=gt,
+        sims_out=sims_out,
         terminations=loop.terminations(),
     )
     if loop.conflict_log is not None:  # D1 and D2: the DS-5 log against the ground truth

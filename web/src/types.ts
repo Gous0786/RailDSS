@@ -71,6 +71,30 @@ export interface Explanation {
   hard_rules: { rule: string; applied: boolean; note: string }[];
 }
 
+/** A disruption of a scenario export (issue #172, FR-UI-11): what ops.disruptions carries, plus the km span. */
+export interface Disruption {
+  id: string;
+  type: string; // line_block | signal_failure | tsr | point_failure | loco_failure | ohe_block | ...
+  cause_code: string | null;
+  location: string;
+  line: string | null;
+  km_from: number | null;
+  km_to: number | null;
+  start_s: number;
+  end_s: number; // the real end (ground truth), shown to the analyst, not to the controller
+  etr_s: number | null; // the announced ETR
+  etr_sigma_min: number | null;
+  etr_source: string | null;
+  lines_affected: string[];
+  linked_trains: string[];
+  single_line_working: boolean;
+  status: string;
+  owner: string;
+  note: string;
+}
+
+export type KpiSet = Record<string, number>;
+
 export interface Option {
   id: string;
   title: string;
@@ -82,6 +106,11 @@ export interface Option {
   explanation: Explanation;
   confidence: number | null;
   assumptions: string[];
+  // what-if variants (issue #172): the arm, its orders in total, the KPIs against the baseline, the loop's work
+  arm?: string;
+  orders_total?: number;
+  kpis?: { baseline: KpiSet; variant: KpiSet };
+  loop?: { window_h: [number, number]; plans: number; candidates_verified: string; recommendations_accepted: number; orders_issued: number };
 }
 
 export interface Preview {
@@ -153,4 +182,8 @@ export interface ChartData {
   trains: Train[];
   preview: Preview;
   mimic?: Mimic; // format version 3
+  // disruption scenario exports (issue #172)
+  scenario?: { id: string; title: string; family: string; seed: number; profile: string; span_h: number };
+  disruptions?: Disruption[];
+  whatif?: { baseline: { arm: string; kpis: KpiSet }; arms: string[] };
 }
