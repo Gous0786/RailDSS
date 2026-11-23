@@ -43,6 +43,12 @@ plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-k
 - **Recovery.** The CP-SAT objective weighs each train's delay at the section exit `opt.recovery.exit_weight` times its class weight, pulling trains back to the booked plan.
 - **Scenarios.** `python -m raildss_orchestrator scenarios SCN-02 SCN-03 SCN-06 SCN-07 --report ...` runs the loop with two arms: BL-1 (greedy planner) and DSS (CP-SAT rolling horizon). Each is compared with BL-0 under the same disruptions; see `docs/kpi/scenarios-disruption-loop.md`.
 
+**Line choice, sub-blocks and single-line working in CP-SAT** (issue #153):
+- **Direction of traffic.** On the reversible MID line of KTV-VZM, the IR marks every block and sub-block operation with a gate and a direction. Trains of opposite directions never overlap on the line, while trains of one direction follow sub-block by sub-block.
+- **Line blocks.** Closures and `line_block` incidents make their line's resources unavailable over the block. With single-line working on an absolute block, the direction that lost its line may use the other line against its direction, with the blocked line's Connections, while the working lasts.
+- **Checks.** These two extensions of the DISPLIB document (`gate`, `unavailable`) are enforced by the CP-SAT model and checked by G1. A CP-SAT schedule therefore has no head-on movement and no deadlock: every train holds its resources until its next operation starts.
+- **Loop scenarios.** A line block under single-line working goes through the injector, so the world and every plan work the other line both ways, instead of a closure that only holds trains. The scenario report counts the executed head-on movements (VER-BLK-04), deadlocks and stuck trains of each arm.
+
 **Disruption options** (issue #156, FR-OPT-11; register `opt.disruption`):
 - **What the plans assume.** An incident announced with an ETR is planned to end at that ETR until it clears or the ETR passes. At that point the injector announces the real end, plans use it, and the loop re-plans on a `disruption` trigger. Both events re-open the commit window. The last plan's frozen decisions and the orders not yet executed were made without the incident (a train due to leave into a dead OHE zone cannot), so the loop withdraws them and the cycle's options give the new orders. Decisions that have started stay history.
 - **Re-order / re-cross.** While an incident or closure is in force in the horizon, a `recross` option serves first the train the greedy plan holds longest. The trains it waited for wait instead, so the crossing or overtaking happens at another station.
@@ -54,5 +60,5 @@ plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-k
 - **G3 under the incidents.** The G3 replay of a plan now applies the standing incidents, late entries and terminations, as its baseline does.
 
 Limits: the planner forks the twin, so its state equals the DSS estimate only while nothing diverges; the
-CP-SAT instance does not model closures (a plan that uses a closed line fails G3); CP-SAT needs about
+CP-SAT instance does not model OHE outages, loco failures or crew holds (G3 judges them in the twin); CP-SAT needs about
 6 s to build its model, so `opt.time_limit_s.routine` (15 s) leaves it about 9 s to improve the hint.

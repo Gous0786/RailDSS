@@ -83,6 +83,17 @@ def loopable(sc: Scenario) -> bool:
     return bool(sc.disruptions) and all(d.type in LOOP_KINDS for d in sc.disruptions)
 
 
+def busiest_hour_s(world: run.World, sc: Scenario) -> float:
+    """Start of the hour of the scenario's day in which most trains enter the section."""
+    plans, _, _ = run.plans_for(world, sc.wtt_date, scenario.run_kwargs(sc)["day_instance"])
+    counts: dict[int, int] = {}
+    for p in plans:
+        if p.entry_s >= 0:
+            h = int(p.entry_s // SECONDS_PER_HOUR)
+            counts[h] = counts.get(h, 0) + 1
+    return float(min(counts, key=lambda h: (-counts[h], h)) * SECONDS_PER_HOUR)
+
+
 def with_loop(
     world: run.World,
     sc: Scenario,
@@ -99,8 +110,10 @@ def with_loop(
     closures = GreedyDispatcher(world).closures_of(plain)
     incidents = [d for d in scenario.injected(sc) if d.kind != "line_block" or d.incident_id in slw]
     delays = scenario.entry_delays(sc)
-    first = min(d.start_s for d in sc.disruptions)
-    from_s, to_s = first - LEAD_S, first - LEAD_S + span_s
+    # around the first disruption; a scenario without one (a peak day, SCN-19) from its busiest hour
+    first = min((d.start_s for d in sc.disruptions), default=None)
+    from_s = first - LEAD_S if first is not None else busiest_hour_s(world, sc)
+    to_s = from_s + span_s
     day = sc.wtt_date
     dss = TwinDss(world, day, until_s=to_s, closures=closures, incidents=incidents, entry_delays=delays)
     planner = TwinPlanner(world, day, planner=ARMS[arm], cpsat_enabled=ARMS[arm] == "cpsat", alternatives=0)
@@ -259,6 +272,6 @@ def run_all(
     loops: list[Loop] = []
     if with_loops:
         for s in library:
-            if loopable(s):
+            if loopable(s) or (s.id in ids and not s.disruptions):  # a peak day only when named
                 loops.append((s, {arm: with_loop(world, s, arm, span_s or SPAN_S) for arm in arms}))
     return rows, loops
