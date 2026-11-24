@@ -188,6 +188,16 @@ def _extensions(
                         ta,
                         tb,
                     )
+    for ti, seq in per_train.items():  # closed exits (issue #157): an operation outside every window
+        if not 0 <= ti < len(trains):
+            continue
+        for _, oi, t in seq:
+            for a, z in trains[ti][oi].get("closed", []):
+                end = ends.get((ti, oi))
+                stop = end[1] if end is not None else float("inf")
+                if t < float(z) and stop > float(a):
+                    detail = f"{label[ti]} op {oi} runs {t:g}-{stop:g} into an exit closed {a}-{z}"
+                    bad("closed_exit", detail, ti)
     for u in unavailable:
         res, lo, hi = str(u["resource"]), float(u["start"]), float(u["end"])
         for _, ti, oi, t, rel in users.get(res, []):

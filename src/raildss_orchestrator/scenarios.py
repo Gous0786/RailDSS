@@ -72,6 +72,7 @@ LOOP_KINDS = {
     "ohe_block",  # SCN-08
     "ohe_trip",  # SCN-09
     "crew_hours",  # SCN-10
+    "exit_blocked",  # SCN-23: a boundary acceptance window shuts an exit (issue #157)
 }
 PERCENTILES = 20  # statistics.quantiles cut points: 5 % steps
 P95 = PERCENTILES - 2  # index of the 95th percentile among the cut points
@@ -115,6 +116,7 @@ def with_loop(
     plain = sc.model_copy(update={"disruptions": [d for d in sc.disruptions if d.incident_id not in slw]})
     closures = GreedyDispatcher(world).closures_of(plain)
     incidents = [d for d in scenario.injected(sc) if d.kind != "line_block" or d.incident_id in slw]
+    exits = scenario.exit_windows(sc)  # closed exits: known to the world, the plans and the KPI arms (#157)
     delays = scenario.entry_delays(sc)
     # around the first disruption; a scenario without one (a peak day, SCN-19) from its busiest hour
     first = min((d.start_s for d in sc.disruptions), default=None)
@@ -132,6 +134,7 @@ def with_loop(
         incidents=incidents,
         entry_delays=delays,
         degraded_predictor=arm in DEGRADED,
+        exit_windows=exits,
     )
     kind = LOOP_ARMS[arm]
     planner = TwinPlanner(world, day, planner=kind, cpsat_enabled=kind == "cpsat", alternatives=0)
@@ -142,6 +145,7 @@ def with_loop(
         disruptions=tuple(Disruption(c, c.start_s - NOTICE_S) for c in closures),
         incidents=tuple((d, d.start_s) for d in incidents),  # unplanned: known when they start
         entry_delays=delays,
+        exit_windows=exits,
     )
     summary = loop.run(from_s, to_s, TICK_S)
     holds, lines = loop.commitments()
@@ -151,7 +155,7 @@ def with_loop(
         world,
         day,
         closures=closures,
-        exit_windows={},
+        exit_windows=exits,
         holds=holds,
         lines=lines,
         incidents=incidents,
@@ -218,7 +222,9 @@ def render(rows: list[tuple[Scenario, KpiReport]], loops: list[Loop], command: s
                 cp = [c for cy in summary.cycles for c in cy.candidates if c.name == "cpsat"]
                 out.append(
                     f"  - CP-SAT plans verified: {sum(c.verified for c in cp)} of {len(cp)}; executed from "
-                    f"the window start: {safety['head_on']} head-on movements (VER-BLK-04), "
+                    f"the window start: {safety.get('closed_exit', 0)} trains into a closed exit "
+                    "(VER-EXT-01), "
+                    f"{safety['head_on']} head-on movements (VER-BLK-04), "
                     f"{safety['deadlocks']} deadlocks, {safety['stuck']} stuck trains"
                 )
         names = list(arms)

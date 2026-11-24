@@ -203,12 +203,21 @@ def _t3_on_c_d(p: CandidatePlan, line: str, enter: float) -> None:
     _set(p, "T3", "runs", 2, line_id=line, enter_s=enter, clear_s=enter + 300)
 
 
+def _entering_only(p: CandidatePlan) -> None:
+    """T2 has just entered at D while the exit at D is closed: only its entry call, no run (#157)."""
+    p.closed_exits[0].op, p.closed_exits[0].start_s, p.closed_exits[0].end_s = "D", 2900.0, 3500.0
+    t2 = train(p, "T2")
+    t2.calls, t2.runs = t2.calls[:1], []
+
+
 Mutant = Callable[[CandidatePlan], None]
 POSITIVE: dict[str, Mutant] = {
     "base": lambda p: None,
     "adequate_gap_exact": adequate_gap_exact,
     # T3 takes the working UP line against its direction once T2 has cleared it plus adequate distance
     "slw_crossing_clear": lambda p: _t3_on_c_d(p, "UP", 3360 + SLW_GAP + 10),
+    # a train that only entered the section at D while its exit there is closed (a plan cut at its horizon)
+    "ext_entering_at_a_closed_exit": lambda p: _entering_only(p),
     # T3 entered the DN line before the working began (as a failed train does) and is still on it
     "slw_on_blocked_line_before": lambda p: _t3_on_c_d(p, "DN", 2800),
 }

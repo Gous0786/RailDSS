@@ -89,6 +89,9 @@ class Operation(Model):
     # trains of opposite directions on the same gate must not overlap, those of one direction may follow
     gate: str | None = None
     direction: str | None = None
+    # closed exit (issue #157, FR-OPT-20): the final hop of a train leaving through an exit whose boundary
+    # acceptance window is shut; the operation does not overlap any of these [start, end) windows
+    closed: list[tuple[int, int]] = []
 
 
 class Train(Model):
@@ -251,6 +254,8 @@ class Instance(Model):
                 }
                 if o.gate is not None:
                     op["gate"] = [o.gate, o.direction]
+                if o.closed:
+                    op["closed"] = [list(w) for w in o.closed]
                 ops.append(op)
             ops.append({"min_duration": 0, "resources": [], "successors": []})
             trains.append(ops)
@@ -341,6 +346,8 @@ class Effects:
     # the other absolute-block line is worked both ways meanwhile: (segment, blocked line id, start, end)
     blocked: tuple[tuple[str, str | None, float, float], ...] = ()
     single_line: tuple[tuple[str, str, float, float], ...] = ()
+    # closed exits (issue #157): station -> [(start s, end s)] its boundary accepts no train
+    exits: tuple[tuple[str, tuple[tuple[float, float], ...]], ...] = ()
 
 
 NO_EFFECTS = Effects()
@@ -353,6 +360,7 @@ def effects_of(
     start_s: float,
     end_s: float,
     closures: Sequence[Any] = (),
+    exit_windows: Mapping[str, Sequence[tuple[float, float]]] | None = None,
 ) -> Effects:
     """The incidents and closures (twin ``Closure``) active at some time of ``[start_s, end_s)``."""
     cfg = world.register.value("twin.injector")
@@ -392,6 +400,10 @@ def effects_of(
         recovery,
         tuple(blocked),
         tuple(single),
+        tuple(
+            (op, tuple((a, z) for a, z in ws if a < end_s and z > start_s))
+            for op, ws in sorted((exit_windows or {}).items())
+        ),
     )
 
 
@@ -472,6 +484,9 @@ def _train(
     clear = _clearing_s(plan, reg)
     detention = Detention(reg, int(cfg["default_seed"]))  # the twin's freight halts (issue #145)
     idx = [i for i, n in enumerate(plan.nodes) if not layout.ops[n.op].is_halt]
+    exit_op = plan.nodes[idx[-1]].op
+    # rounded inwards (start up, end down): like the floored IR times, a relaxation of the twin by < 1 s
+    closed = [(math.ceil(a), fl(z)) for op, ws in effects.exits if op == exit_op for a, z in ws]
     b = _Builder()
     prev_ends: list[tuple[int, BlockLine]] = []
     free_run = 0.0  # unimpeded time of the path, for the freight threshold
@@ -558,6 +573,7 @@ def _train(
                         # a reversible line is worked one direction at a time (issue #153)
                         gate=line.key if line.direction == "BOTH" else None,
                         direction=direction if line.direction == "BOTH" else None,
+                        closed=closed if k == len(idx) - 2 else [],
                     )
                 )
                 if n:
@@ -586,6 +602,7 @@ def _train(
             block=b.ops[i]["block"],
             line=b.ops[i]["line"],
             gate=b.ops[i].get("gate"),
+            closed=b.ops[i].get("closed", []),
             direction=b.ops[i].get("direction"),
         )
         for i in alive
@@ -664,6 +681,7 @@ def build_instance(
     incidents: Sequence[Any] = (),
     entry_delays: Mapping[str, float] | None = None,
     closures: Sequence[Any] = (),
+    exit_windows: Mapping[str, Sequence[tuple[float, float]]] | None = None,
 ) -> tuple[Instance, list[Plan]]:
     """Convert the trains entering in ``[start_s, end_s)`` of ``day``; returns the instance and the plans.
 
@@ -690,7 +708,7 @@ def build_instance(
     resources: dict[str, Resource] = {}
     trains: list[Train] = []
     objective: list[Component] = []
-    effects = effects_of(world, incidents, entry_delays, start_s, end, closures)
+    effects = effects_of(world, incidents, entry_delays, start_s, end, closures, exit_windows)
     for plan in window_plans:
         train, anchors = _train(world, plan, horizon, resources, effects)
         if plan.run_id in running:

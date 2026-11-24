@@ -317,5 +317,5 @@ rules:
       reference: "Boundary acceptance windows of the adjacent division are hard constraints (R04 §7.2)"
       verification_status: V
     owner: rules
-    tests: {positive: [base], negative: [ext01_exit_while_closed]}
+    tests: {positive: [base, ext_entering_at_a_closed_exit], negative: [ext01_exit_while_closed]}
     version: 1.0.0

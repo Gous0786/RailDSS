@@ -801,12 +801,22 @@ class Sim:
                     raise NoRouteError(
                         f"no block line from {hop[0]} to {hop[1]} permitted by line {sl.line_no}"
                     )
-                lines = yield from self._open_lines(t, k, idx, node, lines)
-                first = [self._line_resource(ln, hop) for ln in lines]
-                j = yield from self.acquire(t, first)
-                if hold is not None and hold > self.env.now:  # line taken early: leave at the hold
-                    t.status = "dwelling"
-                    yield self.env.timeout(hold - self.env.now)
+                options = lines
+                while True:
+                    lines = yield from self._open_lines(t, k, idx, node, options)
+                    first = [self._line_resource(ln, hop) for ln in lines]
+                    j = yield from self.acquire(t, first)
+                    if hold is not None and hold > self.env.now:  # line taken early: leave at the hold
+                        t.status = "dwelling"
+                        yield self.env.timeout(hold - self.env.now)
+                        t.status = "running"
+                    # the exit may have shut while it waited for the line: give it back and wait (#157)
+                    until = self._exit_shut(t, k, idx, node)
+                    if until is None:
+                        break
+                    self.release(t, first[j].label)
+                    t.status, t.stood = "dwelling", True
+                    yield self.env.timeout(max(until, self.env.now + 1.0) - self.env.now)
                     t.status = "running"
                 chosen = lines[j]
                 self.emit(
@@ -885,6 +895,17 @@ class Sim:
             t.status, t.stood = "dwelling", True
             yield self.env.timeout(max(min(ends), now + 1.0) - now)
             t.status = "running"
+
+    def _exit_shut(self, t: Train, k: int, idx: list[int], node: Node) -> float | None:
+        """The end of the boundary acceptance window that shuts the train's exit if it set off into its final
+        hop now (issue #157), else None."""
+        d = self.directives
+        if k + 1 != len(idx) - 1 or not d.exit_windows or self.env.now < d.from_s:
+            return None
+        nxt, now = t.plan.nodes[idx[k + 1]], self.env.now
+        span = self.run_time(t, node, nxt, True, nxt.stop) + self.clearing_s(t)
+        ends = [b for a, b in d.exit_windows.get(nxt.op, []) if a < now + span and now < b]
+        return max(ends) if ends else None
 
     def resume_hop(self, plan: Plan, idx: list[int]) -> int:
         """The hop (index into the block stations) a train booked before now is on: the first ending ahead."""

@@ -65,3 +65,16 @@ def test_a_closure_is_unavailable_and_reversible_lines_carry_a_direction_gate(wo
     assert {o.direction for o in gated} == {"DN", "UP"}  # both directions use the MID line
     doc = inst.to_displib()
     assert any(op.get("gate") for ops in doc["trains"] for op in ops)
+
+
+def test_a_closed_exit_marks_only_the_final_hop_of_trains_leaving_there(world: run.World) -> None:
+    window = (BLOCK_S, BLOCK_S + 3600)
+    inst, plans = displib.build_instance(world, DAY, T0, END, exit_windows={"KTV": [window]})
+    exits = {p.run_id: p.nodes[-1].op for p in plans}
+    marked = {t.id for t in inst.trains for o in t.operations if o.closed}
+    assert marked and all(exits[r] == "KTV" for r in marked)
+    for t in inst.trains:
+        for o in t.operations:
+            if o.closed:
+                assert o.kind in ("block", "sub_block") and o.closed == [(int(window[0]), int(window[1]))]
+    assert any(op.get("closed") for ops in inst.to_displib()["trains"] for op in ops)
