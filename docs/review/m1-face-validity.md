@@ -1,5 +1,7 @@
 # M1 face-validity review (issue #91, spec §13 M1 exit, OD-05)
 
+> Round 2 (issue #171) re-checks every finding below on the current twin: [m2-face-validity.md](m2-face-validity.md).
+
 Review of the twin and the DSS on a real day, 2025-08-20 on KTV-PSA, against the historical freight log,
 the booked passenger timetable (WTT), the KPI reference (K1) and public sources. There is no SME (OD-05), so
 the reviewers are the project team; the findings below are what a domain expert should look at again.

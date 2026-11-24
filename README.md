@@ -36,7 +36,7 @@ The requirements live in the **RailDSS Software Specification** (v1.8, a project
   - BL-0 freight has no detention model, so it is far faster than the log.
   - The planner does not yet model TSRs, point failures or late-train disruptions.
   - The DSS benefit is shown on one 2-hour demo window only.
-  - Face-validity findings FV-01 to FV-06 are open ([review](docs/review/m1-face-validity.md)).
+  - Face-validity round 2 ([review](docs/review/m2-face-validity.md)): FV-01 and FV-02 are closed or addressed; FV-03 to FV-06 are open; two new findings, FV-07 (the greedy loop raises A5 on the current twin) and FV-08 (connection-rule failures after T2, stale SCN-05 export).
 
 ## Quick start
 

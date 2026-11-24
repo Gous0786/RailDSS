@@ -36,6 +36,7 @@ The published network is `KTV-PSA-2025-08-r2`.
 ## Reviews
 
 - [M1 face-validity review](review/m1-face-validity.md) (historical chart comparison, FV-01 to FV-06).
+- [M2 face-validity review, round 2](review/m2-face-validity.md) (five charts after the twin fixes, status of FV-01 to FV-06, FV-07 and FV-08).
 
 ## DSS, optimiser and orchestrator
 
