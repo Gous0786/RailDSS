@@ -893,3 +893,33 @@ kbd {
   border-radius: 4px;
   font-weight: 600;
 }
+
+/* ---- issue #174: contrasting options and 'why not' ---- */
+.whynot {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.whynot-possible {
+  color: #7ee787;
+}
+.whynot-impossible {
+  color: #ff7b72;
+}
+.whynot-same {
+  color: #9da7b3;
+}
+.contrast {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.contrast th,
+.contrast td {
+  text-align: left;
+  padding: 2px 6px;
+  border-bottom: 1px solid #2a2f37;
+}
+.contrast tr.chosen td {
+  background: #1f2a38;
+}

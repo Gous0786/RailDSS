@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from raildss_orchestrator.loop import RunSummary
+from raildss_orchestrator.loop import CycleRecord, RunSummary
 from raildss_orchestrator.scenarios import ARMS, SPAN_S, with_loop
 from raildss_twin import chart, run, scenario
 from raildss_twin.scenario import Scenario, ScenarioDisruption
@@ -103,6 +103,36 @@ def _lines_affected(d: ScenarioDisruption) -> list[str]:
     if d.type == "point_failure":
         return [f"{d.station}/line {d.line_no}"]
     return []
+
+
+def contrast_fields(cycle: CycleRecord) -> dict[str, Any]:
+    """The contrast of one planning cycle for the card (FR-UI-09, issue #174): the most contested decision it
+    released (the one with the most precedences, then options) and the 'why not' re-solves of the cycle.
+    Both are optional in the export: a cycle without a decision, or with one precedence and no re-solve, gives
+    ``decision`` None and an empty ``why_not``, and the card says so."""
+    contested = max(cycle.decisions, key=lambda d: (d.precedences, d.options), default=None)
+    # a re-solve belongs to a decision by its trains (two decisions can share a resource, issue #196); one
+    # without trains (an older record) is kept
+    mine = [
+        c
+        for c in cycle.contrasts
+        if contested is not None and (not c.trains or set(c.trains) == set(contested.trains))
+    ]
+    return {
+        "decision": None if contested is None else contested.model_dump(),
+        "why_not": [
+            {
+                "first": c.first,
+                "resource": c.resource,
+                "verified": c.verified,
+                "reversed": c.reversed,
+                "cost_min": c.cost_min,
+                "fail": list(c.fail),
+                "answer": c.answer,
+            }
+            for c in mine
+        ],
+    }
 
 
 def _orders(summary: RunSummary) -> list[str]:

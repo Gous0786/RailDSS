@@ -13,6 +13,7 @@ import { KpiStrip } from "./ops/KpiStrip";
 import { QueuePanel } from "./ops/QueuePanel";
 import { acknowledge, alertGroups, openCounts } from "./ops/alerts";
 import { acceptState, expiresIn } from "./ops/card";
+import { optionForKey } from "./ops/contrast";
 import { kpis } from "./ops/kpi";
 import { defaultDay, hasWhatIf } from "./whatif/whatif";
 import { HORIZON_S, NO_FILTER, type QueueFilter, type SortKey, filterRows, queueRows, sortRows } from "./ops/queue";
@@ -38,6 +39,7 @@ const SHORTCUTS: [string, string][] = [
   ["P", "open the recommendation card"],
   ["1 / 2 / 3", "select an option (or a reject reason)"],
   ["V", "preview: off → before → after"],
+  ["Y", "why not: the re-solves of the other precedence (card open)"],
   ["A", "accept the selected option (after the most affected trains are shown)"],
   ["M", "modify (sandbox)"],
   ["R", "reject (then choose a reason 1-5)"],
@@ -95,6 +97,7 @@ export default function App() {
   const [auditDoc, setAuditDoc] = useState<AuditDoc | null>(null);
   const [auditError, setAuditError] = useState("");
   const [drawer, setDrawer] = useState(false);
+  const [whyNot, setWhyNot] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [acked, setAcked] = useState<ReadonlySet<string>>(new Set());
   const [cursor, setCursor] = useState(0);
@@ -179,6 +182,7 @@ export default function App() {
     setPhase("none");
     setPreview("off");
     setDrawer(false);
+    setWhyNot(false);
   }, []);
 
   const focusAlert = useCallback((a: Alert) => {
@@ -234,10 +238,12 @@ export default function App() {
         setPreview("after");
         return;
       }
-      if (phase === "card" && /^[1-3]$/.test(k) && Number(k) <= opts.length) {
-        setOptionIdx(Number(k) - 1);
+      const picked = optionForKey(k, phase === "card", opts.length);
+      if (picked !== null) {
+        setOptionIdx(picked);
         return;
       }
+      if ((k === "y" || k === "Y") && phase !== "none") return setWhyNot((v) => !v);
       if ((k === "v" || k === "V") && phase !== "none") {
         setPreview((m) => (m === "off" ? "before" : m === "before" ? "after" : "off"));
         return;
@@ -414,7 +420,16 @@ export default function App() {
               onAck={(g) => setAcked((a) => acknowledge(a, g))}
               onCursor={setCursor}
             />
-            <CardPanel data={data} option={option} optionIdx={optionIdx} phase={phase} now={now} preview={preview} drawer={drawer} />
+            <CardPanel
+              data={data}
+              option={option}
+              optionIdx={optionIdx}
+              phase={phase}
+              now={now}
+              preview={preview}
+              drawer={drawer}
+              whyNot={whyNot}
+            />
             <section>
               <h3>Day</h3>
               <p>

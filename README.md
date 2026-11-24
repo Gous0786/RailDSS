@@ -383,6 +383,20 @@ BL-2 on five real days over a 6 h window, `docs/kpi/multi-day-replay.md`); a han
 (`web/src/evaluation/sample.evaluation.json`, `run.sample: true`) makes the view show a SAMPLE DATA banner in its
 tests, and `tests/docs/test_evaluation_schema.py` validates both and keeps the KPI names in step with the code.
 
+## Contrasting options on the card (issue #174)
+
+The recommendation card lists up to three options of the decision with their contrast (weighted delay against the
+baseline, trains later and earlier, verifier, and the train each serves first), and the drawer (`D`) puts them side by
+side with the orders only each has. `1` / `2` / `3` still select an option; **`Y`** shows the 'why not' answers: for the
+decision, the loop's re-solve with the other precedence (issue #154): possible and verified with its cost in passenger
+delay-minutes against the best plan, not possible (the rules that forbid it), or the order the best plan already has.
+The card reads optional fields of the chart export: `Option.first` (the train it serves first), `Preview.decision` (the
+loop's `DecisionRecord`: trains, resource, options, precedences) and `Preview.why_not` (its `ContrastRecord` list);
+`raildss_orchestrator.whatif.contrast_fields(cycle)` maps a planning cycle to them. A decision with one precedence, one
+option or no re-solve is shown as that ("One option only: nothing to contrast", "No re-solve in this export"); the
+committed exports do not carry loop decisions yet, so the tests use a hand-made export of three options and
+`web/src/ops/contrast.test.tsx` renders the card and the drawer from it.
+
 ## Multi-day replay (issue #169, FV-06)
 
 `python -m raildss_orchestrator multiday run --day 2025-08-12 --arm BL-1` (or `BL-2`) runs the decision loop of one
