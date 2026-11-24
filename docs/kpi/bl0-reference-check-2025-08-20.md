@@ -12,14 +12,14 @@ dataset has **no passenger actuals**, so BL-0 passenger delay cannot be checked 
 
 | Measure | BL-0 |
 |---|---|
-| Mean exit delay (min) | 24.4 |
+| Mean exit delay (min) | 21.8 |
 | Median exit delay (min) | 4.2 |
-| Longest exit delay (min) | 172.7 |
-| Trains more than 60 min late | 16 |
-| Longest arrival delay at any station (min) | 182.01 |
-| Section punctuality (%) | 62.63 |
+| Longest exit delay (min) | 221.3 |
+| Trains more than 60 min late | 13 |
+| Longest arrival delay at any station (min) | 230.91 |
+| Section punctuality (%) | 65.66 |
 
-The median exit delay is 4.2 min against a mean of 24.4 min. Most trains are close to on time and a tail of long delays pulls the mean up: 16 trains are more than 60 min late, the longest arrival delay at a station 3.0 h.
+The median exit delay is 4.2 min against a mean of 21.8 min. Most trains are close to on time and a tail of long delays pulls the mean up: 13 trains are more than 60 min late, the longest arrival delay at a station 3.8 h.
 
 ## Freight: the same loads, history against BL-0
 
@@ -28,23 +28,39 @@ The median exit delay is 4.2 min against a mean of 24.4 min. Most trains are clo
 
 | Section time per load (h) | History | BL-0 |
 |---|---|---|
-| Median | 6.22 | 0.93 |
-| Mean | 6.79 | 2.15 |
-| p90 | 11.63 | 3.81 |
+| Median | 6.22 | 4.37 |
+| Mean | 6.79 | 4.96 |
+| p90 | 11.63 | 11.40 |
 
 History, whole day: detention 220.02 h (dwell above 30 min) and running time above the
-block p10 172.09 h. BL-0 freight standing: 18.27 h.
+block p10 172.09 h. BL-0 freight standing: 282.26 h.
+
+## Freight dwell by station: BL-0 against the log (issue #145)
+
+| Station | BL-0 calls | BL-0 p90 (min) | History p90 (min) | BL-0 share > 30 min | History share > 30 min |
+|---|---:|---:|---:|---:|---:|
+| VZM | 43 | 117 | 95 | 30.2% | 29.7% |
+| KTV | 24 | 0 | 58 | 0.0% | 14.6% |
+| NWP | 25 | 93 | 73 | 28.0% | 27.3% |
+| CPP | 27 | 177 | 92 | 18.5% | 26.1% |
+| CHE | 27 | 135 | 105 | 25.9% | 28.1% |
+
+No halt is modelled at a train's first or last station, so KTV (where trains enter and leave the section) shows none.
 
 ## Reading the gap
 
-1. **Freight is faster in BL-0 than in the log.** The twin runs a freight train from its logged entry at the calibrated running time. It
-   adds no crew changes, no waits for a path and no long halts, and the log has them. History is 6.7 times slower than BL-0 (median section time) for the same loads.
+1. **Freight is faster in BL-0 than in the log.** The twin runs a freight train from its logged entry at the calibrated running time and
+   detains it at intermediate stations from the log's K1 dwell statistics (`twin.freight_detention`: crew
+   changes, path waits, long halts), on a free loop only: a train that finds none goes on. History is 1.4 times slower than BL-0 (median section time) for the same loads.
+   Scaling the halts up further fills the loops and stops other trains from halting, so the median section
+   time saturates below the log's. The remaining gap is the twin-realism gap of DSC-20 (RK-23), documented,
+   not tuned away.
 2. **So BL-0 is not a reproduction of the real day.** Its passenger delay comes from its own
-   first-come-first-served rule, with no controller decisions and none of the real freight halts. The
+   first-come-first-served rule, with no controller decisions and modelled (not the real) freight halts. The
    dataset has no passenger log, so how far its passenger delay is from what passengers experienced is
    unknown; this check cannot measure it.
 3. **The delays are a property of the rule, not a measured fact.** Median 4.2 min, mean
-   24.4 min and 16 trains over 60 min late are what the
+   21.8 min and 13 trains over 60 min late are what the
    do-nothing rule gives; the DSS has to improve on them, which is the use BL-0 is accepted for.
 
 ## Decision

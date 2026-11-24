@@ -22,5 +22,5 @@ disruptions:
     etr: {offset_min: 30, sigma_min: 30}
     note: "A long single-line stretch (TIU-NWP) during the morning peak: batches of both directions queue at the ends."
 requires: []
-expected_gt_hash: "15a2ccc318be44355ee901ff79da66df3ec5d99c460d5a7ad5b0c22b5faeb407"
+expected_gt_hash: "48fd1dc7767fcc246813636cb514524739797c682a21374630640320d3fd2d20"
 notes: "Executable today (two block sections of one line); the deadlock checks of the twin and the verifier apply."

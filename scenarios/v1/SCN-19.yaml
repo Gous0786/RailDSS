@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "b6e310535700776a5885275538c2d0f4631e374eb226c04615d53dcb2e8aca8d"
+expected_gt_hash: "4e6ad1f312e1bd3071df72ed1e5a5aa62ac4bdc9f23225891cff022181e5df66"
 notes: "The busiest day on KTV-VZM (50 freight loads on KTV-VZM DN, K1 reference). No disruption: the load is the scenario."

@@ -19,5 +19,5 @@ disruptions:
     duration_min: {low_min: 30, high_min: 60}
     note: "20830 Vande Bharat enters at KTV 30 to 60 min late (booked 15:14)."
 requires: []
-expected_gt_hash: "6cfa757f9385e4d8761bc45f25a41cd8e00d32013cf2ad53188466d069f15883"
+expected_gt_hash: "e9047d8251394e694718e2ed36ebefea2dde39b2a3988092c0f27cdef05b1c3b"
 notes: "A late entry of one train: a scripted entry delay holds 20830 at the section entry (issue #57)."

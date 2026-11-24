@@ -213,3 +213,5 @@ src/raildss_orchestrator/multiday.py: 2  # left-aligned columns of the table and
 src/raildss_orchestrator/__main__.py: 6.0  # default loop window (h) of the multi-day replay CLI, a demo choice, not a rule value
 src/raildss_orchestrator/multiday.py: 100  # percent, not a rule value
 src/raildss_verifier/rules/incidents.py: 1000  # metres per km (unit conversion), not a rule value
+src/raildss_twin/detention.py: 0.1  # the share of calls above a P90 (definition of the 90th percentile), not a rule value
+src/raildss_twin/detention.py: 60  # seconds per minute (unit conversion), not a rule value
