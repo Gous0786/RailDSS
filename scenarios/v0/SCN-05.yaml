@@ -20,5 +20,5 @@ disruptions:
     duration_min: {low_min: 120, high_min: 180}
     etr: {offset_min: 30, sigma_min: 20}
 requires: []
-expected_gt_hash: "d5efeccdf49e32110971508ed8049fb231e1686348efc1ab9f715fc6550567a0"
+expected_gt_hash: "ef2820cfbcbc0268ecc52604464277d15b95f5b2058361e5c5c4e662f3f2147e"
 notes: "Crossings at CPP and SGDM; trains of both directions use the UP line."

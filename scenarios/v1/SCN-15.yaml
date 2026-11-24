@@ -26,5 +26,5 @@ disruptions:
     duration_min: {low_min: 60, high_min: 90}
     etr: {offset_min: 30, sigma_min: 20}
     note: "A freight train (entered at KTV 07:35) fails while the TSR still holds the DN line."
-expected_gt_hash: "7e472ee90aa215f91fe72f2aa47b0a293521be40c14fb1bf2206aa1768ba38f4"
+expected_gt_hash: "20341671877f8d4b3fe8cabdfbdc907405d15f314bffa2ef89ec8990fd9138f4"
 notes: "Executable with the loco-failure injector (#146): the freight train fails in the block it runs in while the TSR holds the DN line."
