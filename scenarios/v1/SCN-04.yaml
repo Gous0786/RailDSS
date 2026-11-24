@@ -19,5 +19,5 @@ disruptions:
     etr: {offset_min: 30, sigma_min: 20}
     single_line_working: true
     note: "A freight train (entered at KTV 06:55, bound for PUN) fails in the block section it runs in; its line is blocked until relief and the other line is worked both ways."
-expected_gt_hash: "332405b2b0f1752f72e66b698d9b9f044f6cf59e6150b8b027a49aa2be0fe6cd"
+expected_gt_hash: "2517c1e9a337a1044670b6f22df6043454f9a5f67f1d2a81376691d1aad92827"
 notes: "Executable with the loco-failure injector (#146): the failed freight train blocks its line, announced on ops.disruptions with that line; single-line working on the other line until relief."

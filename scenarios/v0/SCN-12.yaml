@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D3
 disruptions: []
 requires: []
-expected_gt_hash: "4ef8fee5ccc42e19e20c87f29884b9f4f5cbd56ccdcec24b5dbba99663d6bea5"
+expected_gt_hash: "fc21b7dba6f7db9fe52bca215b9b17137ebb733fee134fc734ae856ed2dbc81f"
 notes: "Ground truth is as nominal; the DSS sees the D3 feeds (observer only reads, the gt hash is unchanged by it)."

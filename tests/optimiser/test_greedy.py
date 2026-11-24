@@ -120,8 +120,10 @@ def test_every_detected_conflict_gets_a_recommendation(world: run.World) -> None
     assert out.conflicts, "no conflict detected at 08:00"
     assert len(out.recommendations) == len(out.conflicts)
     assert out.plan.ok
-    for r in out.recommendations:
-        assert r.status == "RESOLVED" and r.actions, r
+    assert all(r.status == "RESOLVED" for r in out.recommendations)
+    # a conflict the DSS predicts may not arise in the plan (a train it involves halts elsewhere, a freight
+    # detention the predictor does not model, issue #145): it is resolved and needs no order
+    assert any(r.actions for r in out.recommendations)
 
 
 V0 = [sc for sc in load_library() if all(d.type == "line_block" for d in sc.disruptions)]  # what it plans for

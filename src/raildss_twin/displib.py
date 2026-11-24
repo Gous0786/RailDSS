@@ -47,6 +47,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 from raildss_params import Register, policy
+from raildss_twin.detention import Detention
 from raildss_twin.layout import BlockLine, Layout
 from raildss_twin.plans import Node, Plan, Timing
 from raildss_twin.run import World, plans_for
@@ -469,6 +470,7 @@ def _train(
     cfg = reg.value("twin.sim")
     min_dwell, exit_clear = float(cfg["min_dwell_s"]), float(cfg["exit_clear_s"])
     clear = _clearing_s(plan, reg)
+    detention = Detention(reg, int(cfg["default_seed"]))  # the twin's freight halts (issue #145)
     idx = [i for i, n in enumerate(plan.nodes) if not layout.ops[n.op].is_halt]
     b = _Builder()
     prev_ends: list[tuple[int, BlockLine]] = []
@@ -484,20 +486,28 @@ def _train(
         late = dict(effects.entry_delays).get(plan.run_id, 0.0)
         lb = plan.entry_s + late if k == 0 else (node.arr if plan.timetabled and not node.stop else 0.0)
         station_ops: dict[int, int] = {}
-        for sl in _station_lines(layout, plan, node.op, effects.out_of_use):
+        lines = _station_lines(layout, plan, node.op, effects.out_of_use)
+        inner = plan.kind == "freight" and 0 < k < len(idx) - 1
+        detain = detention.seconds(plan.run_id, node.op) if inner else 0.0
+        loops = [sl for sl in lines if sl.kind == "loop"]
+        # as in the twin: it halts on a loop (off the main lines) and goes on along another line when it
+        # finds no loop free; a line directive to a main line is the same choice
+        halting = {sl.line_no for sl in loops} if detain else set()
+        for sl in lines:
+            here = max(duration, detain) if sl.line_no in halting else duration
             res = f"SL:{node.op}/{sl.line_no}"
             resources.setdefault(res, Resource(id=res, kind="station_line", capacity=sl.capacity_trains))
             i = b.add(
                 visit=k,
                 node=node.op,
                 kind="station",
-                min_duration=fl(duration),
+                min_duration=fl(here),
                 start_lb=fl(lb),
                 start_ub=horizon,
                 resources=[(res, 0 if last else clear)],
                 block=None,
                 line=None,
-                stands=stands,
+                stands=stands or sl.line_no in halting,
                 line_no=sl.line_no,
             )
             station_ops[sl.line_no] = i

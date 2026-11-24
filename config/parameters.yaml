@@ -426,6 +426,39 @@ parameters:
       published on ops.disruptions when a scripted incident gives none. paper_line_clear_min: under a
       block-instrument failure each train entering the block waits this long for a written authority
       (paper line clear) at the station in rear (issue #146).
+  - key: twin.freight_detention
+    value:
+      enabled: true
+      long_min: 30
+      scale: 1.4
+      stations:
+        ALM: {share: 0.185, p90_min: 68.0}
+        CHE: {share: 0.281, p90_min: 105.4}
+        CPP: {share: 0.261, p90_min: 92.4}
+        DUSI: {share: 0.25, p90_min: 76.8}
+        GVI: {share: 0.205, p90_min: 63.0}
+        KBM: {share: 0.203, p90_min: 70.9}
+        KPL: {share: 0.231, p90_min: 78.0}
+        KTV: {share: 0.146, p90_min: 58.4}
+        KUK: {share: 0.138, p90_min: 56.0}
+        NML: {share: 0.156, p90_min: 58.0}
+        NWP: {share: 0.273, p90_min: 73.0}
+        PDU: {share: 0.228, p90_min: 84.0}
+        PUN: {share: 0.302, p90_min: 73.6}
+        SGDM: {share: 0.142, p90_min: 48.4}
+        TIU: {share: 0.273, p90_min: 85.9}
+        ULM: {share: 0.229, p90_min: 81.2}
+        VZM: {share: 0.297, p90_min: 95.0}
+    unit: null
+    source: "K1 dwell statistics by station, Aug 2025 freight log (docs/kpi/historical-reference-ktv-psa.json, dwell_min.month); issue #145"
+    status: SA
+    owner: twin
+    valid_from: 2026-11-24
+    notes: >-
+      Freight detention at intermediate block stations (issue #145, FV-02, DSC-20): with the station's
+      share of calls over long_min (min) a freight train halts long_min plus an exponential tail fitted to
+      the station's P90 dwell; scale multiplies the halts (calibration). enabled: false runs without them.
+
   - key: twin.sim
     value:
       state_period_s: 30

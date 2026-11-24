@@ -17,6 +17,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
+from raildss_common.envelope import EventType
 from raildss_dss.kpi import KpiReport
 from raildss_schema.entities import FreightLoad
 from raildss_twin import kpi_eval, run
@@ -26,6 +27,13 @@ SECONDS_PER_HOUR = 3600.0
 SECONDS_PER_MINUTE = 60.0
 LONG_DELAY_MIN = 60.0
 P90 = 0.9
+DWELL_STATIONS = (
+    "VZM",
+    "KTV",
+    "NWP",
+    "CPP",
+    "CHE",
+)  # the spec's BL-5 dwell figures (VZM, KTV, NWP) and two more
 TAIL_SHARE = 0.5  # a median below this share of the mean: a few long delays pull the mean up
 SIMILAR_LOW, SIMILAR_HIGH = 0.8, 1.25  # history over BL-0 within these: about the same
 REPO = Path(__file__).resolve().parents[2]
@@ -57,7 +65,33 @@ def freight_pairs(world: run.World, report: KpiReport) -> list[tuple[float, floa
     return out
 
 
-def summarise(world: run.World, report: KpiReport, reference: dict[str, Any], day: dt.date) -> dict[str, Any]:
+def station_dwell(sim: Any, op: str) -> list[float]:
+    """Freight dwell at ``op`` in BL-0, minutes: from the route set to receive it to the route set to send it
+    on (departure minus arrival, as the log measures it; issue #145)."""
+    kinds = {t.plan.run_id: t.plan.kind for t in sim.trains}
+    received: dict[str, float] = {}
+    out = []
+    for ev in sim.events:
+        if ev.event_type is not EventType.ROUTE_SET or ev.payload.get("station") != op:
+            continue
+        rid = ev.train_run_id
+        if rid is None or kinds.get(rid) != "freight":
+            continue
+        t = ev.event_time.timestamp()
+        if ev.payload.get("mode") == "receive":
+            received[rid] = t
+        elif ev.payload.get("mode") == "send" and rid in received:
+            out.append((t - received.pop(rid)) / SECONDS_PER_MINUTE)
+    return out
+
+
+def summarise(
+    world: run.World,
+    report: KpiReport,
+    reference: dict[str, Any],
+    day: dt.date,
+    sim: Any = None,
+) -> dict[str, Any]:
     d = day.isoformat()
     pairs = freight_pairs(world, report)
     running = [p for p in pairs if not p[2]]
@@ -81,7 +115,24 @@ def summarise(world: run.World, report: KpiReport, reference: dict[str, Any], da
         "frt_bl0_mean": statistics.fmean(p[1] for p in running),
         "hist_detention_h": hist_day["detention_hours"],
         "hist_running_excess_h": hist_day["running_excess_hours"],
+        "dwell": _dwell_rows(sim, reference) if sim is not None else [],
     }
+
+
+def _dwell_rows(sim: Any, reference: dict[str, Any]) -> list[tuple[str, int, float, float, float, float]]:
+    """(station, BL-0 calls, BL-0 p90 min, BL-0 share over the long dwell, history p90, history share)."""
+    month = reference["dwell_min"]["month"]
+    long_min = float(reference["parameters"]["long_dwell_min"])
+    rows = []
+    for op in DWELL_STATIONS:
+        d = station_dwell(sim, op)
+        if not d or op not in month:
+            continue
+        share = sum(1 for x in d if x > long_min) / len(d)
+        rows.append(
+            (op, len(d), _q(d, P90), share, float(month[op]["p90"]), float(month[op]["share_over_long"]))
+        )
+    return rows
 
 
 def delay_shape(s: dict[str, Any]) -> str:
@@ -156,12 +207,20 @@ dataset has **no passenger actuals**, so BL-0 passenger delay cannot be checked 
 History, whole day: detention {s["hist_detention_h"]} h (dwell above 30 min) and running time above the
 block p10 {s["hist_running_excess_h"]} h. BL-0 freight standing: {k["C2_freight_detention_h"]} h.
 
+## Freight dwell by station: BL-0 against the log (issue #145)
+
+{_dwell_table(s)}
+
 ## Reading the gap
 
-1. **{headline}** The twin runs a freight train from its logged entry at the calibrated running time. It
-   adds no crew changes, no waits for a path and no long halts, and the log has them. {comparison}
+1. **{headline}** The twin runs a freight train from its logged entry at the calibrated running time and
+   detains it at intermediate stations from the log's K1 dwell statistics (`twin.freight_detention`: crew
+   changes, path waits, long halts), on a free loop only: a train that finds none goes on. {comparison}
+   Scaling the halts up further fills the loops and stops other trains from halting, so the median section
+   time saturates below the log's. The remaining gap is the twin-realism gap of DSC-20 (RK-23), documented,
+   not tuned away.
 2. **So BL-0 is not a reproduction of the real day.** Its passenger delay comes from its own
-   first-come-first-served rule, with no controller decisions and none of the real freight halts. The
+   first-come-first-served rule, with no controller decisions and modelled (not the real) freight halts. The
    dataset has no passenger log, so how far its passenger delay is from what passengers experienced is
    unknown; this check cannot measure it.
 3. **The delays are a property of the rule, not a measured fact.** Median {s["pax_median"]:.1f} min, mean
@@ -178,11 +237,30 @@ available, replace the passenger part of this check with a per-train and per-sta
 """
 
 
+def _dwell_table(s: dict[str, Any]) -> str:
+    if not s.get("dwell"):
+        return "No freight call in BL-0 at the stations shown."
+    head = (
+        "| Station | BL-0 calls | BL-0 p90 (min) | History p90 (min) | BL-0 share > 30 min "
+        "| History share > 30 min |"
+    )
+    rows = [
+        f"| {op} | {n} | {p90:.0f} | {hp90:.0f} | {share:.1%} | {hshare:.1%} |"
+        for op, n, p90, share, hp90, hshare in s.get("dwell", [])
+    ]
+    note = (
+        "No halt is modelled at a train's first or last station, so KTV (where trains enter and leave the "
+        "section) shows none."
+    )
+    return "\n".join([head, "|---|---:|---:|---:|---:|---:|", *rows, "", note])
+
+
 def run_check(day: dt.date, world: run.World | None = None) -> str:
     world = world or run.load_world()
-    report = kpi_eval.run_arm(world, day, "BL-0", f"day {day.isoformat()}")
+    sims: list[Any] = []
+    report = kpi_eval.run_arm(world, day, "BL-0", f"day {day.isoformat()}", sim_out=sims)
     reference = json.loads(REFERENCE_JSON.read_text(encoding="utf-8"))
-    return render(summarise(world, report, reference, day))
+    return render(summarise(world, report, reference, day, sims[0]))
 
 
 def write(day: dt.date, text: str, out_dir: Path = OUT_DIR) -> Path:

@@ -43,6 +43,7 @@ from pydantic import BaseModel
 from raildss_common.envelope import EventEnvelope, EventType
 from raildss_params import Register
 from raildss_schema.entities import StationLine
+from raildss_twin.detention import Detention
 from raildss_twin.layout import BlockLine, Layout, pair_key
 from raildss_twin.perturb import CAUSE_ENTRY, Perturbations
 from raildss_twin.plans import SECONDS_PER_DAY, Node, Plan, Timing
@@ -268,6 +269,7 @@ class Sim:
         self.origin, self.day, self.scenario_id, self.seed = origin, day, scenario_id, seed
         # FR-TWIN-11: seeded entry delays and run-time / dwell noise; off gives the nominal baseline.
         self.pert = Perturbations(register, seed) if perturb else None
+        self.detention = Detention(register, seed)  # freight halts from the K1 dwell statistics (#145)
         self.sink = sink
         self.trains = [Train(p) for p in plans]
         self.resources: dict[str, simpy.PriorityResource] = {}
@@ -714,7 +716,13 @@ class Sim:
                 hop = None if last else (node.op, plan.nodes[idx[k + 1]].op)
                 t.op, t.block, t.segment, t.km = node.op, None, None, self.km_of(node.op)
                 # ---- reception: take a station line, then release the block it came by
-                stands = node.stop or last
+                # a freight train detained here (crew change, path wait, long halt; issue #145) stands
+                detain = (
+                    self.detention.seconds(plan.run_id, node.op)
+                    if plan.kind == "freight" and 0 < k < len(idx) - 1
+                    else 0.0
+                )
+                stands = node.stop or last or detain > 0
                 crossing = hop is not None and self.must_cross(hop)
                 cands = self.station_candidates(t, node, incoming, hop, stands, crossing)
                 if not cands:
@@ -724,10 +732,14 @@ class Sim:
                 if not cands:
                     raise NoRouteError(f"no station line at {node.op} is long enough for the train")
                 cands = self.directed_line(t, node.op, permitted, cands)
+                if detain:  # it takes a loop if one is free (loops first), and halts only on a loop
+                    cands = sorted(cands, key=lambda sl: sl.kind != "loop")  # stable: loops first
                 i = yield from self.acquire(
                     t, [Option(f"SL:{node.op}/{sl.line_no}", sl.capacity_trains) for sl in cands]
                 )
                 sl = cands[i]
+                if sl.kind != "loop":  # received on a main line: it goes on, off the main lines only (#145)
+                    detain = 0.0
                 self.emit(
                     "gt.signal",
                     EventType.ROUTE_SET,
@@ -758,6 +770,10 @@ class Sim:
                     yield self.env.timeout(
                         self._dwell(t, node.op, max(self.min_dwell, node.dep - arrived, 0.0))
                     )
+                    t.status = "running"
+                if detain:
+                    t.status, t.stood = "dwelling", True
+                    yield self.env.timeout(detain)
                     t.status = "running"
                 hold = self.directives.holds.get((plan.run_id, node.op))
                 if hold is not None and hold > self.env.now >= self.directives.from_s:  # plan hold (G3)

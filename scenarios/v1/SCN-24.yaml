@@ -14,5 +14,5 @@ disruptions: []
 requires: []
 base: [SCN-01, SCN-16]
 sensitivity: {station_line.csr.psa: low}
-expected_gt_hash: "29be3021d71fdfee886a774ce5090a830bccc649a781f22b2f04afb3e8bc4223"
+expected_gt_hash: "d9370867e72f4f94ae25c93de7d14e852a37cf915d135ac6e826837a5570fdf9"
 notes: "The PSA lines are sized at the register's low bound (loops 673 m, mains 678 m) on the day of SCN-16 (the busiest day). The base scenarios SCN-01 and SCN-16 run under the same sensitivity through scenario.sensitivity_world (issue #167)."
