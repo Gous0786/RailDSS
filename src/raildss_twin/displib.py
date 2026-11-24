@@ -573,7 +573,7 @@ def _train(
                         # a reversible line is worked one direction at a time (issue #153)
                         gate=line.key if line.direction == "BOTH" else None,
                         direction=direction if line.direction == "BOTH" else None,
-                        closed=closed if k == len(idx) - 2 else [],
+                        closed=closed if idx[k + 1] == idx[-1] else [],  # the hop into the exit
                     )
                 )
                 if n:
