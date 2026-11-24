@@ -51,7 +51,7 @@ def ctx_json(ctx: PlanContext) -> dict[str, Any]:
     def dec(ds: Sequence[Decision]) -> list[list[Any]]:
         return [[d.run_id, d.station, d.line_no, d.dep_s] for d in ds]
 
-    return {
+    out: dict[str, Any] = {
         "now_s": ctx.now_s,
         "plan_id": ctx.plan_id,
         "triggers": list(ctx.triggers),
@@ -67,6 +67,13 @@ def ctx_json(ctx: PlanContext) -> dict[str, Any]:
         "verify": ctx.verify,
         "time_limit_s": ctx.time_limit_s,
     }
+    # what the planner also plans from (issues #154, #156, #196); recorded when present, so a replay builds
+    # the same contrasting options and keeps the same terminations
+    if ctx.decisions:
+        out["decisions"] = [[list(trains), resource] for trains, resource in ctx.decisions]
+    if ctx.commit_terminations:
+        out["commit_terminations"] = dict(ctx.commit_terminations)
+    return out
 
 
 def ctx_from_json(d: Mapping[str, Any]) -> PlanContext:
@@ -88,6 +95,8 @@ def ctx_from_json(d: Mapping[str, Any]) -> PlanContext:
         policy_from_s=float(d["policy_from_s"]),
         verify=bool(d["verify"]),
         time_limit_s=float(d["time_limit_s"]),
+        decisions=[(tuple(str(t) for t in trains), str(res)) for trains, res in d.get("decisions", [])],
+        commit_terminations={str(r): str(s) for r, s in d.get("commit_terminations", {}).items()},
     )
 
 
