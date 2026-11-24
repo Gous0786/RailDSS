@@ -9,7 +9,7 @@ BL-0 on each real day of Aug 2025 (default seed). Through-transit as BL-5 define
 | | Twin, BL-0 | BL-5 (history) | Gap |
 |---|---:|---:|---:|
 | Median through-transit (h), 15+ stations | 8.02 | 10.41 | -23 % |
-| Median section time (h), every freight load | 2.92 | | |
+| Median section time (h), every freight load | 2.93 | | |
 
 **Within ±25 % of BL-5 (DSC-20).** Every day ran to completion with no stuck train and no deadlock. The remaining gap is a twin-realism gap (RK-23): the log includes causes the twin does not model (loco and crew availability, yard and branch interactions, failures), and the halts are not tuned to close it.
 
@@ -18,7 +18,7 @@ BL-0 on each real day of Aug 2025 (default seed). Through-transit as BL-5 define
 | 2025-08-01 | 2.48 | 110 | 8.15 | 31 | 0 | 0 |
 | 2025-08-02 | 3.06 | 102 | 7.61 | 35 | 0 | 0 |
 | 2025-08-03 | 2.38 | 98 | 8.47 | 33 | 0 | 0 |
-| 2025-08-04 | 3.71 | 91 | 7.67 | 30 | 0 | 0 |
+| 2025-08-04 | 3.76 | 91 | 7.67 | 30 | 0 | 0 |
 | 2025-08-05 | 2.92 | 96 | 7.33 | 37 | 0 | 0 |
 | 2025-08-06 | 2.95 | 89 | 8.39 | 33 | 0 | 0 |
 | 2025-08-07 | 2.92 | 95 | 7.17 | 27 | 0 | 0 |
