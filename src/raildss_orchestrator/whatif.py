@@ -111,6 +111,13 @@ def contrast_fields(cycle: CycleRecord) -> dict[str, Any]:
     Both are optional in the export: a cycle without a decision, or with one precedence and no re-solve, gives
     ``decision`` None and an empty ``why_not``, and the card says so."""
     contested = max(cycle.decisions, key=lambda d: (d.precedences, d.options), default=None)
+    # a re-solve belongs to a decision by its trains (two decisions can share a resource, issue #196); one
+    # without trains (an older record) is kept
+    mine = [
+        c
+        for c in cycle.contrasts
+        if contested is not None and (not c.trains or set(c.trains) == set(contested.trains))
+    ]
     return {
         "decision": None if contested is None else contested.model_dump(),
         "why_not": [
@@ -123,7 +130,7 @@ def contrast_fields(cycle: CycleRecord) -> dict[str, Any]:
                 "fail": list(c.fail),
                 "answer": c.answer,
             }
-            for c in cycle.contrasts
+            for c in mine
         ],
     }
 

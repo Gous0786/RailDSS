@@ -154,7 +154,11 @@ def test_the_contrast_of_a_cycle_goes_to_the_card_as_the_most_contested_decision
     }
     got = whatif.contrast_fields(_cycle([one, two], [why]))
     assert got["decision"] == two  # more precedences first
-    assert got["why_not"] == [why]
+    assert got["why_not"] == [why]  # a re-solve without trains (an older record) is kept
+    other = dict(why, first="T9", trains=["T1", "T2"])  # a re-solve of the other decision on another resource
+    mine = dict(why, trains=["T4", "T3"])
+    got = whatif.contrast_fields(_cycle([one, two], [other, mine]))
+    assert [w["first"] for w in got["why_not"]] == ["T4"]  # matched to its decision by its trains
     none = whatif.contrast_fields(_cycle([], []))
     assert none == {"decision": None, "why_not": []}  # tolerated: nothing contested, no re-solve
     only_one = whatif.contrast_fields(_cycle([one], []))
