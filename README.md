@@ -378,9 +378,22 @@ noisy predictor, BL-5 history) and per scenario from an **evaluation export**, w
 absolute targets of DSC-04, 05 and 09 and the acceptance criteria of the DSS arm. The export format is defined in
 [`docs/kpi/evaluation-export.md`](docs/kpi/evaluation-export.md) and `docs/kpi/evaluation.schema.json` (one document
 per run with run metadata and one row per scenario and arm); the evaluation runner (#168) is to produce it as
-`web/public/data/evaluation.json`. Until it does, the committed file is a hand-made **sample** (`run.sample: true`):
-the view shows a SAMPLE DATA banner, and `tests/docs/test_evaluation_schema.py` validates the fixture and keeps
-the KPI names in step with the code.
+`web/public/data/evaluation.json`. The committed file is the export of the multi-day replay (issue #169: BL-1 and
+BL-2 on five real days over a 6 h window, `docs/kpi/multi-day-replay.md`); a hand-made **sample**
+(`web/src/evaluation/sample.evaluation.json`, `run.sample: true`) makes the view show a SAMPLE DATA banner in its
+tests, and `tests/docs/test_evaluation_schema.py` validates both and keeps the KPI names in step with the code.
+
+## Multi-day replay (issue #169, FV-06)
+
+`python -m raildss_orchestrator multiday run --day 2025-08-12 --arm BL-1` (or `BL-2`) runs the decision loop of one
+arm over a 6 h window (06:00-12:00) of one real day and compares the day with BL-0; each run writes
+`docs/kpi/multi-day/<day>.<arm>.json` (BL-1 takes 40-60 min, the CP-SAT BL-2 90-110 min, so a run is one day and
+one arm, in parallel). `multiday report --export web/public/data/evaluation.json` writes
+[`docs/kpi/multi-day-replay.md`](docs/kpi/multi-day-replay.md) (per day, the differences and their spread over five
+real days: 2025-08-05, 12, 15, 20 and 22) and the evaluation export the management view reads. Result: the weighted
+delay falls against BL-0 on 4 of 5 days with either arm (the exception, 2025-08-12, is the day with the lowest BL-0
+delay); BL-2 does not beat BL-1 on A5 in this sample (mean +126 train-min, better on 2 days of 5) and its alert load
+is higher.
 
 ## Audit and replay (issue #85)
 

@@ -17,7 +17,8 @@ from raildss_dss.kpi import compute
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = ROOT / "docs" / "kpi" / "evaluation.schema.json"
 DOC = ROOT / "docs" / "kpi" / "evaluation-export.md"
-FIXTURE = ROOT / "web" / "public" / "data" / "evaluation.json"
+FIXTURE = ROOT / "web" / "src" / "evaluation" / "sample.evaluation.json"  # hand-made, marked sample
+PUBLISHED = ROOT / "web" / "public" / "data" / "evaluation.json"  # what the view reads
 
 schema: dict[str, Any] = json.loads(SCHEMA.read_text(encoding="utf-8"))
 fixture: dict[str, Any] = json.loads(FIXTURE.read_text(encoding="utf-8"))
@@ -98,3 +99,12 @@ def test_every_documented_kpi_is_in_the_doc(name: str) -> None:
     assert f"`{name}`" in DOC.read_text(encoding="utf-8").replace("`, `", "` `") or name in DOC.read_text(
         encoding="utf-8"
     )
+
+
+def test_the_export_the_view_reads_validates_and_is_not_sample_data() -> None:
+    published: dict[str, Any] = json.loads(PUBLISHED.read_text(encoding="utf-8"))
+    assert _errors(published) == []
+    assert published["run"]["sample"] is False
+    pairs = [(r["scenario"], r["arm"]) for r in published["rows"]]
+    assert len(pairs) == len(set(pairs))
+    assert {k for r in published["rows"] for k in r["kpis"]} <= KPI_PROPS

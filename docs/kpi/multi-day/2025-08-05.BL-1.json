@@ -1,0 +1,52 @@
+{
+ "day": "2025-08-05",
+ "arm": "BL-1",
+ "window_h": [
+  6.0,
+  12.0
+ ],
+ "bl0": {
+  "A2_section_punctuality_pct": 65.12,
+  "A2_lop_count": 30.0,
+  "A4_mean_arrival_delay_min": 14.75,
+  "A4_max_arrival_delay_min": 84.98,
+  "A5_weighted_delay_train_min": 8673.33,
+  "A6_mean_exit_delay_min": 16.92,
+  "A6_median_exit_delay_min": 4.17,
+  "A6_p90_exit_delay_min": 53.55,
+  "A9_mean_time_lost_min": 18.57,
+  "B1_trains_exited": 182.0,
+  "C1_freight_speed_kmh": 46.3,
+  "C2_freight_detention_h": 3.57,
+  "F1_unplanned_stops": 551.0
+ },
+ "kpis": {
+  "A2_section_punctuality_pct": 65.12,
+  "A2_lop_count": 30.0,
+  "A4_mean_arrival_delay_min": 13.55,
+  "A4_max_arrival_delay_min": 83.59,
+  "A5_weighted_delay_train_min": 8207.92,
+  "A6_mean_exit_delay_min": 15.84,
+  "A6_median_exit_delay_min": 4.19,
+  "A6_p90_exit_delay_min": 52.68,
+  "A9_mean_time_lost_min": 17.49,
+  "B1_trains_exited": 182.0,
+  "C1_freight_speed_kmh": 46.13,
+  "C2_freight_detention_h": 4.22,
+  "F1_unplanned_stops": 451.0,
+  "D1_median_conflict_lead_min": 34.0,
+  "D2_resolved_before_occurrence_pct": 55.66,
+  "H1_alerts_per_controller_hour": 75.83,
+  "H2_flood_events": 20.0
+ },
+ "plans_verified": {
+  "verified": 140,
+  "built": 140
+ },
+ "plans": 140,
+ "recommendations_accepted": 110,
+ "orders": 128,
+ "head_on": 0,
+ "deadlocks": 0,
+ "wall_s": 2548
+}
