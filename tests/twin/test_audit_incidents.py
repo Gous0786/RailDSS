@@ -1,6 +1,8 @@
-"""The offline auditor on the incident scenarios (issue #151; DSC-08, DSC-24): SCN-04, SCN-05, SCN-20 and
-SCN-21 run with their scripted disruptions (BL-0) and are audited with the incidents in force as plan
-context, against the network as worked: zero executed violations, the new rules applied."""
+"""The offline auditor on the incident scenarios (issue #151; DSC-08, DSC-24).
+
+SCN-04, SCN-05, SCN-20 and SCN-21 (single-line working) and SCN-03, SCN-07 and SCN-15 (speed restrictions)
+run with their scripted disruptions (BL-0). They are audited with the incidents in force as plan context,
+against the network as worked: zero executed violations, with the new rules applied."""
 
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ def world() -> run.World:
     return run.load_world()
 
 
-@pytest.mark.parametrize("sid", ["SCN-04", "SCN-05", "SCN-20", "SCN-21"])
+@pytest.mark.parametrize("sid", ["SCN-04", "SCN-05", "SCN-20", "SCN-21", "SCN-03", "SCN-07", "SCN-15"])
 def test_an_incident_scenario_runs_with_zero_executed_violations(world: run.World, sid: str) -> None:
     sc = next(s for s in scenario.load_library_v1() if s.id == sid)
     kw = scenario.run_kwargs(sc)
@@ -49,5 +51,7 @@ def test_an_incident_scenario_runs_with_zero_executed_violations(world: run.Worl
     executed = {r.rule_id: len(r.violations) for r in result.report.results if r.violations}
     assert result.executed_violations == 0, executed
     # SCN-21 blocks one KTV-VZM automatic line: the other two remain, there is no single-line working
-    if sid != "SCN-21":
+    if sid in ("SCN-04", "SCN-05", "SCN-20"):
         assert ctx["single_line"] and {"VER-SLW-01", "VER-SLW-02"} <= applied & INCIDENT_RULES
+    if sid in ("SCN-03", "SCN-07", "SCN-15"):  # a TSR or caution working (with a paper line clear)
+        assert ctx["restrictions"] and "VER-SPD-01" in applied
