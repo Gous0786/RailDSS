@@ -22,6 +22,7 @@ Triggers (``opt.replan_triggers``): ``new_conflict``, ``disruption`` (a closure 
 
 from __future__ import annotations
 
+import math
 import time
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -101,8 +102,9 @@ class ContingentRecord(BaseModel):
 
 
 class DecisionRecord(BaseModel):
-    """The options released for one decision (issue #154): how many, and how many different trains they
-    serve first at its resource (precedences)."""
+    """The options released for one decision (issue #154): how many, and how many different trains the
+    verified plans that give it orders serve first at its resource (precedences; issue #196: the orders
+    already in force count, as they are the standing alternative)."""
 
     trains: list[str]
     resource: str
@@ -120,6 +122,7 @@ class ContrastRecord(BaseModel):
     cost_min: float | None
     fail: list[str]
     answer: str
+    trains: list[str] = Field(default_factory=list)  # the decision's trains
 
 
 class CycleRecord(BaseModel):
@@ -233,6 +236,10 @@ class Orchestrator:
         self._rec_trains: dict[str, tuple[str, ...]] = {}
         self._audited: set[tuple[Any, ...]] = set()
         self._last_ctx: PlanContext | None = None
+        # until then the plan in force holds orders of an option the planner does not reproduce (a contrasting
+        # option, issue #196): its frozen decisions are imposed
+        self._foreign_until_s = -math.inf
+        self._foreign: set[str] = set()  # order ids of such options
         self._decision_records: list[DecisionRecord] = []
 
     # ------------------------------------------------------------------ the loop
@@ -335,11 +342,13 @@ class Orchestrator:
         holds, lines = self.commitments()
         horizon = now + self.cadence.freeze_s
         ahead = [d for oid, d in self._decisions.items() if d.dep_s >= now and self._in_force(oid)]
-        frozen += [d for d in ahead if d.dep_s < horizon]
+        # an order of a contrasting option is imposed whenever it is (the planner does not reproduce it)
+        foreign = {(d.run_id, d.station) for oid, d in self._decisions.items() if oid in self._foreign}
+        frozen += [d for d in ahead if d.dep_s < horizon or (d.run_id, d.station) in foreign]
         # one decision per train and station: an accepted order overrides the last plan's (issue #152; with
         # a planner that does not reproduce its own earlier decisions the two can differ)
         frozen = list({(d.run_id, d.station): d for d in frozen}.values())
-        committed = [d for d in ahead if d.dep_s >= horizon]
+        committed = [d for d in ahead if d.dep_s >= horizon and (d.run_id, d.station) not in foreign]
         past = {(d.run_id, d.station): d for d in self.cadence.history()}
         past |= {
             (d.run_id, d.station): d
@@ -354,7 +363,9 @@ class Orchestrator:
             triggers=triggers,
             frozen=frozen,
             committed=committed,
-            impose=bool(closures or self.exit_windows),
+            # the frozen decisions are imposed when the world changed, and when the plan in force is not
+            # the planner's own (an accepted contrasting option, issue #196), which it does not reproduce
+            impose=bool(closures or self.exit_windows or now < self._foreign_until_s),
             history=list(past.values()),
             closures=closures,
             exit_windows=self.exit_windows,
@@ -415,6 +426,7 @@ class Orchestrator:
                     cost_min=c.cost_min,
                     fail=c.candidate.fail_rules,
                     answer=c.answer(),
+                    trains=list(c.trains),
                 )
                 for c in planned.contrasts
             ],
@@ -506,26 +518,28 @@ class Orchestrator:
         for conflict in targets:
             options: list[tuple[Candidate, list[PlanAction]]] = []
             seen: set[str] = set()
+            addressing: list[Candidate] = []  # verified plans with orders for it, released or in force
             for cand in ranked:
-                actions = [
-                    x
-                    for x in cand.actions_for(conflict.trains, conflict.resource)
-                    if not self._in_orders(x, holds, lines)
-                ]
+                every = cand.actions_for(conflict.trains, conflict.resource)
+                if every:
+                    addressing.append(cand)
+                actions = [x for x in every if not self._in_orders(x, holds, lines)]
                 sig = "|".join(sorted(a.model_dump_json() for a in actions))
                 if actions and sig not in seen:
                     seen.add(sig)
                     options.append((cand, actions))
             options = options[:MAX_OPTIONS]
-            firsts = {order_of(c.decisions, conflict.trains, conflict.resource)[0] for c, _ in options}
-            self._decision_records.append(
-                DecisionRecord(
-                    trains=list(conflict.trains),
-                    resource=conflict.resource,
-                    options=len(options),
-                    precedences=len(firsts),
+            # the precedences on offer: the released options and the orders already in force (issue #196)
+            firsts = {order_of(c.decisions, conflict.trains, conflict.resource)[0] for c in addressing}
+            if options:  # a decision released (one whose orders are all in force has no options)
+                self._decision_records.append(
+                    DecisionRecord(
+                        trains=list(conflict.trains),
+                        resource=conflict.resource,
+                        options=len(options),
+                        precedences=len(firsts),
+                    )
                 )
-            )
             self.max_options = max(self.max_options, len(options))
             built: list[tuple[int, Candidate, Option]] = []
             for rank, (cand, actions) in enumerate(options, start=1):
@@ -633,6 +647,9 @@ class Orchestrator:
                 d = realised.get((action.run_id, action.station))
                 if d is not None:
                     self._decisions[oid] = Decision(d.run_id, d.station, d.line_no, d.dep_s)
+                    if cand.name not in ("greedy", "cpsat"):  # an order the planner does not reproduce
+                        self._foreign_until_s = max(self._foreign_until_s, d.dep_s)
+                        self._foreign.add(oid)
             self._commit()
         return status
 

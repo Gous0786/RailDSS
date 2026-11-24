@@ -156,6 +156,7 @@ class GreedyDispatcher:
         entry_delays: Mapping[str, float] | None = None,
         terminations: Mapping[str, str] | None = None,
         promote: Sequence[str] = (),
+        extra_holds: Mapping[tuple[str, str], float] | None = None,
     ) -> GreedyPlan:
         """Plan from ``start_s``. ``policy_from_s`` (rolling horizon) is when the dispatcher took over: the
         history since then ran under the policy, not BL-0. A frozen decision fixes its own line and
@@ -176,7 +177,8 @@ class GreedyDispatcher:
         first = min(priority.values(), default=0) - 1
         priority |= {rid.get(r, r): first for r in promote}
         directives = Directives(
-            holds={(rid.get(f.run_id, f.run_id), f.station): f.dep_s for f in frozen},
+            holds={(rid.get(r, r), s): t for (r, s), t in (extra_holds or {}).items()}  # a contrast (#196)
+            | {(rid.get(f.run_id, f.run_id), f.station): f.dep_s for f in frozen},
             lines={(rid.get(f.run_id, f.run_id), f.station): f.line_no for f in frozen},
             from_s=start_s if policy_from_s is None else min(policy_from_s, start_s),
             priority=priority,

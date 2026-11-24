@@ -117,15 +117,16 @@ def contrast_rows(summary: RunSummary) -> list[str]:
     contrasts = [c for cy in summary.cycles for c in cy.contrasts]
     feasible = []  # decisions with more than one feasible precedence: their contrast verified and reversed
     for cy in summary.cycles:
-        ok = {c.resource for c in cy.contrasts if c.verified and c.reversed}
-        feasible += [d for d in cy.decisions if d.resource in ok]
-    both = sum(d.options > 1 and d.precedences > 1 for d in feasible)
+        ok = {(c.resource, frozenset(c.trains)) for c in cy.contrasts if c.verified and c.reversed}
+        feasible += [d for d in cy.decisions if (d.resource, frozenset(d.trains)) in ok]
+    both = sum(d.precedences > 1 for d in feasible)  # an order in force is one of them (issue #196)
     return [
         f"| Decisions released / with 2+ options / with 2+ precedences | {len(decisions)} / "
         f"{sum(d.options > 1 for d in decisions)} / {sum(d.precedences > 1 for d in decisions)} |",
         f"| Other precedence re-solved / verified / reversed | {len(contrasts)} / "
         f"{sum(c.verified for c in contrasts)} / {sum(c.verified and c.reversed for c in contrasts)} |",
-        f"| Decisions with 2+ feasible precedences given options of both | {both} / {len(feasible)} |",
+        f"| Decisions with 2+ feasible precedences given options of both (incl. orders in force) | "
+        f"{both} / {len(feasible)} |",
     ]
 
 
