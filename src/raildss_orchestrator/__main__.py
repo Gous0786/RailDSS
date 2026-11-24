@@ -146,6 +146,29 @@ def _evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _multiday(args: argparse.Namespace) -> int:
+    """Issue #169: one (day, arm) run of the multi-day replay, or the report and export of the runs."""
+    from raildss_orchestrator import multiday
+
+    if args.action == "run":
+        world = run.load_world()
+        result = multiday.run_one(world, args.day, args.arm, from_h=args.from_h, span_h=args.span_h)
+        path = multiday.write_result(args.out_dir, result)
+        print(f"{args.day} {args.arm}: {result['plans']} plans, {result['wall_s']} s -> {path}")
+        return 0
+    results = multiday.load_results(args.out_dir)
+    if not results:
+        sys.exit(f"no runs in {args.out_dir}")
+    command = f"python -m raildss_orchestrator multiday report --dir {args.out_dir.as_posix()}"
+    args.report.write_text(multiday.markdown(results, command), encoding="utf-8", newline=NEWLINE)
+    print(f"wrote {args.report}")
+    if args.export is not None:
+        doc = multiday.export(results, run.load_world(), generated_by=command)
+        args.export.write_text(json.dumps(doc, indent=1) + NEWLINE, encoding="utf-8", newline=NEWLINE)
+        print(f"wrote {args.export}")
+    return 0
+
+
 def _scenarios(args: argparse.Namespace) -> int:
     from raildss_orchestrator.scenarios import render, run_all
 
@@ -218,6 +241,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     ar.add_argument("--seed", type=int, default=0, help="seed of the sample")
     ar.add_argument("--section", default="KTV-PSA")
+    md = sub.add_parser(
+        "multiday", help="BL-1 / BL-2 on real days over a 6 h window: run one, or report (#169)"
+    )
+    md.add_argument("action", choices=["run", "report"])
+    md.add_argument("--day", help="run: the real day, e.g. 2025-08-12")
+    md.add_argument("--arm", choices=["BL-1", "BL-2"], help="run: the arm")
+    md.add_argument("--from-h", type=float, default=6.0, help="run: start of the loop window (h)")
+    md.add_argument("--span-h", type=float, default=6.0, help="run: length of the loop window (h)")
+    md.add_argument("--out-dir", type=Path, default=Path("docs/kpi/multi-day"), help="the run files")
+    md.add_argument(
+        "--report", type=Path, default=Path("docs/kpi/multi-day-replay.md"), help="report: Markdown"
+    )
+    md.add_argument("--export", type=Path, default=None, help="report: evaluation export (web/public/data)")
     wf = sub.add_parser(
         "whatif", help="chart export of a disruption scenario with its what-if variants (#172)"
     )
@@ -245,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "evaluate":
         return _evaluate(args)
+    if args.cmd == "multiday":
+        return _multiday(args)
     if args.cmd == "whatif":
         return _whatif(args)
     if args.cmd == "alert-load":

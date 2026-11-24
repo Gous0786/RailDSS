@@ -1,208 +1,544 @@
 {
-  "schema_version": 1,
-  "run": {
-    "network_version": "KTV-PSA-2025-08-r2",
-    "register_version": "2026.11.1+sample",
-    "scenario_set": "sample",
-    "seed": 0,
-    "generated_by": "hand-made fixture (issue #173): not produced by any evaluation run",
-    "generated_on": "2026-11-24",
-    "sample": true,
-    "notes": "SAMPLE DATA. The numbers are invented to exercise the view; they are not results. Replace this file with the export of the evaluation runner (#168)."
+ "schema_version": 1,
+ "run": {
+  "network_version": "KTV-PSA-2025-08-r2",
+  "register_version": "2026.11.1+6216c3b0f8c3",
+  "scenario_set": "real-days-multi-day",
+  "seed": 0,
+  "window": {
+   "from_h": 6.0,
+   "to_h": 12.0
   },
-  "rows": [
-    {
-      "scenario": "SCN-05",
-      "title": "DN line blocked CPP-SGDM: single-line working on the UP line",
-      "arm": "BL-0",
-      "kpis": {
-        "A5_weighted_delay_train_min": 8830,
-        "A2_section_punctuality_pct": 67.5,
-        "A6_mean_exit_delay_min": 19.1,
-        "A6_p90_exit_delay_min": 55.2,
-        "C2_freight_detention_h": 16.0,
-        "F1_unplanned_stops": 486,
-        "D1_median_conflict_lead_min": null,
-        "D2_resolved_before_occurrence_pct": null,
-        "H1_alerts_per_controller_hour": null,
-        "H2_flood_events": null
-      },
-      "plans_verified": null,
-      "notes": "No decision support: no conflict log and no alerts."
-    },
-    {
-      "scenario": "SCN-05",
-      "arm": "BL-1",
-      "kpis": {
-        "A5_weighted_delay_train_min": 8200,
-        "A2_section_punctuality_pct": 68.0,
-        "A6_mean_exit_delay_min": 18.0,
-        "A6_p90_exit_delay_min": 52.0,
-        "C2_freight_detention_h": 15.5,
-        "F1_unplanned_stops": 470,
-        "D1_median_conflict_lead_min": 28.0,
-        "D2_resolved_before_occurrence_pct": 55.0,
-        "H1_alerts_per_controller_hour": 41.0,
-        "H2_flood_events": 20
-      },
-      "plans_verified": { "verified": 25, "built": 42 }
-    },
-    {
-      "scenario": "SCN-05",
-      "arm": "BL-2",
-      "kpis": {
-        "A5_weighted_delay_train_min": 7100,
-        "A2_section_punctuality_pct": 71.0,
-        "A6_mean_exit_delay_min": 16.2,
-        "A6_p90_exit_delay_min": 47.0,
-        "C2_freight_detention_h": 15.9,
-        "F1_unplanned_stops": 455,
-        "D1_median_conflict_lead_min": 41.0,
-        "D2_resolved_before_occurrence_pct": 92.0,
-        "H1_alerts_per_controller_hour": 5.5,
-        "H2_flood_events": 0
-      },
-      "plans_verified": { "verified": 70, "built": 74 }
-    },
-    {
-      "scenario": "SCN-05",
-      "arm": "BL-3",
-      "kpis": {
-        "A5_weighted_delay_train_min": 7800,
-        "A2_section_punctuality_pct": 69.0,
-        "A6_mean_exit_delay_min": 17.5,
-        "A6_p90_exit_delay_min": 50.0,
-        "C2_freight_detention_h": 15.9,
-        "F1_unplanned_stops": 462,
-        "D1_median_conflict_lead_min": 33.0,
-        "D2_resolved_before_occurrence_pct": 80.0,
-        "H1_alerts_per_controller_hour": 7.0,
-        "H2_flood_events": 1
-      },
-      "plans_verified": { "verified": 66, "built": 74 },
-      "notes": "The DSS with a degraded predictor (bias and spread on every ETA)."
-    },
-    {
-      "scenario": "SCN-20",
-      "title": "Planned line block with overrun",
-      "arm": "BL-0",
-      "kpis": {
-        "A5_weighted_delay_train_min": 5570,
-        "A2_section_punctuality_pct": 62.3,
-        "A6_mean_exit_delay_min": 11.6,
-        "A6_p90_exit_delay_min": 49.9,
-        "C2_freight_detention_h": 5.2,
-        "F1_unplanned_stops": 466,
-        "D1_median_conflict_lead_min": null,
-        "D2_resolved_before_occurrence_pct": null,
-        "H1_alerts_per_controller_hour": null,
-        "H2_flood_events": null
-      },
-      "plans_verified": null
-    },
-    {
-      "scenario": "SCN-20",
-      "arm": "BL-1",
-      "kpis": {
-        "A5_weighted_delay_train_min": 5200,
-        "A2_section_punctuality_pct": 63.0,
-        "A6_mean_exit_delay_min": 11.0,
-        "A6_p90_exit_delay_min": 48.0,
-        "C2_freight_detention_h": 5.1,
-        "F1_unplanned_stops": 450,
-        "D1_median_conflict_lead_min": 22.0,
-        "D2_resolved_before_occurrence_pct": 48.0,
-        "H1_alerts_per_controller_hour": 36.0,
-        "H2_flood_events": 14
-      },
-      "plans_verified": { "verified": 20, "built": 31 }
-    },
-    {
-      "scenario": "SCN-20",
-      "arm": "BL-2",
-      "kpis": {
-        "A5_weighted_delay_train_min": 4500,
-        "A2_section_punctuality_pct": 66.5,
-        "A6_mean_exit_delay_min": 9.8,
-        "A6_p90_exit_delay_min": 43.0,
-        "C2_freight_detention_h": 5.3,
-        "F1_unplanned_stops": 430,
-        "D1_median_conflict_lead_min": 26.0,
-        "D2_resolved_before_occurrence_pct": 91.0,
-        "H1_alerts_per_controller_hour": 4.8,
-        "H2_flood_events": 0
-      },
-      "plans_verified": { "verified": 48, "built": 50 }
-    },
-    {
-      "scenario": "SCN-20",
-      "arm": "BL-3",
-      "kpis": {
-        "A5_weighted_delay_train_min": 4900,
-        "A2_section_punctuality_pct": 64.5,
-        "A6_mean_exit_delay_min": 10.4,
-        "A6_p90_exit_delay_min": 46.0,
-        "C2_freight_detention_h": 5.3,
-        "F1_unplanned_stops": 440,
-        "D1_median_conflict_lead_min": 19.0,
-        "D2_resolved_before_occurrence_pct": 76.0,
-        "H1_alerts_per_controller_hour": 6.5,
-        "H2_flood_events": 0
-      },
-      "plans_verified": { "verified": 44, "built": 50 }
-    },
-    {
-      "scenario": "day 2025-08-01",
-      "title": "Nominal day: WTT plus real freight day 1",
-      "arm": "BL-0",
-      "kpis": {
-        "A5_weighted_delay_train_min": 12000,
-        "A2_section_punctuality_pct": 64.0,
-        "A6_mean_exit_delay_min": 18.0,
-        "A6_p90_exit_delay_min": 66.0,
-        "C2_freight_detention_h": 13.0,
-        "F1_unplanned_stops": 750,
-        "D1_median_conflict_lead_min": null,
-        "D2_resolved_before_occurrence_pct": null,
-        "H1_alerts_per_controller_hour": null,
-        "H2_flood_events": null
-      },
-      "plans_verified": null
-    },
-    {
-      "scenario": "day 2025-08-01",
-      "arm": "BL-2",
-      "kpis": {
-        "A5_weighted_delay_train_min": 10300,
-        "A2_section_punctuality_pct": 66.0,
-        "A6_mean_exit_delay_min": 16.0,
-        "A6_p90_exit_delay_min": 60.0,
-        "C2_freight_detention_h": 13.5,
-        "F1_unplanned_stops": 700,
-        "D1_median_conflict_lead_min": 38.0,
-        "D2_resolved_before_occurrence_pct": 88.0,
-        "H1_alerts_per_controller_hour": 5.9,
-        "H2_flood_events": 0
-      },
-      "plans_verified": { "verified": 600, "built": 610 }
-    },
-    {
-      "scenario": "day 2025-08-01",
-      "arm": "BL-5",
-      "kpis": {
-        "A5_weighted_delay_train_min": null,
-        "A2_section_punctuality_pct": null,
-        "A6_mean_exit_delay_min": null,
-        "A6_p90_exit_delay_min": null,
-        "C2_freight_detention_h": 283.1,
-        "F1_unplanned_stops": null,
-        "D1_median_conflict_lead_min": null,
-        "D2_resolved_before_occurrence_pct": null,
-        "H1_alerts_per_controller_hour": null,
-        "H2_flood_events": null
-      },
-      "plans_verified": null,
-      "notes": "The historical reference (K1): the log has freight only, no passenger actuals."
-    }
-  ]
+  "generated_by": "python -m raildss_orchestrator multiday report --dir docs/kpi/multi-day",
+  "generated_on": "2026-11-24",
+  "sample": false,
+  "notes": "5 real days, BL-1 and BL-2 over a 6 h loop window each (docs/kpi/multi-day-replay.md); the same day, demand and seed for every arm."
+ },
+ "rows": [
+  {
+   "scenario": "day 2025-08-05",
+   "title": "Real day 2025-08-05, loop window 6-12 h",
+   "arm": "BL-0",
+   "kpis": {
+    "A2_section_punctuality_pct": 65.12,
+    "A2_lop_count": 30.0,
+    "A4_mean_arrival_delay_min": 14.75,
+    "A4_max_arrival_delay_min": 84.98,
+    "A5_weighted_delay_train_min": 8673.33,
+    "A6_mean_exit_delay_min": 16.92,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 53.55,
+    "A9_mean_time_lost_min": 18.57,
+    "B1_trains_exited": 182.0,
+    "C1_freight_speed_kmh": 46.3,
+    "C2_freight_detention_h": 3.57,
+    "F1_unplanned_stops": 551.0,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The twin with the scripted disruptions, first come first served, no decision support."
+  },
+  {
+   "scenario": "day 2025-08-05",
+   "title": "Real day 2025-08-05, loop window 6-12 h",
+   "arm": "BL-1",
+   "kpis": {
+    "A2_section_punctuality_pct": 65.12,
+    "A2_lop_count": 30.0,
+    "A4_mean_arrival_delay_min": 13.55,
+    "A4_max_arrival_delay_min": 83.59,
+    "A5_weighted_delay_train_min": 8207.92,
+    "A6_mean_exit_delay_min": 15.84,
+    "A6_median_exit_delay_min": 4.19,
+    "A6_p90_exit_delay_min": 52.68,
+    "A9_mean_time_lost_min": 17.49,
+    "B1_trains_exited": 182.0,
+    "C1_freight_speed_kmh": 46.13,
+    "C2_freight_detention_h": 4.22,
+    "F1_unplanned_stops": 451.0,
+    "D1_median_conflict_lead_min": 34.0,
+    "D2_resolved_before_occurrence_pct": 55.66,
+    "H1_alerts_per_controller_hour": 75.83,
+    "H2_flood_events": 20.0
+   },
+   "plans_verified": {
+    "verified": 140,
+    "built": 140
+   },
+   "notes": "The decision loop with the greedy planner (controller practice). 110 recommendations accepted, 128 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-05",
+   "title": "Real day 2025-08-05, loop window 6-12 h",
+   "arm": "BL-2",
+   "kpis": {
+    "A2_section_punctuality_pct": 65.12,
+    "A2_lop_count": 30.0,
+    "A4_mean_arrival_delay_min": 13.56,
+    "A4_max_arrival_delay_min": 83.59,
+    "A5_weighted_delay_train_min": 8213.6,
+    "A6_mean_exit_delay_min": 15.84,
+    "A6_median_exit_delay_min": 4.19,
+    "A6_p90_exit_delay_min": 52.68,
+    "A9_mean_time_lost_min": 17.49,
+    "B1_trains_exited": 182.0,
+    "C1_freight_speed_kmh": 46.11,
+    "C2_freight_detention_h": 4.28,
+    "F1_unplanned_stops": 459.0,
+    "D1_median_conflict_lead_min": 34.0,
+    "D2_resolved_before_occurrence_pct": 55.86,
+    "H1_alerts_per_controller_hour": 77.67,
+    "H2_flood_events": 21.0
+   },
+   "plans_verified": {
+    "verified": 239,
+    "built": 275
+   },
+   "notes": "The DSS with auto-accept: the CP-SAT rolling horizon. 382 recommendations accepted, 376 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-05",
+   "arm": "BL-5",
+   "kpis": {
+    "A5_weighted_delay_train_min": null,
+    "A2_section_punctuality_pct": null,
+    "A4_mean_arrival_delay_min": null,
+    "A6_mean_exit_delay_min": null,
+    "A6_p90_exit_delay_min": null,
+    "B1_trains_exited": null,
+    "C2_freight_detention_h": 410.93,
+    "F1_unplanned_stops": null,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The historical reference (K1): the freight log of the day; it has freight only, no passenger actuals. Freight log of 2025-08-05.",
+   "title": "Real day 2025-08-05, loop window 6-12 h"
+  },
+  {
+   "scenario": "day 2025-08-12",
+   "title": "Real day 2025-08-12, loop window 6-12 h",
+   "arm": "BL-0",
+   "kpis": {
+    "A2_section_punctuality_pct": 77.27,
+    "A2_lop_count": 20.0,
+    "A4_mean_arrival_delay_min": 10.08,
+    "A4_max_arrival_delay_min": 101.38,
+    "A5_weighted_delay_train_min": 6933.38,
+    "A6_mean_exit_delay_min": 10.5,
+    "A6_median_exit_delay_min": 1.18,
+    "A6_p90_exit_delay_min": 52.46,
+    "A9_mean_time_lost_min": 12.17,
+    "B1_trains_exited": 194.0,
+    "C1_freight_speed_kmh": 44.78,
+    "C2_freight_detention_h": 5.12,
+    "F1_unplanned_stops": 469.0,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The twin with the scripted disruptions, first come first served, no decision support."
+  },
+  {
+   "scenario": "day 2025-08-12",
+   "title": "Real day 2025-08-12, loop window 6-12 h",
+   "arm": "BL-1",
+   "kpis": {
+    "A2_section_punctuality_pct": 77.27,
+    "A2_lop_count": 20.0,
+    "A4_mean_arrival_delay_min": 9.9,
+    "A4_max_arrival_delay_min": 101.38,
+    "A5_weighted_delay_train_min": 6947.73,
+    "A6_mean_exit_delay_min": 10.5,
+    "A6_median_exit_delay_min": 1.18,
+    "A6_p90_exit_delay_min": 52.46,
+    "A9_mean_time_lost_min": 12.17,
+    "B1_trains_exited": 194.0,
+    "C1_freight_speed_kmh": 44.71,
+    "C2_freight_detention_h": 5.35,
+    "F1_unplanned_stops": 385.0,
+    "D1_median_conflict_lead_min": 27.2,
+    "D2_resolved_before_occurrence_pct": 59.29,
+    "H1_alerts_per_controller_hour": 72.67,
+    "H2_flood_events": 18.0
+   },
+   "plans_verified": {
+    "verified": 139,
+    "built": 139
+   },
+   "notes": "The decision loop with the greedy planner (controller practice). 93 recommendations accepted, 106 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-12",
+   "title": "Real day 2025-08-12, loop window 6-12 h",
+   "arm": "BL-2",
+   "kpis": {
+    "A2_section_punctuality_pct": 77.27,
+    "A2_lop_count": 20.0,
+    "A4_mean_arrival_delay_min": 10.48,
+    "A4_max_arrival_delay_min": 101.38,
+    "A5_weighted_delay_train_min": 6977.47,
+    "A6_mean_exit_delay_min": 10.77,
+    "A6_median_exit_delay_min": 1.18,
+    "A6_p90_exit_delay_min": 49.82,
+    "A9_mean_time_lost_min": 12.43,
+    "B1_trains_exited": 194.0,
+    "C1_freight_speed_kmh": 44.84,
+    "C2_freight_detention_h": 4.9,
+    "F1_unplanned_stops": 456.0,
+    "D1_median_conflict_lead_min": 31.3,
+    "D2_resolved_before_occurrence_pct": 40.41,
+    "H1_alerts_per_controller_hour": 75.67,
+    "H2_flood_events": 18.0
+   },
+   "plans_verified": {
+    "verified": 97,
+    "built": 255
+   },
+   "notes": "The DSS with auto-accept: the CP-SAT rolling horizon. 96 recommendations accepted, 80 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-12",
+   "arm": "BL-5",
+   "kpis": {
+    "A5_weighted_delay_train_min": null,
+    "A2_section_punctuality_pct": null,
+    "A4_mean_arrival_delay_min": null,
+    "A6_mean_exit_delay_min": null,
+    "A6_p90_exit_delay_min": null,
+    "B1_trains_exited": null,
+    "C2_freight_detention_h": 191.85,
+    "F1_unplanned_stops": null,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The historical reference (K1): the freight log of the day; it has freight only, no passenger actuals. Freight log of 2025-08-12.",
+   "title": "Real day 2025-08-12, loop window 6-12 h"
+  },
+  {
+   "scenario": "day 2025-08-15",
+   "title": "Real day 2025-08-15, loop window 6-12 h",
+   "arm": "BL-0",
+   "kpis": {
+    "A2_section_punctuality_pct": 69.47,
+    "A2_lop_count": 29.0,
+    "A4_mean_arrival_delay_min": 11.86,
+    "A4_max_arrival_delay_min": 92.66,
+    "A5_weighted_delay_train_min": 7866.56,
+    "A6_mean_exit_delay_min": 13.4,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 48.39,
+    "A9_mean_time_lost_min": 15.1,
+    "B1_trains_exited": 191.0,
+    "C1_freight_speed_kmh": 47.01,
+    "C2_freight_detention_h": 4.83,
+    "F1_unplanned_stops": 536.0,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The twin with the scripted disruptions, first come first served, no decision support."
+  },
+  {
+   "scenario": "day 2025-08-15",
+   "title": "Real day 2025-08-15, loop window 6-12 h",
+   "arm": "BL-1",
+   "kpis": {
+    "A2_section_punctuality_pct": 69.47,
+    "A2_lop_count": 29.0,
+    "A4_mean_arrival_delay_min": 11.48,
+    "A4_max_arrival_delay_min": 92.66,
+    "A5_weighted_delay_train_min": 7823.51,
+    "A6_mean_exit_delay_min": 13.23,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 48.39,
+    "A9_mean_time_lost_min": 14.93,
+    "B1_trains_exited": 191.0,
+    "C1_freight_speed_kmh": 46.85,
+    "C2_freight_detention_h": 5.48,
+    "F1_unplanned_stops": 427.0,
+    "D1_median_conflict_lead_min": 34.0,
+    "D2_resolved_before_occurrence_pct": 54.76,
+    "H1_alerts_per_controller_hour": 74.83,
+    "H2_flood_events": 14.0
+   },
+   "plans_verified": {
+    "verified": 135,
+    "built": 135
+   },
+   "notes": "The decision loop with the greedy planner (controller practice). 114 recommendations accepted, 142 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-15",
+   "title": "Real day 2025-08-15, loop window 6-12 h",
+   "arm": "BL-2",
+   "kpis": {
+    "A2_section_punctuality_pct": 69.47,
+    "A2_lop_count": 29.0,
+    "A4_mean_arrival_delay_min": 11.92,
+    "A4_max_arrival_delay_min": 100.72,
+    "A5_weighted_delay_train_min": 7776.45,
+    "A6_mean_exit_delay_min": 13.25,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 47.42,
+    "A9_mean_time_lost_min": 14.94,
+    "B1_trains_exited": 191.0,
+    "C1_freight_speed_kmh": 47.04,
+    "C2_freight_detention_h": 4.72,
+    "F1_unplanned_stops": 455.0,
+    "D1_median_conflict_lead_min": 35.6,
+    "D2_resolved_before_occurrence_pct": 54.2,
+    "H1_alerts_per_controller_hour": 80.17,
+    "H2_flood_events": 16.0
+   },
+   "plans_verified": {
+    "verified": 187,
+    "built": 278
+   },
+   "notes": "The DSS with auto-accept: the CP-SAT rolling horizon. 275 recommendations accepted, 294 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-15",
+   "arm": "BL-5",
+   "kpis": {
+    "A5_weighted_delay_train_min": null,
+    "A2_section_punctuality_pct": null,
+    "A4_mean_arrival_delay_min": null,
+    "A6_mean_exit_delay_min": null,
+    "A6_p90_exit_delay_min": null,
+    "B1_trains_exited": null,
+    "C2_freight_detention_h": 336.43,
+    "F1_unplanned_stops": null,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The historical reference (K1): the freight log of the day; it has freight only, no passenger actuals. Freight log of 2025-08-15.",
+   "title": "Real day 2025-08-15, loop window 6-12 h"
+  },
+  {
+   "scenario": "day 2025-08-20",
+   "title": "Real day 2025-08-20, loop window 6-12 h",
+   "arm": "BL-0",
+   "kpis": {
+    "A2_section_punctuality_pct": 62.63,
+    "A2_lop_count": 37.0,
+    "A4_mean_arrival_delay_min": 20.42,
+    "A4_max_arrival_delay_min": 182.01,
+    "A5_weighted_delay_train_min": 14071.48,
+    "A6_mean_exit_delay_min": 24.38,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 83.36,
+    "A9_mean_time_lost_min": 26.08,
+    "B1_trains_exited": 193.0,
+    "C1_freight_speed_kmh": 43.65,
+    "C2_freight_detention_h": 18.27,
+    "F1_unplanned_stops": 662.0,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The twin with the scripted disruptions, first come first served, no decision support."
+  },
+  {
+   "scenario": "day 2025-08-20",
+   "title": "Real day 2025-08-20, loop window 6-12 h",
+   "arm": "BL-1",
+   "kpis": {
+    "A2_section_punctuality_pct": 62.63,
+    "A2_lop_count": 37.0,
+    "A4_mean_arrival_delay_min": 18.78,
+    "A4_max_arrival_delay_min": 182.01,
+    "A5_weighted_delay_train_min": 13260.85,
+    "A6_mean_exit_delay_min": 22.4,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 64.27,
+    "A9_mean_time_lost_min": 24.1,
+    "B1_trains_exited": 193.0,
+    "C1_freight_speed_kmh": 43.09,
+    "C2_freight_detention_h": 20.93,
+    "F1_unplanned_stops": 533.0,
+    "D1_median_conflict_lead_min": 39.1,
+    "D2_resolved_before_occurrence_pct": 67.9,
+    "H1_alerts_per_controller_hour": 124.33,
+    "H2_flood_events": 12.0
+   },
+   "plans_verified": {
+    "verified": 144,
+    "built": 144
+   },
+   "notes": "The decision loop with the greedy planner (controller practice). 125 recommendations accepted, 147 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-20",
+   "title": "Real day 2025-08-20, loop window 6-12 h",
+   "arm": "BL-2",
+   "kpis": {
+    "A2_section_punctuality_pct": 62.63,
+    "A2_lop_count": 37.0,
+    "A4_mean_arrival_delay_min": 20.27,
+    "A4_max_arrival_delay_min": 182.01,
+    "A5_weighted_delay_train_min": 14023.85,
+    "A6_mean_exit_delay_min": 24.26,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 84.45,
+    "A9_mean_time_lost_min": 25.96,
+    "B1_trains_exited": 193.0,
+    "C1_freight_speed_kmh": 43.39,
+    "C2_freight_detention_h": 19.53,
+    "F1_unplanned_stops": 617.0,
+    "D1_median_conflict_lead_min": 42.1,
+    "D2_resolved_before_occurrence_pct": 57.62,
+    "H1_alerts_per_controller_hour": 131.17,
+    "H2_flood_events": 14.0
+   },
+   "plans_verified": {
+    "verified": 113,
+    "built": 266
+   },
+   "notes": "The DSS with auto-accept: the CP-SAT rolling horizon. 164 recommendations accepted, 156 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-20",
+   "arm": "BL-5",
+   "kpis": {
+    "A5_weighted_delay_train_min": null,
+    "A2_section_punctuality_pct": null,
+    "A4_mean_arrival_delay_min": null,
+    "A6_mean_exit_delay_min": null,
+    "A6_p90_exit_delay_min": null,
+    "B1_trains_exited": null,
+    "C2_freight_detention_h": 220.02,
+    "F1_unplanned_stops": null,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The historical reference (K1): the freight log of the day; it has freight only, no passenger actuals. Freight log of 2025-08-20.",
+   "title": "Real day 2025-08-20, loop window 6-12 h"
+  },
+  {
+   "scenario": "day 2025-08-22",
+   "title": "Real day 2025-08-22, loop window 6-12 h",
+   "arm": "BL-0",
+   "kpis": {
+    "A2_section_punctuality_pct": 65.38,
+    "A2_lop_count": 36.0,
+    "A4_mean_arrival_delay_min": 12.45,
+    "A4_max_arrival_delay_min": 116.91,
+    "A5_weighted_delay_train_min": 9966.77,
+    "A6_mean_exit_delay_min": 16.53,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 59.66,
+    "A9_mean_time_lost_min": 18.26,
+    "B1_trains_exited": 204.0,
+    "C1_freight_speed_kmh": 46.2,
+    "C2_freight_detention_h": 4.8,
+    "F1_unplanned_stops": 677.0,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The twin with the scripted disruptions, first come first served, no decision support."
+  },
+  {
+   "scenario": "day 2025-08-22",
+   "title": "Real day 2025-08-22, loop window 6-12 h",
+   "arm": "BL-1",
+   "kpis": {
+    "A2_section_punctuality_pct": 66.35,
+    "A2_lop_count": 35.0,
+    "A4_mean_arrival_delay_min": 12.22,
+    "A4_max_arrival_delay_min": 116.91,
+    "A5_weighted_delay_train_min": 9413.59,
+    "A6_mean_exit_delay_min": 15.43,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 47.42,
+    "A9_mean_time_lost_min": 17.16,
+    "B1_trains_exited": 204.0,
+    "C1_freight_speed_kmh": 46.13,
+    "C2_freight_detention_h": 5.12,
+    "F1_unplanned_stops": 572.0,
+    "D1_median_conflict_lead_min": 35.0,
+    "D2_resolved_before_occurrence_pct": 54.01,
+    "H1_alerts_per_controller_hour": 57.67,
+    "H2_flood_events": 18.0
+   },
+   "plans_verified": {
+    "verified": 136,
+    "built": 136
+   },
+   "notes": "The decision loop with the greedy planner (controller practice). 107 recommendations accepted, 134 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-22",
+   "title": "Real day 2025-08-22, loop window 6-12 h",
+   "arm": "BL-2",
+   "kpis": {
+    "A2_section_punctuality_pct": 66.35,
+    "A2_lop_count": 35.0,
+    "A4_mean_arrival_delay_min": 12.2,
+    "A4_max_arrival_delay_min": 116.91,
+    "A5_weighted_delay_train_min": 9291.06,
+    "A6_mean_exit_delay_min": 15.2,
+    "A6_median_exit_delay_min": 4.17,
+    "A6_p90_exit_delay_min": 45.96,
+    "A9_mean_time_lost_min": 16.93,
+    "B1_trains_exited": 204.0,
+    "C1_freight_speed_kmh": 46.13,
+    "C2_freight_detention_h": 5.12,
+    "F1_unplanned_stops": 587.0,
+    "D1_median_conflict_lead_min": 35.0,
+    "D2_resolved_before_occurrence_pct": 48.0,
+    "H1_alerts_per_controller_hour": 57.83,
+    "H2_flood_events": 19.0
+   },
+   "plans_verified": {
+    "verified": 232,
+    "built": 288
+   },
+   "notes": "The DSS with auto-accept: the CP-SAT rolling horizon. 339 recommendations accepted, 344 orders; executed 0 head-on, 0 deadlocks."
+  },
+  {
+   "scenario": "day 2025-08-22",
+   "arm": "BL-5",
+   "kpis": {
+    "A5_weighted_delay_train_min": null,
+    "A2_section_punctuality_pct": null,
+    "A4_mean_arrival_delay_min": null,
+    "A6_mean_exit_delay_min": null,
+    "A6_p90_exit_delay_min": null,
+    "B1_trains_exited": null,
+    "C2_freight_detention_h": 176.13,
+    "F1_unplanned_stops": null,
+    "D1_median_conflict_lead_min": null,
+    "D2_resolved_before_occurrence_pct": null,
+    "H1_alerts_per_controller_hour": null,
+    "H2_flood_events": null
+   },
+   "plans_verified": null,
+   "notes": "The historical reference (K1): the freight log of the day; it has freight only, no passenger actuals. Freight log of 2025-08-22.",
+   "title": "Real day 2025-08-22, loop window 6-12 h"
+  }
+ ]
 }

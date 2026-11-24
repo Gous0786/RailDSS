@@ -106,6 +106,8 @@ per scenario one column per arm with the difference from BL-0 and the DSC target
 over the scenarios that have a row for **every** loop arm of the file (BL-5 aside), so that the arms are compared
 on the same scenarios; a scenario that lacks an arm is chosen on its own. BL-5 (history) is a different measure
 (the freight log): its own rows, no difference from BL-0.
-The committed `web/public/data/evaluation.json` is a hand-made fixture with `sample: true` until the runner
-produces a real export; `tests/docs/test_evaluation_schema.py` validates it (and the schema) and keeps the KPI
-names in step with the code.
+The committed `web/public/data/evaluation.json` is a real export (the multi-day replay of issue #169,
+`docs/kpi/multi-day-replay.md`, written by `python -m raildss_orchestrator multiday report --export ...`).
+`web/src/evaluation/sample.evaluation.json` is the hand-made fixture with `sample: true` that the web tests use
+for the sample-data banner. `tests/docs/test_evaluation_schema.py` validates both (and the schema) and keeps the
+KPI names in step with the code.

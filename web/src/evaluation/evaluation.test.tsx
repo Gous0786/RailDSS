@@ -3,7 +3,7 @@
 
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import raw from "../../public/data/evaluation.json?raw";
+import raw from "./sample.evaluation.json?raw";
 import { EvaluationView } from "./EvaluationView";
 import {
   ALL,

@@ -208,3 +208,7 @@ src/raildss_orchestrator/whatif.py: 2  # digits of the rounded window hours, not
 src/raildss_orchestrator/whatif.py: 8  # orders listed per what-if variant, a display limit, not a rule value
 src/raildss_orchestrator/whatif.py: 60  # seconds per minute, not a rule value
 src/raildss_orchestrator/evaluate.py: 2  # directory depth from the package to the repository root, not a rule value
+src/raildss_orchestrator/multiday.py: 6.0  # the default loop window of the multi-day replay (06:00, 6 h), a demo choice, not a rule value
+src/raildss_orchestrator/multiday.py: 2  # left-aligned columns of the table and digits of a rounded KPI, not a rule value
+src/raildss_orchestrator/__main__.py: 6.0  # default loop window (h) of the multi-day replay CLI, a demo choice, not a rule value
+src/raildss_orchestrator/multiday.py: 100  # percent, not a rule value

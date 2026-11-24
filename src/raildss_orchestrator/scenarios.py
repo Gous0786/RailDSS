@@ -103,10 +103,12 @@ def with_loop(
     sc: Scenario,
     arm: str = "BL-1",
     span_s: float = SPAN_S,
+    start_s: float | None = None,
     sims_out: dict[str, Any] | None = None,
 ) -> tuple[RunSummary, dict[str, Any]]:
     """The decision loop around the scenario's first disruption with the arm's planner, and the day's KPIs
-    against BL-0 under the same disruptions. ``sims_out`` receives the runs of the arm and of BL-0."""
+    against BL-0 under the same disruptions. ``start_s`` fixes the start of the loop window (multi-day
+    replay, issue #169); ``sims_out`` receives the runs of the arm and of BL-0."""
     # a line block is a closure, except under single-line working: the injector then works the other line
     # both ways, in the world and in every plan (issue #153)
     slw = {d.incident_id for d in sc.disruptions if d.type == "line_block" and d.single_line_working}
@@ -116,7 +118,10 @@ def with_loop(
     delays = scenario.entry_delays(sc)
     # around the first disruption; a scenario without one (a peak day, SCN-19) from its busiest hour
     first = min((d.start_s for d in sc.disruptions), default=None)
-    from_s = first - LEAD_S if first is not None else busiest_hour_s(world, sc)
+    if start_s is not None:
+        from_s = start_s
+    else:
+        from_s = first - LEAD_S if first is not None else busiest_hour_s(world, sc)
     to_s = from_s + span_s
     day = sc.wtt_date
     dss = TwinDss(
