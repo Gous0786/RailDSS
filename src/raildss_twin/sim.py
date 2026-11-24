@@ -732,19 +732,14 @@ class Sim:
                 if not cands:
                     raise NoRouteError(f"no station line at {node.op} is long enough for the train")
                 cands = self.directed_line(t, node.op, permitted, cands)
-                if detain:  # it halts on a free loop, off the main lines; with none free it goes on
-                    loops = [
-                        sl
-                        for sl in cands
-                        if sl.kind == "loop"
-                        and self.resource(f"SL:{node.op}/{sl.line_no}", sl.capacity_trains).count
-                        < sl.capacity_trains
-                    ]
-                    cands, detain = (loops, detain) if loops else (cands, 0.0)
+                if detain:  # it takes a loop if one is free (loops first), and halts only on a loop
+                    cands = sorted(cands, key=lambda sl: sl.kind != "loop")  # stable: loops first
                 i = yield from self.acquire(
                     t, [Option(f"SL:{node.op}/{sl.line_no}", sl.capacity_trains) for sl in cands]
                 )
                 sl = cands[i]
+                if sl.kind != "loop":  # received on a main line: it goes on, off the main lines only (#145)
+                    detain = 0.0
                 self.emit(
                     "gt.signal",
                     EventType.ROUTE_SET,

@@ -490,22 +490,24 @@ def _train(
         inner = plan.kind == "freight" and 0 < k < len(idx) - 1
         detain = detention.seconds(plan.run_id, node.op) if inner else 0.0
         loops = [sl for sl in lines if sl.kind == "loop"]
-        if detain and loops:  # as in the twin: it halts on a loop, off the main lines
-            lines, duration, stands = loops, max(duration, detain), True
+        # as in the twin: it halts on a loop (off the main lines) and goes on along another line when it
+        # finds no loop free; a line directive to a main line is the same choice
+        halting = {sl.line_no for sl in loops} if detain else set()
         for sl in lines:
+            here = max(duration, detain) if sl.line_no in halting else duration
             res = f"SL:{node.op}/{sl.line_no}"
             resources.setdefault(res, Resource(id=res, kind="station_line", capacity=sl.capacity_trains))
             i = b.add(
                 visit=k,
                 node=node.op,
                 kind="station",
-                min_duration=fl(duration),
+                min_duration=fl(here),
                 start_lb=fl(lb),
                 start_ub=horizon,
                 resources=[(res, 0 if last else clear)],
                 block=None,
                 line=None,
-                stands=stands,
+                stands=stands or sl.line_no in halting,
                 line_no=sl.line_no,
             )
             station_ops[sl.line_no] = i

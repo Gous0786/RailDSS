@@ -238,7 +238,7 @@ available, replace the passenger part of this check with a per-train and per-sta
 
 
 def _dwell_table(s: dict[str, Any]) -> str:
-    if not s["dwell"]:
+    if not s.get("dwell"):
         return "No freight call in BL-0 at the stations shown."
     head = (
         "| Station | BL-0 calls | BL-0 p90 (min) | History p90 (min) | BL-0 share > 30 min "
@@ -246,7 +246,7 @@ def _dwell_table(s: dict[str, Any]) -> str:
     )
     rows = [
         f"| {op} | {n} | {p90:.0f} | {hp90:.0f} | {share:.1%} | {hshare:.1%} |"
-        for op, n, p90, share, hp90, hshare in s["dwell"]
+        for op, n, p90, share, hp90, hshare in s.get("dwell", [])
     ]
     note = (
         "No halt is modelled at a train's first or last station, so KTV (where trains enter and leave the "
