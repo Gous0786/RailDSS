@@ -20,5 +20,5 @@ disruptions:
     block_instrument: true
     note: "Signal and block-instrument failure on SGDM-PDU: caution speed, and each train entering the block waits for a paper line clear."
 requires: []
-expected_gt_hash: "8408c749022c0d79d896530fde667894ea1f6a685a26d32b979c2ea7e226cd28"
+expected_gt_hash: "0e68312c40007660bf1e1387f34d3a7e418b217da0ce3e8869c90d0ba9402fbc"
 notes: "signal_failure with block_instrument (#146): caution speed plus the paper-line-clear wait per train entering the block."

@@ -20,5 +20,5 @@ disruptions:
     start: "13:00"
     note: "A special train (TOD / HSP type) enters at KTV at 13:00 towards PSA with no WTT path."
 requires: []
-expected_gt_hash: "618029b7bddf8e921f8fe5344b2c4c50e46942c10b0018e9df2a1af01409cbd3"
+expected_gt_hash: "c17a513a8d3aa002719f483924c3cbf42844f05cacdc879d4b9e0784143d6b52"
 notes: "An unplanned special train (mail/express class, passenger stock, no booked times) enters at KTV at 13:00 and runs to PSA; the day's own plans are unchanged (issue #148)."

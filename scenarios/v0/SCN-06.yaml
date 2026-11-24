@@ -19,5 +19,5 @@ disruptions:
     duration_min: {low_min: 60, high_min: 120}
     etr: {offset_min: 0, sigma_min: 15}
 requires: []
-expected_gt_hash: "de87c4c55459b070cf9c0bd7eb16273380dcf4409e9e396f5800dc947df3d29f"
+expected_gt_hash: "2370862d82036d7576ec82e947ddc649d6dd6bab8bc45be09598f71dfda1655d"
 notes: "CPP line 5 (857 m) is the longest loop; freight must use shorter lines or wait."

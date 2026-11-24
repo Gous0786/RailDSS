@@ -19,5 +19,5 @@ disruptions:
     etr: {offset_min: 0, sigma_min: 20}
     note: "The acceptance window of KTV-VSKP closes: UP trains cannot leave the section at KTV."
 requires: []
-expected_gt_hash: "5a00faf811ea4784d55fc635f6e3953901493c1f33d50dd060394dfb113d1910"
+expected_gt_hash: "dbbe354990a51e938b28b9cfa6d390b8c4fbbbe07580eed1ecb827e437ce2c4b"
 notes: "The acceptance window of the KTV-VSKP boundary closes at 14:00 for 90 to 120 min (seeded): a train whose last station in the section is KTV stands at the station before it until the window ends. The twin closes the exit of the station, so the KTV-KK exit is closed too (issue #148)."

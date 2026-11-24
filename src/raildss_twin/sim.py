@@ -1051,11 +1051,15 @@ class Sim:
 
     # ------------------------------------------------------------------ monitor
     def position(self, t: Train) -> tuple[float, float]:
+        """(km, km/h) now. A train that has run its segment and waits (at the signal of the next automatic
+        sub-block, for a station line) stands at the segment's end, not at the station it last left (FV-01,
+        issue #144: the old fallback made it jump back to that station's km tick after tick)."""
         if t.segment is not None:
             t0, t1, k0, k1 = t.segment
             if t1 > t0 and t0 <= self.env.now <= t1:
                 f = (self.env.now - t0) / (t1 - t0)
                 return k0 + (k1 - k0) * f, abs(k1 - k0) * M_PER_KM / (t1 - t0) * KMH_PER_MPS
+            return (k1 if self.env.now > t1 else k0), 0.0
         return t.km, 0.0
 
     def monitor(self) -> Proc:

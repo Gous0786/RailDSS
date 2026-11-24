@@ -12,5 +12,5 @@ density: 1.0
 degradation_profile: D1
 disruptions: []
 requires: []
-expected_gt_hash: "211e682d72abe556474794f5d5697aecf200a1a6f9f6b55f5af17d68f0990115"
+expected_gt_hash: "60a08dfda36ba15a51f987b7b86610919159f69b42c748df318995bdbe7fd388"
 notes: "No injected disruption. v1 replays all 27 days."

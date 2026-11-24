@@ -27,5 +27,5 @@ disruptions:
     duration_min: {low_min: 20, high_min: 60}
     etr: {offset_min: 0, sigma_min: 20}
     note: "The same zone, UP direction."
-expected_gt_hash: "fec1e3e2f4b707356a41682609ded2e3f8d22c974d42a0d2d8a4ff73a9e4b61a"
+expected_gt_hash: "0085a66094f817c3017f979b95abf4463e0c0b9abd08e5e9299db12a925ebbab"
 notes: "Executable with the OHE injector (#147): trains running in the zone stop until the power is restored; others are held outside it."
