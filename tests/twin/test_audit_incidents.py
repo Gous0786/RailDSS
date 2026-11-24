@@ -22,7 +22,9 @@ def world() -> run.World:
     return run.load_world()
 
 
-@pytest.mark.parametrize("sid", ["SCN-04", "SCN-05", "SCN-20", "SCN-21", "SCN-03", "SCN-07", "SCN-15"])
+@pytest.mark.parametrize(
+    "sid", ["SCN-04", "SCN-05", "SCN-20", "SCN-21", "SCN-03", "SCN-07", "SCN-15", "SCN-23"]
+)
 def test_an_incident_scenario_runs_with_zero_executed_violations(world: run.World, sid: str) -> None:
     sc = next(s for s in scenario.load_library_v1() if s.id == sid)
     kw = scenario.run_kwargs(sc)
@@ -53,5 +55,7 @@ def test_an_incident_scenario_runs_with_zero_executed_violations(world: run.Worl
     # SCN-21 blocks one KTV-VZM automatic line: the other two remain, there is no single-line working
     if sid in ("SCN-04", "SCN-05", "SCN-20"):
         assert ctx["single_line"] and {"VER-SLW-01", "VER-SLW-02"} <= applied & INCIDENT_RULES
+    if sid == "SCN-23":  # a boundary acceptance window shuts the exit at KTV (issue #157)
+        assert ctx["closed_exits"] and "VER-EXT-01" in applied
     if sid in ("SCN-03", "SCN-07", "SCN-15"):  # a TSR or caution working (with a paper line clear)
         assert ctx["restrictions"] and "VER-SPD-01" in applied

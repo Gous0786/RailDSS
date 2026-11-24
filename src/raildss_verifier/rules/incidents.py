@@ -154,8 +154,11 @@ def closed_exit(ctx: Context) -> list[Violation] | None:
     out = []
     for c in ctx.plan.closed_exits:
         for t in ctx.plan.trains:
-            if not t.calls or t.calls[-1].op != c.op or len(t.calls) <= len(t.runs):
-                continue  # not a train that left the section at this exit
+            last = t.runs[-1] if t.runs else None
+            block = ctx.net.blocks.get(last.block_id) if last is not None else None
+            arrives = block.to_op if block is not None else None
+            if not t.calls or t.calls[-1].op != c.op or len(t.calls) <= len(t.runs) or arrives != c.op:
+                continue  # not a train that ran into this exit (one entering there has no run into it)
             arr = t.calls[-1].arr_s
             if c.start_s + tol < arr < c.end_s - tol:
                 out.append(

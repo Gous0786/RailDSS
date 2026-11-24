@@ -17,6 +17,9 @@ returns a DISPLIB solution, so the independent G1 evaluator (#77) can check it. 
   follow each other block by block (the resource terms).
 * **Unavailable resources** (issue #153). A line block makes its resources unavailable over a window: a
   fixed interval in the resource's no-overlap.
+* **Closed exits** (issue #157, FR-OPT-20). An operation with ``closed`` windows (the final hop of a train
+  leaving through an exit whose boundary acceptance window is shut) ends before each window or starts after
+  it: the train waits at the last block station.
 * **Hint.** A known feasible schedule (the BL-0 twin's, FR-OPT-03) can warm-start the search.
 * **Rolling horizon** (issue #152, FR-OPT-07). ``fixed`` operations (frozen decisions and accepted orders)
   must be used and end within their bounds. ``preferred`` operations (the previous plan's decisions)
@@ -234,6 +237,12 @@ def solve(
     for ivs in by_resource.values():
         if len(ivs) > 1:
             m.add_no_overlap(ivs)
+    for ti, ops in enumerate(trains):
+        for oi, op in enumerate(ops):
+            for k, (a, z) in enumerate(op.get("closed", [])):
+                before = m.new_bool_var(f"c{ti}_{oi}_{k}")
+                m.add(end[ti][oi] <= int(a)).only_enforce_if([x[ti][oi], before])
+                m.add(s[ti][oi] >= int(z)).only_enforce_if([x[ti][oi], ~before])
     for gate, runs in gated.items():
         for (ta, da, sa, ea, pa), (tb, db, sb, eb, pb) in itertools.combinations(runs, 2):
             if ta == tb or da == db:

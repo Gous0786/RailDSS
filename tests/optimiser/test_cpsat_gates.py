@@ -87,3 +87,17 @@ def test_an_unavailable_resource_is_left_alone_over_its_window() -> None:
     paths = cpsat.paths_from_solution(doc, res.solution)
     assert paths[0][2][1] >= 600  # the DN train enters sub-block B once it is back in use
     assert gates.g1(doc, res.solution, register=REGISTER).passed
+
+
+def test_an_exit_closed_over_a_window_is_left_alone_and_g1_finds_a_train_in_it() -> None:
+    # issue #157: the DN train's run over sub-block A (its final hop) must keep out of the window 0-600 s
+    doc = _doc(gate=None)
+    loose = cpsat.solve(doc, time_limit_s=10, workers=1)
+    assert loose.solution is not None
+    doc["trains"][0][1]["closed"] = [[0, 600]]
+    found = [f.check for f in gates.g1(doc, loose.solution, register=REGISTER).findings]
+    assert "closed_exit" in found  # the unconstrained plan enters during the window
+    res = cpsat.solve(doc, time_limit_s=10, workers=1)
+    assert res.solution is not None and gates.g1(doc, res.solution, register=REGISTER).passed
+    path = cpsat.paths_from_solution(doc, res.solution)[0]
+    assert path[1][1] >= 600  # it waits for the exit to open

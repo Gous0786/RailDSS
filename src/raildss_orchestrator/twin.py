@@ -771,6 +771,7 @@ class TwinPlanner:
             incidents=ctx.incidents,
             entry_delays=ctx.entry_delays,
             closures=ctx.closures,  # line blocks and single-line working are in the IR (issue #153)
+            exit_windows=ctx.exit_windows,  # boundary acceptance windows (issue #157)
         )
         doc = instance.to_displib()
         hint: dict[str, Any] | None = None

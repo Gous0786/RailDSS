@@ -49,6 +49,12 @@ plan changed by more than `opt.stability.churn_s`). See `docs/kpi/replay-cpsat-k
 - **Imposing the precedence** (issue #196). Promoting the train alone left the timetable order wherever nothing contended. The re-solve now holds the trains the best plan serves first at their station until the promoted train has departed plus `opt.contrast.margin_s`. It imposes the frozen decisions of the other trains, and skips decisions whose precedence is already decided (frozen, ordered or under way). Once a contrasting option is accepted, later plans impose the frozen decisions, because the planner does not reproduce that plan by itself. A decision's precedences count the orders already in force with the options released.
 - **'Why not X'.** `Orchestrator.why_not(trains, first, resource)` re-solves the last plan's context with `first` served first. It returns the verified plan and its cost in passenger delay-minutes against the best plan, or the rules that forbid it.
 
+**Boundary acceptance windows** (issue #157, FR-OPT-20, SCN-23):
+- **Where the windows act.** A closed exit (`exit_blocked` in a scenario, the loop's `exit_windows`) applies to the world, to every plan and to the day's KPI arms.
+- **Twin and greedy.** A train whose next hop leads into a closed exit waits at its last block station until the window ends. The twin re-checks the window once the block line is granted: a train that queued for the line while the exit shut gives the line back and waits.
+- **CP-SAT.** The IR marks the final-hop operations of such trains with the `closed` windows (rounded inwards, a relaxation of the twin by less than a second). CP-SAT places each operation wholly before or after a window, and G1 checks it.
+- **Verification.** VER-EXT-01 flags only a train that *runs into* the exit. A train that enters the section there, or a plan cut at its horizon with only that entry call, is not flagged.
+
 **Line choice, sub-blocks and single-line working in CP-SAT** (issue #153):
 - **Direction of traffic.** On the reversible MID line of KTV-VZM, the IR marks every block and sub-block operation with a gate and a direction. Trains of opposite directions never overlap on the line, while trains of one direction follow sub-block by sub-block.
 - **Line blocks.** Closures and `line_block` incidents make their line's resources unavailable over the block. With single-line working on an absolute block, the direction that lost its line may use the other line against its direction, with the blocked line's Connections, while the working lasts.

@@ -182,7 +182,11 @@ def executed_safety(
         1 for r in report.results if r.rule_id == "VER-BLK-04" for v in r.violations if v.time_s >= from_s
     )
     deadlocks = sum(1 for d in sim.deadlocks if isinstance(d, Deadlock) and d.time_s >= from_s)
+    closed_exit = sum(  # a train that reached a closed exit (VER-EXT-01, issue #157)
+        1 for r in report.results if r.rule_id == "VER-EXT-01" for v in r.violations if v.time_s >= from_s
+    )
     return {
+        "closed_exit": closed_exit,
         "head_on": head_on,
         "deadlocks": deadlocks,
         "stuck": sum(1 for t in sim.trains if t.status == "stuck"),
