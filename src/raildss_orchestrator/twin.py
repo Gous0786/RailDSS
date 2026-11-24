@@ -462,7 +462,7 @@ class TwinPlanner:
                 continue  # the precedence is already decided (frozen, ordered or under way)
             c = self._contrast(ctx, trains, order[-1], resource, base, standing, baseline, imposed, checked)
             out.contrasts.append(c)
-            if c.reversed:
+            if c.reversed and c.verified:  # a failed re-solve is the 'why not' answer, not an option
                 add(c.candidate)
         if self.cpsat_enabled:
             # the greedy plan to the end of the day: a complete schedule to warm-start the solver with
