@@ -107,10 +107,10 @@ def test_the_cycle_contrasts_its_most_urgent_decisions(looped: Orchestrator) -> 
     for c in cycle.contrasts:
         assert c.verified or c.fail  # a verified plan or the rules that forbid it
     for d in cycle.decisions:
-        rev = [
+        rev = [  # the contrast of this very decision (two decisions can share a resource and a train)
             c
             for c in cycle.contrasts
-            if c.resource == d.resource and c.first in d.trains and c.reversed and c.verified
+            if c.resource == d.resource and set(c.trains) == set(d.trains) and c.reversed and c.verified
         ]
         if rev:  # more than one feasible precedence: options with both
             assert d.options >= 1 and d.precedences >= 2  # released, or one of them an order in force

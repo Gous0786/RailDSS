@@ -626,7 +626,14 @@ class TwinPlanner:
             if cand.verified and base.verified
             else None
         )
-        return Contrast(first=first, resource=resource, candidate=cand, reversed=reversed_, cost_min=cost)
+        return Contrast(
+            first=first,
+            resource=resource,
+            candidate=cand,
+            reversed=reversed_,
+            cost_min=cost,
+            trains=tuple(trains),
+        )
 
     def _contrast_holds(
         self, base: Candidate, trains: Sequence[str], first: str, resource: str

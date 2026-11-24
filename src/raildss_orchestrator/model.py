@@ -169,6 +169,7 @@ class Contrast:
     candidate: Candidate
     reversed: bool  # the precedence at the resource is the other way round from the best plan's
     cost_min: float | None  # its KPI_RANK delta minus the best plan's (positive: it costs more)
+    trains: tuple[str, ...] = ()  # the decision's trains (issue #196: two decisions can share a resource)
 
     @property
     def verified(self) -> bool:

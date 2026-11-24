@@ -122,6 +122,7 @@ class ContrastRecord(BaseModel):
     cost_min: float | None
     fail: list[str]
     answer: str
+    trains: list[str] = Field(default_factory=list)  # the decision's trains
 
 
 class CycleRecord(BaseModel):
@@ -425,6 +426,7 @@ class Orchestrator:
                     cost_min=c.cost_min,
                     fail=c.candidate.fail_rules,
                     answer=c.answer(),
+                    trains=list(c.trains),
                 )
                 for c in planned.contrasts
             ],
