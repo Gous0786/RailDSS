@@ -22,10 +22,13 @@ from raildss_verifier.model import (
     Action,
     BlockRun,
     CandidatePlan,
+    ExitClosure,
     FrozenCall,
     MaintenanceBlock,
     Overall,
     Severity,
+    SingleLineWorking,
+    SpeedRestriction,
     StationCall,
     Status,
     SubRun,
@@ -158,6 +161,11 @@ def base() -> CandidatePlan:
         actions=[Action(run_id="T3", kind="hold", time_s=1360)],
         maintenance=[MaintenanceBlock(block_id="C-D", line_id="UP", start_s=0, end_s=2000)],
         frozen=[FrozenCall(run_id="T1", op="B", line_no=1, dep_s=480)],
+        # issue #151: a 60 km/h restriction T1 just keeps (5 km in 300 s), single-line working on C-D with
+        # the DN line blocked while T2 runs the UP line, and the exit at D closed when nobody arrives
+        restrictions=[SpeedRestriction(block_id="C-D", line_id="DN", start_s=0, end_s=1500, speed_kmh=60)],
+        single_line=[SingleLineWorking(block_id="C-D", blocked_line_id="DN", start_s=2900, end_s=3800)],
+        closed_exits=[ExitClosure(op="D", start_s=2500, end_s=2900)],
     )
 
 
@@ -187,8 +195,23 @@ def _short(p: CandidatePlan) -> None:
     train(p, "T1").length_m = 650
 
 
+SLW_GAP = (600 + 180) / (20 / 3.6)  # T2 (600 m) + adequate distance at the clearing speed, s
+
+
+def _t3_on_c_d(p: CandidatePlan, line: str, enter: float) -> None:
+    """T3 runs C-D (DN) on ``line`` from ``enter``, during the single-line working."""
+    _set(p, "T3", "runs", 2, line_id=line, enter_s=enter, clear_s=enter + 300)
+
+
 Mutant = Callable[[CandidatePlan], None]
-POSITIVE: dict[str, Mutant] = {"base": lambda p: None, "adequate_gap_exact": adequate_gap_exact}
+POSITIVE: dict[str, Mutant] = {
+    "base": lambda p: None,
+    "adequate_gap_exact": adequate_gap_exact,
+    # T3 takes the working UP line against its direction once T2 has cleared it plus adequate distance
+    "slw_crossing_clear": lambda p: _t3_on_c_d(p, "UP", 3360 + SLW_GAP + 10),
+    # T3 entered the DN line before the working began (as a failed train does) and is still on it
+    "slw_on_blocked_line_before": lambda p: _t3_on_c_d(p, "DN", 2800),
+}
 MUTANTS: dict[str, Mutant] = {
     "blk01_two_in_section": lambda p: _set(p, "T3", "runs", 0, enter_s=300),
     "blk02_inside_adequate_distance": lambda p: _set(p, "T3", "runs", 0, enter_s=360 + GAP - 20),
@@ -213,6 +236,13 @@ MUTANTS: dict[str, Mutant] = {
     ),
     "frz01_frozen_line_changed": lambda p: _set(p, "T1", "calls", 1, dep_s=540),
     "buf01_thin_buffer": lambda p: _set(p, "T3", "runs", 0, enter_s=360 + GAP + 60),
+    "spd01_too_fast_under_tsr": lambda p: setattr(p.restrictions[0], "speed_kmh", 40.0),
+    "slw01_on_blocked_line": lambda p: _t3_on_c_d(p, "DN", 3000),
+    "slw01_head_on": lambda p: _t3_on_c_d(p, "UP", 3100),
+    "slw02_crossing_too_close": lambda p: _t3_on_c_d(p, "UP", 3360 + 30),
+    "ext01_exit_while_closed": lambda p: (
+        setattr(p.closed_exits[0], "start_s", 1000.0) or setattr(p.closed_exits[0], "end_s", 1300.0)
+    ),
 }
 
 

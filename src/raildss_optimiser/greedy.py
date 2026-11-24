@@ -39,7 +39,7 @@ from raildss_params import Register
 from raildss_twin import run
 from raildss_twin.layout import pair_key
 from raildss_twin.plans import Plan, day_start
-from raildss_twin.sandbox import train_meta
+from raildss_twin.sandbox import incident_context, train_meta
 from raildss_twin.sim import Closure, Directives, RunReport, token
 from raildss_verifier import engine, network
 from raildss_verifier.auditor import plan_from_trace
@@ -213,6 +213,7 @@ class GreedyDispatcher:
                 FrozenCall(run_id=f.run_id, op=f.station, line_no=f.line_no, dep_s=f.dep_s)
                 for f in (*frozen, *committed)
             ],
+            **incident_context(sim, self.net),  # issue #151: TSR, single-line working, closed exits
         )
         worked = network.as_worked(self.net, sim.slw_log)  # single-line working (issue #156)
         cand = plan_from_trace(

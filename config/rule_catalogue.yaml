@@ -259,3 +259,63 @@ rules:
     owner: rules
     tests: {positive: [base], negative: [buf01_thin_buffer]}
     version: 1.0.0
+
+  # ---- incidents in force (issue #151; DSC-08, DSC-24)
+  - rule_id: VER-SPD-01
+    title: A train under a speed restriction (TSR, caution working) runs no faster than the limit
+    category: speed
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.incidents.speed_restriction
+    parameters: [ver.running_time_resolution_s]
+    source:
+      type: GSR
+      reference: "Temporary speed restrictions and caution orders (R01 §7.4, R05 §7.3); restriction speed from the incident (FR-SCN-02)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base], negative: [spd01_too_fast_under_tsr]}
+    version: 1.0.0
+    notes: >-
+      Applies to a run entered while the restriction is in force (as the twin applies it); the running time
+      over the section's length at the limit, plus the paper-line-clear wait of caution working.
+
+  - rule_id: VER-SLW-01
+    title: Single-line working, no train on the blocked line and no opposing trains on the working line
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.incidents.single_line_working
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: GSR
+      reference: "Temporary single-line working (R01 §7.11, R04 §5.1, REC-29)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base, slw_crossing_clear, slw_on_blocked_line_before], negative: [slw01_on_blocked_line, slw01_head_on]}
+    version: 1.0.0
+
+  - rule_id: VER-SLW-02
+    title: Single-line working crossings are deadlock-free, an opposing train waits for clear line plus adequate distance
+    category: crossing
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.incidents.single_line_crossing
+    parameters: [ver.time_tolerance_s, block.adequate_distance_m.macls, ver.clearing_speed_kmh]
+    source:
+      type: GSR
+      reference: "Temporary single-line working, one train at a time each way with line clear (R01 §7.11, R04 §5.1)"
+      verification_status: SA
+    owner: rules
+    tests: {positive: [base, slw_crossing_clear], negative: [slw02_crossing_too_close]}
+    version: 1.0.0
+
+  - rule_id: VER-EXT-01
+    title: No train reaches a section exit while the exit is closed
+    category: blocks
+    severity: FAIL
+    predicate: python:raildss_verifier.rules.incidents.closed_exit
+    parameters: [ver.time_tolerance_s]
+    source:
+      type: RAILDSS_POLICY
+      reference: "Boundary acceptance windows of the adjacent division are hard constraints (R04 §7.2)"
+      verification_status: V
+    owner: rules
+    tests: {positive: [base], negative: [ext01_exit_while_closed]}
+    version: 1.0.0

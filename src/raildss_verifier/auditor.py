@@ -183,6 +183,9 @@ def plan_from_trace(
         actions=context.actions if context else [],
         maintenance=context.maintenance if context else [],
         frozen=context.frozen if context else [],
+        restrictions=context.restrictions if context else [],  # incidents in force (issue #151)
+        single_line=context.single_line if context else [],
+        closed_exits=context.closed_exits if context else [],
     )
 
 

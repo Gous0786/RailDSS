@@ -73,6 +73,36 @@ class MaintenanceBlock(BaseModel):
     end_s: float
 
 
+class SpeedRestriction(BaseModel):
+    """A speed limit on a block section line (a TSR, or caution working after a signal failure, issue #151):
+    a train entering it while in force runs at most ``speed_kmh``, plus ``extra_s`` (a paper line clear)."""
+
+    block_id: str
+    line_id: str | None = None  # None: every line of the section
+    start_s: float
+    end_s: float
+    speed_kmh: float = Field(gt=0)
+    extra_s: float = 0.0
+
+
+class SingleLineWorking(BaseModel):
+    """Temporary single-line working on a block section (issue #151): ``blocked_line_id`` is out of use and
+    the other line of the section is worked in both directions from ``start_s`` to ``end_s``."""
+
+    block_id: str
+    blocked_line_id: str
+    start_s: float
+    end_s: float
+
+
+class ExitClosure(BaseModel):
+    """The section exit at ``op`` accepts no train from ``start_s`` to ``end_s`` (issue #151)."""
+
+    op: str
+    start_s: float
+    end_s: float
+
+
 class FrozenCall(BaseModel):
     """A frozen decision (commit window or line clear granted): this train keeps this line and departure."""
 
@@ -89,6 +119,10 @@ class CandidatePlan(BaseModel):
     actions: list[Action] = Field(default_factory=list)
     maintenance: list[MaintenanceBlock] = Field(default_factory=list)
     frozen: list[FrozenCall] = Field(default_factory=list)
+    # incidents in force (issue #151): speed restrictions, single-line working, closed exits
+    restrictions: list[SpeedRestriction] = Field(default_factory=list)
+    single_line: list[SingleLineWorking] = Field(default_factory=list)
+    closed_exits: list[ExitClosure] = Field(default_factory=list)
 
 
 # ------------------------------------------------------------------ results

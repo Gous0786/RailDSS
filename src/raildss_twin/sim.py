@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import math
 import uuid
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
@@ -298,6 +299,8 @@ class Sim:
         # borrowed the line can be on a working line against its own direction.
         self.borrow_connections: dict[tuple[str, str], tuple[str, str]] = {}
         self.slw_log: list[tuple[str, str]] = []  # (block id, blocked line id) per single-line working
+        # single-line working windows (issue #151): [block id, blocked line id, start s, end s (inf: still)]
+        self.slw_windows: list[list[Any]] = []
         self.crossings: list[Crossing] = []
         self.directives = directives or Directives()
         self.directive_refusals: list[Refusal] = []
@@ -588,6 +591,7 @@ class Sim:
         trains use the working line with the Connections of the blocked line. Returns the keys to end."""
         segment = pair_key(*(self.layout.blocks[block_id].from_op, self.layout.blocks[block_id].to_op))
         self.slw_log.append((block_id, blocked_line_id))
+        self.slw_windows.append([block_id, blocked_line_id, self.env.now, math.inf])
         keys: list[str] = []
         for b in self.layout.blocks.values():
             if pair_key(b.from_op, b.to_op) != segment:
@@ -609,6 +613,10 @@ class Sim:
         return keys
 
     def slw_end(self, block_id: str, blocked_line_id: str, keys: list[str]) -> None:
+        for w in self.slw_windows:
+            if w[0] == block_id and w[1] == blocked_line_id and w[3] == math.inf:
+                w[3] = self.env.now
+                break
         for key in keys:
             self.reversible[key] -= 1
             if not self.reversible[key]:

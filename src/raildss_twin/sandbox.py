@@ -35,7 +35,16 @@ from raildss_twin.plans import day_start
 from raildss_twin.sim import Deadlock, Directives, RunReport, Sim, token
 from raildss_verifier import network
 from raildss_verifier.auditor import TrainMeta, audit, plan_from_trace
-from raildss_verifier.model import Action, CandidatePlan, FrozenCall, MaintenanceBlock, Status
+from raildss_verifier.model import (
+    Action,
+    CandidatePlan,
+    ExitClosure,
+    FrozenCall,
+    MaintenanceBlock,
+    SingleLineWorking,
+    SpeedRestriction,
+    Status,
+)
 
 SECONDS_PER_MIN = 60
 
@@ -125,13 +134,50 @@ def kpis(sim: Sim, day: dt.date, start_s: float, end_s: float) -> dict[str, floa
     }
 
 
+def incident_context(sim: Sim, net: network.Network) -> dict[str, Any]:
+    """The incidents a run worked under, as verifier plan context (issue #151): its speed restrictions,
+    single-line working windows and closed exits."""
+    by_segment: dict[str, str] = {}
+    for bid, b in net.blocks.items():
+        by_segment.setdefault("~".join(sorted((b.from_op, b.to_op))), bid)
+    end = sim.env.now
+    restrictions = [
+        SpeedRestriction(
+            block_id=by_segment[r.segment],
+            line_id=r.line_id,
+            start_s=r.start_s,
+            end_s=r.end_s,
+            speed_kmh=r.kmh,
+            extra_s=r.extra_s,
+        )
+        for r in sim.restrictions
+        if r.segment in by_segment and r.kmh > 0
+    ]
+    single_line = [
+        SingleLineWorking(block_id=bid, blocked_line_id=lid, start_s=a, end_s=min(z, end))
+        for bid, lid, a, z in sim.slw_windows
+        if bid in net.blocks
+    ]
+    exits = [
+        ExitClosure(op=op, start_s=a, end_s=z)
+        for op, windows in sim.directives.exit_windows.items()
+        for a, z in windows
+    ]
+    return {"restrictions": restrictions, "single_line": single_line, "closed_exits": exits}
+
+
 def executed_safety(
     sim: Sim, day: dt.date, from_s: float, *, register: Register, net: network.Network
 ) -> dict[str, int]:
     """Executed safety of a run from ``from_s`` (issue #153): head-on movements on a single line
     (VER-BLK-04, audited against the network as worked) and deadlocked or stuck trains."""
     worked = network.as_worked(net, sim.slw_log)
-    report = audit(sim.events, train_meta(sim), worked, day_start(day), register=register).report
+    context = CandidatePlan(
+        plan_id="ground-truth", network_version=net.version, trains=[], **incident_context(sim, net)
+    )
+    report = audit(
+        sim.events, train_meta(sim), worked, day_start(day), register=register, context=context
+    ).report
     head_on = sum(
         1 for r in report.results if r.rule_id == "VER-BLK-04" for v in r.violations if v.time_s >= from_s
     )
@@ -232,6 +278,7 @@ def replay(
         actions=plan.actions,
         maintenance=plan.maintenance,
         frozen=plan.frozen,
+        **incident_context(sim, net),  # issue #151: TSR, single-line working, closed exits in force
     )
     worked = network.as_worked(net, sim.slw_log)  # single-line working under an incident (issue #156)
     result = audit(
