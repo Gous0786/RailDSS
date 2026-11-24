@@ -17,7 +17,7 @@ Window 8-8.5 h, options by greedy, evaluation auto-accept, identical seed and de
 | Final statuses | DIVERGED 14, EXPIRED 3, SUPERSEDED 11 |
 | Decisions released / with 2+ options / with 2+ precedences | 25 / 3 / 2 |
 | Other precedence re-solved / verified / reversed | 8 / 4 / 3 |
-| Decisions with 2+ feasible precedences given options of both (incl. orders in force) | 2 / 4 |
+| Decisions with 2+ feasible precedences given options of both (incl. orders in force) | 2 / 3 |
 
 ## KPIs: DSS against BL-0
 
