@@ -107,10 +107,22 @@ export interface Option {
   confidence: number | null;
   assumptions: string[];
   // what-if variants (issue #172): the arm, its orders in total, the KPIs against the baseline, the loop's work
+  first?: string | null; // contrasting options (issue #174): the train this option serves first at the decision's resource
   arm?: string;
   orders_total?: number;
   kpis?: { baseline: KpiSet; variant: KpiSet };
   loop?: { window_h: [number, number]; plans: number; candidates_verified: string; recommendations_accepted: number; orders_issued: number };
+}
+
+/** 'Why not X first?': the loop's re-solve with the other precedence (issue #154, `ContrastRecord`). */
+export interface WhyNot {
+  first: string; // the train asked about
+  resource: string;
+  verified: boolean; // the re-solved plan passed the gates
+  reversed: boolean; // it really reverses the order of the best plan
+  cost_min: number | null; // passenger delay-min against the best plan (positive: it costs more)
+  fail: string[]; // the rules that forbid it
+  answer: string;
 }
 
 export interface Preview {
@@ -119,6 +131,9 @@ export interface Preview {
   context: string;
   options: Option[];
   valid_until_s: number; // the card expires at this time
+  // issue #174, optional: a decision of the loop (`DecisionRecord`) and its 'why not' re-solves
+  decision?: { trains: string[]; resource: string; options: number; precedences: number };
+  why_not?: WhyNot[];
 }
 
 // Schematic mimic (FR-UI-06, issue #87): the published layout and the occupancy of the twin run.

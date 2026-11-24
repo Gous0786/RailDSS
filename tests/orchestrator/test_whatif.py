@@ -118,3 +118,44 @@ def test_a_short_loop_exports_a_chart_document_with_disruptions_and_a_variant(wo
     assert set(option["trains"]) <= train_ids  # only trains of the day change
     weighted = [i["weight"] * abs(i["delta_s"]) for i in option["impacts"]]
     assert weighted == sorted(weighted, reverse=True)  # the most affected first
+
+
+def _cycle(decisions: list[dict[str, Any]], contrasts: list[dict[str, Any]]) -> Any:
+    from raildss_orchestrator.loop import CycleRecord
+
+    return CycleRecord(
+        cycle=0,
+        now_s=36000.0,
+        triggers=[],
+        plan_id="P-0",
+        conflicts=len(decisions),
+        blocked_by_g0=0,
+        candidates=[],
+        baseline={},
+        released=[],
+        wall_s=0.0,
+        decisions=decisions,
+        contrasts=contrasts,
+    )
+
+
+def test_the_contrast_of_a_cycle_goes_to_the_card_as_the_most_contested_decision_and_its_why_not() -> None:
+    """Issue #174: the card reads ``decision`` and ``why_not`` (DecisionRecord and ContrastRecord)."""
+    one = {"trains": ["T1", "T2"], "resource": "ALM~KUK", "options": 1, "precedences": 1}
+    two = {"trains": ["T3", "T4"], "resource": "KBM~NWP", "options": 3, "precedences": 2}
+    why = {
+        "first": "T4",
+        "resource": "KBM~NWP",
+        "verified": True,
+        "reversed": True,
+        "cost_min": 7.7,
+        "fail": [],
+        "answer": "ok",
+    }
+    got = whatif.contrast_fields(_cycle([one, two], [why]))
+    assert got["decision"] == two  # more precedences first
+    assert got["why_not"] == [why]
+    none = whatif.contrast_fields(_cycle([], []))
+    assert none == {"decision": None, "why_not": []}  # tolerated: nothing contested, no re-solve
+    only_one = whatif.contrast_fields(_cycle([one], []))
+    assert only_one["decision"] == one and only_one["why_not"] == []

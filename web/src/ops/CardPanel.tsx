@@ -3,6 +3,7 @@
 import { hhmm } from "../chart/geometry";
 import type { ChartData, Option } from "../types";
 import { acceptState, countdown, expiresIn, signedMin, topAffected, weightsUsed } from "./card";
+import { MAX_OPTIONS, contrastNote, contrastRows, whyNotList, whyNotState, whyNotText } from "./contrast";
 
 type Phase = "none" | "card" | "rejecting" | "done";
 
@@ -23,6 +24,7 @@ interface Props {
   now: number;
   preview: string;
   drawer: boolean;
+  whyNot?: boolean; // issue #174: the 'why not' answers of the export
 }
 
 function Bars({ option, limit }: { option: Option; limit: number }) {
@@ -45,7 +47,22 @@ function Bars({ option, limit }: { option: Option; limit: number }) {
   );
 }
 
-export function CardPanel({ data, option, optionIdx, phase, now, preview, drawer }: Props) {
+function WhyNotList({ data }: { data: ChartData }) {
+  const list = whyNotList(data.preview);
+  if (list.length === 0)
+    return <p className="muted">No re-solve in this export: the decision has one precedence, or the export carries none.</p>;
+  return (
+    <ul className="whynot">
+      {list.map((w) => (
+        <li key={`${w.first}@${w.resource}`} className={`whynot-${whyNotState(w)}`}>
+          {whyNotText(w)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function CardPanel({ data, option, optionIdx, phase, now, preview, drawer, whyNot = false }: Props) {
   const p = data.preview;
   const shown = phase !== "none";
   const opt = option ?? p.options[optionIdx] ?? p.options[0];
@@ -66,13 +83,29 @@ export function CardPanel({ data, option, optionIdx, phase, now, preview, drawer
           <>
             <p>{p.context}</p>
             <ol className="options">
-              {p.options.map((o, i) => (
-                <li key={o.id} className={i === optionIdx ? "chosen" : ""}>
-                  <b>{i + 1}</b> {o.id}: {o.title}
+              {contrastRows(p.options).map((r) => (
+                <li key={r.id} className={r.key - 1 === optionIdx ? "chosen" : ""}>
+                  <b>{r.key}</b> {r.id}: {r.title}
+                  <span className="muted">
+                    {" "}
+                    · {signedMin(r.delta_min * 60)} weighted · {r.later} later / {r.earlier} earlier ·{" "}
+                  </span>
+                  <span className={r.verifier === "PASS" ? "pass" : "fail"}>{r.verifier}</span>
+                  {r.first && <span className="muted"> · {r.first} first</span>}
                 </li>
               ))}
               <li className="muted">Do nothing (baseline = the twin run)</li>
             </ol>
+            <p className="muted">
+              {contrastNote(p)}
+              {p.options.length > MAX_OPTIONS ? ` Showing the first ${MAX_OPTIONS} of ${p.options.length}.` : ""} <kbd>Y</kbd> why not
+            </p>
+            {whyNot && (
+              <>
+                <h4>Why not</h4>
+                <WhyNotList data={data} />
+              </>
+            )}
             <h4>Actions</h4>
             <ul className="actions">
               {opt.orders.map((o) => (
@@ -151,6 +184,44 @@ export function CardPanel({ data, option, optionIdx, phase, now, preview, drawer
           <p>{opt.explanation.why}</p>
           <h4>Why not the alternatives</h4>
           <p>{opt.explanation.why_not}</p>
+          {p.options.length > 1 && (
+            <>
+              <h4>The options side by side</h4>
+              <table className="contrast">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Option</th>
+                    <th>Weighted delay</th>
+                    <th>Later / earlier</th>
+                    <th>Verifier</th>
+                    <th>Serves first</th>
+                    <th>Orders only this option has</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contrastRows(p.options).map((r) => (
+                    <tr key={r.id} className={r.key - 1 === optionIdx ? "chosen" : ""}>
+                      <td>{r.key}</td>
+                      <td>{r.id}</td>
+                      <td>{signedMin(r.delta_min * 60)}</td>
+                      <td>
+                        {r.later} / {r.earlier}
+                      </td>
+                      <td className={r.verifier === "PASS" ? "pass" : "fail"}>{r.verifier}</td>
+                      <td>{r.first ?? <span className="muted">-</span>}</td>
+                      <td>
+                        {r.sameAs ? <span className="muted">same orders as {r.sameAs}</span> : r.onlyHere.length === 0 ? <span className="muted">-</span> : r.onlyHere.join("; ")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="muted">{contrastNote(p)}</p>
+            </>
+          )}
+          <h4>Why not X first?</h4>
+          <WhyNotList data={data} />
           {data.policy.weights_in_explanations && (
             <p className="weights">
               Class weights: {Object.entries(opt.explanation.weights).map(([k, v]) => `${k.replace("_", " ")} ${v}`).join(" · ")}
