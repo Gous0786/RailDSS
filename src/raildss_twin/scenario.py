@@ -201,6 +201,14 @@ class ScenarioDisruption(_Strict):
         )
 
 
+class RealDay(_Strict):
+    """One real freight day of a real-day replay (SCN-22, issue #166): its WTT date (the freight day is
+    that date's instance) and the trace hash its replay must reproduce."""
+
+    wtt_date: dt.date
+    expected_gt_hash: str | None = None
+
+
 class Scenario(_Strict):
     schema_version: Literal[1]
     id: str = Field(pattern=r"^SCN-\d\d$")
@@ -223,6 +231,8 @@ class Scenario(_Strict):
         default_factory=dict, description="register key -> bound to use (SCN-24: station_line.csr.psa low)"
     )
     expected_gt_hash: str | None = None
+    # a real-day replay over several freight days (SCN-22 over the 27 days of Aug 2025, issue #166)
+    real_days: list[RealDay] = Field(default_factory=list)
     notes: str = ""
 
     @model_validator(mode="after")
@@ -239,6 +249,14 @@ class Scenario(_Strict):
                 raise ValueError("a scenario that is not executable has no expected_gt_hash")
         elif self.expected_gt_hash is None or not HASH_RE.match(self.expected_gt_hash):
             raise ValueError("an executable scenario needs expected_gt_hash (64 hex digits)")
+        dates = [d.wtt_date for d in self.real_days]
+        if len(dates) != len(set(dates)):
+            raise ValueError("a real day is listed twice")
+        if self.real_days and self.freight_day is None:
+            raise ValueError("real days replay real freight days: give freight_day")
+        for d in self.real_days:
+            if d.expected_gt_hash is not None and not HASH_RE.match(d.expected_gt_hash):
+                raise ValueError(f"real day {d.wtt_date}: expected_gt_hash is not 64 hex digits")
         return self
 
     @property
@@ -492,6 +510,34 @@ def run_scenario(world: Any, sc: Scenario) -> Any:
     observers = [Observer(world.register, sc.degradation_profile)]
     report, _ = run.run_day(world, sc.wtt_date, observers=observers, **run_kwargs(sc, world))
     return report
+
+
+def day_scenarios(sc: Scenario) -> list[Scenario]:
+    """The scenario itself, or one scenario per real day of a real-day replay (issue #166): the same seed,
+    disruptions and profile on that day's WTT and freight day, with that day's recorded hash."""
+    if not sc.real_days:
+        return [sc]
+    return [
+        sc.model_copy(
+            update={
+                "wtt_date": d.wtt_date,
+                "freight_day": f"{FREIGHT_DAY_PREFIX}{d.wtt_date.day:02d}",
+                "expected_gt_hash": d.expected_gt_hash,
+                "real_days": [],
+            }
+        )
+        for d in sc.real_days
+    ]
+
+
+def record_day_hash(path: Path, day: dt.date, digest: str) -> None:
+    """Write the hash of one real day into its ``real_days`` entry, keeping the rest of the file."""
+    text = path.read_text(encoding="utf-8")
+    entry = rf'^(\s*- \{{wtt_date: "{day.isoformat()}", expected_gt_hash: )[^}}]*(\}})$'
+    line = re.compile(entry, re.MULTILINE)
+    if not line.search(text):
+        raise ValueError(f"{path.name}: no real_days entry for {day}")
+    path.write_text(line.sub(rf'\g<1>"{digest}"\g<2>', text), encoding="utf-8", newline="\n")
 
 
 def record_hash(path: Path, digest: str) -> None:
