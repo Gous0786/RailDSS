@@ -13,4 +13,33 @@ degradation_profile: D1
 disruptions: []
 requires: []
 expected_gt_hash: "eeeb00570f47e60ed105bf39c0b78777f35e14066c6c5856151d22dd9e088159"
-notes: "No injected disruption. v1 replays all 27 days."
+# the 27 real freight days of Aug 2025 (issue #166): each replayed on its WTT and freight day, same seed
+real_days:
+  - {wtt_date: "2025-08-01", expected_gt_hash: "667126a8f58b0d8c53a2261aac7a37544c755466bab935615d4f9faa0737c35c"}
+  - {wtt_date: "2025-08-02", expected_gt_hash: "eeeb00570f47e60ed105bf39c0b78777f35e14066c6c5856151d22dd9e088159"}
+  - {wtt_date: "2025-08-03", expected_gt_hash: "476bb65f499d6ca66c9c2f53b2d8030f834f3f1db200c2bf2c9d15b1b763f2ad"}
+  - {wtt_date: "2025-08-04", expected_gt_hash: "ce9a593bef8c17cf5c704e8e9d1f61af7ee205a81769388854efcd3a242729a4"}
+  - {wtt_date: "2025-08-05", expected_gt_hash: "ad3a1ab5a132d364617557910e9f20549fd1ac03d4ed494f9d80fd66a5970b92"}
+  - {wtt_date: "2025-08-06", expected_gt_hash: "9e78beb63c2500dd535f10223ede948cb8d27d4156b3bcaa52438d34dd41bcff"}
+  - {wtt_date: "2025-08-07", expected_gt_hash: "8d259e1b477a175ff6fec0a140b02c9fa1b847995fae701555c95c39bd617543"}
+  - {wtt_date: "2025-08-08", expected_gt_hash: "0b9b9a889af9f59033fb583fbd2a188b70d42d45e26ca479764625c95ff3a6fc"}
+  - {wtt_date: "2025-08-09", expected_gt_hash: "99190933fb35b50cafc027adb6e02b5c029721a29b683e6f22d1e2df898d1d31"}
+  - {wtt_date: "2025-08-10", expected_gt_hash: "07bd63c2c8e01b6ea6b76f8e2b09285628dd1f61e52d0256bb9af8841f26b878"}
+  - {wtt_date: "2025-08-11", expected_gt_hash: "949f367ec64a3bfc2ad3401d492f01a664ef45fdb5877621408cbf038608cd7c"}
+  - {wtt_date: "2025-08-12", expected_gt_hash: "e9df7d6514e27cb2163ab4e6b777682c9887600754ee80aab84a416432f4ef37"}
+  - {wtt_date: "2025-08-13", expected_gt_hash: "a32685a8276d84c2e8d638a707006455145cfe913ee716c3151f46a74ac2ddd3"}
+  - {wtt_date: "2025-08-14", expected_gt_hash: "9d465660b25b4dcb4d347f3077dd81f201fd888a8c35377e636dcf5cb10022de"}
+  - {wtt_date: "2025-08-15", expected_gt_hash: "a948160f6f84aa2f7ae652d206cb07b3840590b4a338124b1fc25352979a0e5e"}
+  - {wtt_date: "2025-08-16", expected_gt_hash: "93bf864f2deb4f0e56567bffaca6e43d3d5ec92ddd748cf3e77487ad691f5fef"}
+  - {wtt_date: "2025-08-17", expected_gt_hash: "52b8506f3ed88de5a573485785605f2d583b252f947afb2fa2eb8317892f0cc3"}
+  - {wtt_date: "2025-08-18", expected_gt_hash: "7df2b42bf3a5f2b36f9b1947a68ecb19636000fda2e2e2f1ed7bbb630ad6c95d"}
+  - {wtt_date: "2025-08-19", expected_gt_hash: "39f24f34d991940e77df40a26def62535851bf2366d4952150305a858a69945f"}
+  - {wtt_date: "2025-08-20", expected_gt_hash: "1ae68c6614905cbdc678560cf2f3827b8d2c2e77c5e3bbeac0d5a2a9eb93b99e"}
+  - {wtt_date: "2025-08-21", expected_gt_hash: "e60785e3bfde3b8e1a57d65e523b52550e6ff30248cdcb6acd1449d762ad343c"}
+  - {wtt_date: "2025-08-22", expected_gt_hash: "5e3c771e74b22617ba056466aea19808238ed3e09dcd12459fa490d8b34269ae"}
+  - {wtt_date: "2025-08-23", expected_gt_hash: "90d85cd6edd4b6fd0c5ecb7d6f42eb7bbf0615cfef0ca3fad9dc628891840359"}
+  - {wtt_date: "2025-08-24", expected_gt_hash: "26e15bbcb6898fff05b531067adc18fbff9850931cb0c285415851e3db83b7aa"}
+  - {wtt_date: "2025-08-25", expected_gt_hash: "c6a3cac4c28990ce28d716a591e01d2d8bb440126834617003f98a5cd9e68604"}
+  - {wtt_date: "2025-08-26", expected_gt_hash: "b83be75ff7586043be28bed3dfdb85d38cd541c5245a003694797b9643389c00"}
+  - {wtt_date: "2025-08-27", expected_gt_hash: "4391c0c1547a320980faa4227e3b3b8114f8403aab149fb13955cf989f6c787a"}
+notes: "No injected disruption. v1 replays all 27 real freight days (real_days); the BL-5 comparison is docs/kpi/real-days-bl5.md."

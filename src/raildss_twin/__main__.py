@@ -277,17 +277,32 @@ def _scenario(args: argparse.Namespace) -> int:
         print("\n".join(bad) or f"scenarios: {len(library)} valid")
         return 1 if bad else 0
     chosen = [s for s in library if s.executable and (not args.ids or s.id in args.ids)]
+    days = _days(args.days)
     world = run.load_world()
     failed = 0
     for s in chosen:
-        report = scenario.run_scenario(world, s)
-        same = report.trace_hash == s.expected_gt_hash
-        if args.record and not same:
-            scenario.record_hash(scenario.path_of(s), report.trace_hash)
-        ok = report.completed and (same or args.record)
-        failed += not ok
-        print(f"{s.id}: {'OK' if ok else 'FAILED'} {report.trace_hash} ({report.wall_s} s)")
+        for d in scenario.day_scenarios(s):  # one per real day of a real-day replay (SCN-22, issue #166)
+            label = f"{s.id}/{d.wtt_date}" if s.real_days else s.id
+            if s.real_days and days and d.wtt_date.day not in days:
+                continue
+            report = scenario.run_scenario(world, d)
+            same = report.trace_hash == d.expected_gt_hash
+            if args.record and not same:
+                if s.real_days:
+                    scenario.record_day_hash(scenario.path_of(s), d.wtt_date, report.trace_hash)
+                else:
+                    scenario.record_hash(scenario.path_of(s), report.trace_hash)
+            ok = report.completed and (same or args.record)
+            failed += not ok
+            print(f"{label}: {'OK' if ok else 'FAILED'} {report.trace_hash} ({report.wall_s} s)")
     return 1 if failed else 0
+
+
+def _days(spec: str | None) -> set[int]:
+    """``--days 1-9,15``: the days of the month to run (default: every one)."""
+    from raildss_twin.real_days import parse_days
+
+    return parse_days(spec)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -341,8 +356,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_sc.add_argument("--write", action="store_true", help="index: write INDEX.md")
     p_sc.add_argument("--record", action="store_true", help="run: record the trace hash in the file")
+    p_sc.add_argument("--days", default=None, help="run: real days, e.g. 1-9,15 (SCN-22, issue #166)")
+    p_rd = sub.add_parser("real-days", help="SCN-22 over the 27 real days against BL-5 (issue #166)")
+    p_rd.add_argument("--days", default=None, help="days of Aug 2025 to run, e.g. 1-9,15 (default: all)")
+    p_rd.add_argument("--write", action="store_true", help="add the rows and write docs/kpi/real-days-bl5.*")
     args = ap.parse_args(argv)
 
+    if args.cmd == "real-days":
+        from raildss_twin.real_days import run_days
+
+        text = run_days(_days(args.days), write=args.write)
+        if not args.write:
+            sys.stdout.write(text)
+        return 0
     if args.cmd == "scenario":
         return _scenario(args)
     if args.cmd == "run":
